@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pop Magic Programming</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+  <style>
+    body { margin: 0; overflow: hidden; background-color: #f0f9ff; color: #334155; font-family: 'Nunito', 'Segoe UI', sans-serif; }
+    
+    .hidden-view { display: none !important; }
+
+    /* 四角いブロックのデザイン */
+    .magic-block {
+      width: 76px;
+      min-height: 80px;
+      padding: 10px 0;
+      border-radius: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: grab;
+      flex-shrink: 0;
+      box-shadow: 0 4px 0 rgba(0,0,0,0.1);
+      transition: transform 0.1s, box-shadow 0.1s;
+      user-select: none;
+      background-color: white;
+      position: relative;
+    }
+    .magic-block:active {
+      transform: translateY(4px);
+      box-shadow: 0 0 0 rgba(0,0,0,0.1);
+      cursor: grabbing;
+    }
+    
+    .magic-block .icon { font-size: 26px; line-height: 1; margin-bottom: 2px; }
+    .magic-block .text { font-size: 11px; font-weight: bold; text-align: center; line-height: 1.2; }
+    
+    /* ジャンルごとのカラー */
+    .magic-block.gen  { border: 3px solid #f97316; color: #c2410c; background: #fff7ed; } 
+    .magic-block.vec  { border: 3px solid #3b82f6; color: #1d4ed8; background: #eff6ff; } 
+    .magic-block.trig { border: 3px solid #eab308; color: #a16207; background: #fefce8; } 
+    .magic-block.act  { border: 3px solid #a855f7; color: #7e22ce; background: #faf5ff; } 
+    .magic-block.ctrl { border: 3px solid #10b981; color: #047857; background: #ecfdf5; } 
+
+    /* ★ 組み込み用対象ブロックのデザイン ★ */
+    .target-block {
+      min-width: 50px;
+      height: 24px;
+      padding: 0 6px;
+      border-radius: 12px;
+      background: white;
+      border: 2px solid #cbd5e1;
+      font-size: 11px; font-weight: bold; color: #475569;
+      display: flex; align-items: center; justify-content: center; gap: 4px;
+      cursor: grab;
+      box-shadow: 0 2px 0 #cbd5e1;
+    }
+    .target-block:active { box-shadow: 0 0 0 #cbd5e1; transform: translateY(2px); }
+
+    /* ★ スロット (嵌め込む穴) のデザイン ★ */
+    .target-slot {
+      width: 66px; height: 30px;
+      border-radius: 15px; background: rgba(0,0,0,0.05);
+      border: 2px dashed #94a3b8;
+      margin-top: 6px;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.2s;
+    }
+    .target-slot:empty::before {
+      content: '対象を置く';
+      color: #94a3b8; font-size: 10px; font-weight: bold;
+    }
+
+    /* プログラミングスロットのデザイン */
+    .program-slot {
+      width: 84px;
+      min-height: 88px;
+      border: 3px dashed #94a3b8;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      margin-bottom: 32px;
+      transition: all 0.2s;
+    }
+    .program-slot:empty::before {
+      content: '魔法を置く';
+      color: #94a3b8;
+      font-size: 11px;
+      font-weight: bold;
+    }
+    .program-slot::after {
+      content: '⬇️';
+      position: absolute;
+      bottom: -28px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 18px;
+      color: #94a3b8;
+      pointer-events: none;
+    }
+    .program-slot:last-child { margin-bottom: 0; }
+    .program-slot:last-child::after { display: none; }
+
+    .sortable-ghost { opacity: 0.3; }
+    .sortable-drag { cursor: grabbing !important; z-index: 50; transform: scale(1.05); }
+
+    .custom-scrollbar::-webkit-scrollbar { height: 10px; width: 10px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 5px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 5px; border: 2px solid #f1f5f9; }
+
+    #msg-overlay { transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); transform: translateY(-20px) scale(0.9); opacity: 0; }
+    .show-msg { opacity: 1 !important; transform: translateY(0) scale(1) !important; }
+  </style>
+</head>
+<body class="flex flex-col h-screen">
+
+<!-- タブナビゲーション -->
+<div class="flex p-3 gap-3 bg-white shadow-sm z-20 relative shrink-0">
+  <button id="tab-editor" class="flex-1 py-3 bg-sky-400 text-white rounded-2xl font-bold shadow-md transform scale-105 transition-all text-lg border-2 border-sky-500">
+    🧩 プログラム
+  </button>
+  <button id="tab-test" class="flex-1 py-3 bg-gray-100 text-gray-500 rounded-2xl font-bold shadow-sm hover:bg-gray-200 transition-all text-lg border-2 border-transparent">
+    🎮 テスト
+  </button>
+</div>
+
+<!-- ===================== -->
+<!-- エディタビュー -->
+<!-- ===================== -->
+<div id="view-editor" class="flex-1 flex flex-row p-3 gap-3 overflow-hidden">
+  
+  <!-- 左パネル：パレット領域 (ドラッグ中はここに戻して捨てる) -->
+  <div id="left-panel" class="w-1/3 max-w-[280px] min-w-[110px] bg-white rounded-3xl shadow-sm p-3 md:p-4 flex flex-col shrink-0 border border-gray-100 overflow-hidden transition-colors duration-200">
+    <div class="text-sm font-bold text-sky-500 mb-2 text-center md:text-left">✨ 基礎魔法</div>
+    <div id="palette-blocks" class="flex-1 flex flex-wrap gap-2 content-start justify-center overflow-y-auto pb-2 custom-scrollbar">
+      <!-- ジェネレート -->
+      <div class="magic-block gen" data-type="gen" data-val="fire"><div class="icon">🔥</div><div class="text">炎</div></div>
+      <div class="magic-block gen" data-type="gen" data-val="lightning"><div class="icon">⚡️</div><div class="text">雷</div></div>
+      <div class="magic-block gen" data-type="gen" data-val="water"><div class="icon">💧</div><div class="text">水</div></div>
+      
+      <div class="w-full h-1 bg-gray-100 rounded-full my-1 shrink-0"></div>
+
+      <!-- ベクトル -->
+      <div class="magic-block vec" data-type="vec" data-val="forward"><div class="icon">➡️</div><div class="text">前へ</div></div>
+      <div class="magic-block vec" data-type="vec" data-val="zigzag"><div class="icon">〰️</div><div class="text">ジグザグ</div></div>
+      <div class="magic-block vec" data-type="vec" data-val="return"><div class="icon">🪃</div><div class="text">戻ってくる</div></div>
+      <div class="magic-block vec" data-type="vec" data-val="orbit"><div class="icon">🔄</div><div class="text">回る</div></div>
+      <div class="magic-block vec" data-type="vec" data-val="homing"><div class="icon">🎯</div><div class="text">追う</div></div>
+
+      <div class="w-full h-1 bg-gray-100 rounded-full my-1 shrink-0"></div>
+
+      <!-- トリガー (スロット付き追加) -->
+      <div class="magic-block trig" data-type="trig" data-val="touch">
+        <div class="icon">💥</div><div class="text">触れたら</div>
+        <div class="target-slot"></div> <!-- スロット -->
+      </div>
+      <div class="magic-block trig" data-type="trig" data-val="tap"><div class="icon">👆</div><div class="text">タップ待機</div></div>
+      <div class="magic-block trig" data-type="trig" data-val="time_half"><div class="icon">⌛</div><div class="text">0.5秒待機</div></div>
+      <div class="magic-block trig" data-type="trig" data-val="time"><div class="icon">⏱️</div><div class="text">1秒待機</div></div>
+
+      <div class="w-full h-1 bg-gray-100 rounded-full my-1 shrink-0"></div>
+
+      <!-- アクション (スロット付き追加) -->
+      <div class="magic-block act" data-type="act" data-val="explode"><div class="icon">💥</div><div class="text">爆発</div></div>
+      <div class="magic-block act" data-type="act" data-val="pull"><div class="icon">🧲</div><div class="text">吸い寄せる</div></div>
+      <div class="magic-block act" data-type="act" data-val="split"><div class="icon">🔱</div><div class="text">分裂</div></div>
+      <div class="magic-block act" data-type="act" data-val="grow"><div class="icon">🏔️</div><div class="text">巨大化</div></div>
+      <div class="magic-block act" data-type="act" data-val="hard"><div class="icon">🛡️</div><div class="text">強固</div></div>
+      
+      <div class="magic-block act" data-type="act" data-val="stop">
+        <div class="icon">🛑</div><div class="text">止める</div>
+        <div class="target-slot"></div>
+      </div>
+      <div class="magic-block act" data-type="act" data-val="slow">
+        <div class="icon">🐢</div><div class="text">スロー</div>
+        <div class="target-slot"></div>
+      </div>
+      <div class="magic-block act" data-type="act" data-val="speedup">
+        <div class="icon">🐇</div><div class="text">加速</div>
+        <div class="target-slot"></div>
+      </div>
+
+      <div class="w-full h-1 bg-gray-100 rounded-full my-1 shrink-0"></div>
+
+      <!-- 制御構文 -->
+      <div class="magic-block ctrl" data-type="ctrl" data-val="repeat">
+        <div class="icon">🔁</div><div class="text">最初から</div>
+        <select class="mt-1 w-10/12 text-[10px] bg-white border border-emerald-300 text-emerald-700 rounded outline-none text-center font-bold">
+          <option value="1">1回</option><option value="3">3回</option><option value="5">5回</option>
+        </select>
+      </div>
+    </div>
+    
+    <!-- ★ 対象ブロックパレット ★ -->
+    <div class="text-sm font-bold text-pink-500 mb-2 mt-3 text-center md:text-left">🎯 対象</div>
+    <div id="palette-targets" class="flex flex-wrap justify-center content-start gap-2 overflow-y-auto pb-1 custom-scrollbar shrink-0 max-h-32">
+      <div class="target-block" data-type="target" data-val="enemy">👾 敵</div>
+      <div class="target-block" data-type="target" data-val="player">🧙 自分</div>
+      <div class="target-block" data-type="target" data-val="magic">✨ 魔法</div>
+      <div class="target-block" data-type="target" data-val="wall">🧱 壁</div>
+    </div>
+  </div>
+  
+  <!-- 右パネル：ワークスペース領域 -->
+  <div class="flex-1 bg-white rounded-3xl shadow-sm p-4 flex flex-col overflow-hidden border border-gray-100">
+    <div class="text-sm font-bold text-sky-500 mb-2">📜 プログラム (上から順番に実行！)</div>
+    
+    <div id="workspace" class="flex-1 bg-sky-50 rounded-2xl border-2 border-dashed border-sky-300 p-6 overflow-y-auto flex flex-col items-center custom-scrollbar">
+      <!-- プログラミング枠 (初期3つ) -->
+      <div class="program-slot">
+        <div class="magic-block gen" data-type="gen" data-val="fire"><div class="icon">🔥</div><div class="text">炎</div></div>
+      </div>
+      <div class="program-slot">
+        <div class="magic-block vec" data-type="vec" data-val="forward"><div class="icon">➡️</div><div class="text">前へ</div></div>
+      </div>
+      <div class="program-slot">
+        <div class="magic-block vec" data-type="vec" data-val="homing"><div class="icon">🎯</div><div class="text">追う</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== -->
+<!-- テストビュー -->
+<!-- ===================== -->
+<div id="view-test" class="flex-1 relative hidden-view bg-slate-900 overflow-hidden cursor-crosshair">
+  <canvas id="gameCanvas" class="w-full h-full block"></canvas>
+  <div id="msg-overlay" class="absolute top-10 left-0 w-full text-center pointer-events-none z-10">
+    <span id="msg-text" class="bg-white text-pink-500 px-6 py-3 rounded-full font-bold shadow-xl border-4 border-pink-200 text-lg"></span>
+  </div>
+  <div class="absolute bottom-8 w-full flex justify-center z-10 pointer-events-none">
+    <button id="cast-btn" class="pointer-events-auto bg-yellow-400 hover:bg-yellow-300 text-yellow-900 px-10 py-5 rounded-full font-black text-2xl shadow-[0_8px_0_#ca8a04] active:shadow-[0_0px_0_#ca8a04] active:translate-y-[8px] transition-all flex items-center gap-3">
+      <span class="text-3xl">🪄</span> まほうをうつ！
+    </button>
+  </div>
+</div>
+
+<script>
+  // --- タブ切り替えロジック ---
+  const tabEditor = document.getElementById('tab-editor');
+  const tabTest = document.getElementById('tab-test');
+  const viewEditor = document.getElementById('view-editor');
+  const viewTest = document.getElementById('view-test');
+  let isPaused = true; 
+
+  tabEditor.addEventListener('click', () => {
+    viewEditor.classList.remove('hidden-view');
+    viewTest.classList.add('hidden-view');
+    tabEditor.className = 'flex-1 py-3 bg-sky-400 text-white rounded-2xl font-bold shadow-md transform scale-105 transition-all text-lg border-2 border-sky-500';
+    tabTest.className = 'flex-1 py-3 bg-gray-100 text-gray-500 rounded-2xl font-bold shadow-sm hover:bg-gray-200 transition-all text-lg border-2 border-transparent';
+    isPaused = true;
+  });
+
+  tabTest.addEventListener('click', () => {
+    viewTest.classList.remove('hidden-view');
+    viewEditor.classList.add('hidden-view');
+    tabTest.className = 'flex-1 py-3 bg-pink-400 text-white rounded-2xl font-bold shadow-md transform scale-105 transition-all text-lg border-2 border-pink-500';
+    tabEditor.className = 'flex-1 py-3 bg-white text-gray-400 rounded-2xl font-bold shadow-sm hover:bg-gray-50 transition-all text-lg border-2 border-transparent';
+    requestAnimationFrame(() => { requestAnimationFrame(() => { resize(); resetEnemies(); isPaused = false; }); });
+  });
+
+  let globalTapFlag = false;
+  viewTest.addEventListener('mousedown', (e) => {
+    if (e.target.id !== 'cast-btn' && !e.target.closest('#cast-btn')) {
+      globalTapFlag = true;
+      for(let i=0; i<3; i++) particles.push(new Particle(e.offsetX, e.offsetY, '#fff'));
+    }
+  });
+
+  // --- Sortable.js (ドラッグ＆ドロップとスロットのネスト) ---
+  
+  const leftPanel = document.getElementById('left-panel');
+
+  // パレット (基礎魔法)
+  new Sortable(document.getElementById('palette-blocks'), {
+    group: { name: 'blocks', pull: 'clone', put: ['program-slot', 'targets'] }, animation: 150, sort: false,
+    onStart: function() { leftPanel.classList.add('bg-red-50', 'border-red-200'); },
+    onEnd: function() { leftPanel.classList.remove('bg-red-50', 'border-red-200'); },
+    onAdd: function (evt) { evt.item.parentNode.removeChild(evt.item); }
+  });
+
+  // パレット (対象ブロック)
+  new Sortable(document.getElementById('palette-targets'), {
+    group: { name: 'targets', pull: 'clone', put: ['program-slot', 'targets'] }, animation: 150, sort: false,
+    onStart: function() { leftPanel.classList.add('bg-red-50', 'border-red-200'); },
+    onEnd: function() { leftPanel.classList.remove('bg-red-50', 'border-red-200'); },
+    onAdd: function (evt) { evt.item.parentNode.removeChild(evt.item); }
+  });
+
+  // ★ プログラミングスロットの初期化 ★
+  function initProgramSlots() {
+    const pSlots = document.querySelectorAll('.program-slot');
+    pSlots.forEach(slot => {
+      if (!slot.dataset.sortableInitialized) {
+        new Sortable(slot, {
+          group: { 
+            name: 'program-slot', 
+            put: ['blocks', 'program-slot'] // ブロックと他のスロットからの移動を許可
+          },
+          animation: 150,
+          ghostClass: 'sortable-ghost',
+          onStart: function() { leftPanel.classList.add('bg-red-50', 'border-red-200'); },
+          onEnd: function() { leftPanel.classList.remove('bg-red-50', 'border-red-200'); },
+          onAdd: function(evt) {
+            // スロットに1つしか入らないように、古いブロックを削除
+            if (slot.children.length > 1) {
+              Array.from(slot.children).forEach(child => {
+                if (child !== evt.item) slot.removeChild(child);
+              });
+            }
+            initSlots(evt.item); // 内部のターゲットスロットを初期化
+          }
+        });
+        slot.dataset.sortableInitialized = 'true';
+      }
+    });
+  }
+  initProgramSlots();
+
+  // ★ スロットをドラッグ＆ドロップ可能にする関数 ★
+  function initSlots(element) {
+    const slots = element.querySelectorAll('.target-slot');
+    slots.forEach(slot => {
+      // パレット内のスロットは初期化しない
+      if (slot.closest('#palette-blocks')) return;
+      if (!slot.dataset.sortableInitialized) {
+        new Sortable(slot, {
+          group: { name: 'targets', put: ['targets'] }, // 対象ブロックのみ受け入れる
+          animation: 150,
+          onStart: function() { leftPanel.classList.add('bg-red-50', 'border-red-200'); },
+          onEnd: function() { leftPanel.classList.remove('bg-red-50', 'border-red-200'); },
+          onAdd: function (evt) {
+            // 新しいブロックが入ったら、元々入っていた古いブロックを削除する
+            if (slot.children.length > 1) {
+              Array.from(slot.children).forEach(child => {
+                 if (child !== evt.item) slot.removeChild(child);
+              });
+            }
+          }
+        });
+        slot.dataset.sortableInitialized = 'true';
+      }
+    });
+  }
+  // ロード時にワークスペース内の既存スロットを初期化
+  initSlots(document.getElementById('workspace'));
+
+
+  // --- ゲームロジック ---
+  const canvas = document.getElementById('gameCanvas');
+  const ctx = canvas.getContext('2d');
+  
+  let width, height;
+  function resize() {
+    if (viewTest.classList.contains('hidden-view')) return;
+    width = viewTest.clientWidth; height = viewTest.clientHeight;
+    if (width === 0) width = window.innerWidth || 800;
+    if (height === 0) height = window.innerHeight || 600;
+    canvas.width = width; canvas.height = height;
+    player.x = width * 0.15; player.y = height / 2;
+  }
+  function resetEnemies() {
+    enemies.forEach(e => {
+      e.x = width * 0.7 + Math.random() * (width * 0.2);
+      e.startY = height * 0.2 + Math.random() * (height * 0.6);
+      e.y = e.startY;
+    });
+  }
+  window.addEventListener('resize', () => { if(!isPaused) { resize(); resetEnemies(); } });
+
+  let magics = [];
+  let particles = [];
+  let enemies = [];
+  let frameCount = 0;
+
+  function showMessage(msg) {
+    const overlay = document.getElementById('msg-overlay');
+    document.getElementById('msg-text').innerText = msg;
+    overlay.classList.add('show-msg');
+    setTimeout(() => overlay.classList.remove('show-msg'), 2500);
+  }
+
+  // ★ プレイヤーオブジェクト (状態異常機能を追加) ★
+  const player = { 
+    x: 0, y: 0, radius: 24,
+    effectType: null, effectTimer: 0,
+    applyEffect: function(type) {
+      this.effectType = type;
+      this.effectTimer = 180;
+    },
+    update: function() {
+      if (this.effectTimer > 0) {
+        this.effectTimer--;
+        if (this.effectTimer <= 0) this.effectType = null;
+      }
+    },
+    draw: function(ctx) {
+      ctx.fillStyle = this.effectType === 'stop' ? '#94a3b8' : this.effectType === 'slow' ? '#38bdf8' : this.effectType === 'speedup' ? '#fbbf24' : '#34d399';
+      ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = this.effectType === 'stop' ? '#cbd5e1' : '#059669';
+      ctx.beginPath(); ctx.moveTo(this.x - 15, this.y); ctx.lineTo(this.x + 15, this.y); ctx.lineTo(this.x, this.y - 30); ctx.fill();
+      
+      if(this.effectType === 'stop') {
+        ctx.strokeStyle = '#e0f2fe'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(this.x-15, this.y+15); ctx.lineTo(this.x-5, this.y+5); ctx.stroke();
+      }
+    }
+  };
+
+  class Enemy {
+    constructor(x, y) {
+      this.x = x; this.startY = y; this.y = y;
+      this.radius = 18; this.active = true;
+      this.offset = Math.random() * Math.PI * 2;
+      this.time = 0; this.speedMult = 1.0;
+      this.effectTimer = 0; this.effectType = null;
+    }
+    update() {
+      if (!this.active) return;
+      this.time += 1 * this.speedMult;
+      if(this.effectType !== 'pulled') {
+        this.y = this.startY + Math.sin(this.time * 0.05 + this.offset) * 60;
+      }
+      if (this.effectTimer > 0) {
+        this.effectTimer--;
+        if (this.effectTimer <= 0) {
+          this.speedMult = 1.0; this.effectType = null;
+          this.startY = this.y;
+        }
+      }
+    }
+    applyEffect(type) {
+      this.effectType = type;
+      if (type === 'stop') { this.speedMult = 0; this.effectTimer = 180; }
+      if (type === 'slow') { this.speedMult = 0.3; this.effectTimer = 180; }
+      if (type === 'speedup') { this.speedMult = 2.5; this.effectTimer = 180; }
+      if (type === 'pulled') { this.effectTimer = 5; }
+    }
+    draw(ctx) {
+      if (!this.active) return;
+      if (this.effectType === 'stop') ctx.fillStyle = '#64748b';
+      else if (this.effectType === 'slow') ctx.fillStyle = '#38bdf8';
+      else if (this.effectType === 'speedup') ctx.fillStyle = '#fbbf24';
+      else ctx.fillStyle = '#f43f5e';
+
+      ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'white';
+      ctx.beginPath(); ctx.arc(this.x - 7, this.y - 4, 4, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(this.x + 7, this.y - 4, 4, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#881337';
+      ctx.beginPath(); ctx.arc(this.x - 7, this.y - 4, 2, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(this.x + 7, this.y - 4, 2, 0, Math.PI*2); ctx.fill();
+      
+      if(this.effectType === 'stop') {
+        ctx.strokeStyle = '#e0f2fe'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(this.x-10, this.y+10); ctx.lineTo(this.x-5, this.y+5); ctx.stroke();
+      }
+    }
+    die() {
+      this.active = false;
+      createExplosion(this.x, this.y, 'enemy');
+      setTimeout(() => {
+        this.active = true;
+        this.x = width * 0.7 + Math.random() * (width * 0.2);
+        this.startY = height * 0.2 + Math.random() * (height * 0.6);
+        this.speedMult = 1.0; this.effectType = null; this.effectTimer = 0;
+      }, 2500);
+    }
+  }
+
+  class Magic {
+    constructor(x, y, blocks, state = {}) {
+      this.x = x; this.y = y;
+      this.blocks = blocks;
+      this.step = 0;
+      
+      this.gen = state.gen || null;
+      this.vec = state.vec || 'none';
+      this.scale = state.scale || 1;
+      this.vx = state.vx || 0;
+      this.vy = state.vy || 0;
+      this.color = state.color || 'transparent';
+      this.orbitAngle = state.orbitAngle || 0;
+      this.baseY = y; this.lifeTime = 0;
+      this.age = state.age || 0;
+      this.maxAge = 120; 
+      this.repeatLeft = state.repeatLeft !== undefined ? state.repeatLeft : -1;
+      this.durability = state.durability !== undefined ? state.durability : 1; // 耐久力（初期値1）
+      this.hitWall = state.hitWall || false; // 壁に触れているかのフラグ
+
+      this.active = true;
+      this.radius = 10;
+      this.speed = 8;
+      this.trigAge = 0;
+      this.hitEnemies = new Set();
+    }
+
+    update() {
+      if (!this.active) return;
+      this.trigAge++; this.age++; this.lifeTime++;
+
+      if (this.age >= this.maxAge) {
+        this.active = false;
+        for(let i=0; i<8; i++) particles.push(new Particle(this.x, this.y, this.color || '#cbd5e1'));
+        return;
+      }
+
+      this.move();
+      this.checkCollisions(); // ※トリガーに関わらず衝突と耐久力の減少を判定
+
+      while (this.step < this.blocks.length && this.active) {
+        let block = this.blocks[this.step];
+        
+        if (block.type === 'gen') {
+          this.gen = block.val;
+          if (this.gen === 'fire') this.color = '#fb923c'; 
+          else if (this.gen === 'lightning') this.color = '#fde047'; 
+          else if (this.gen === 'water') this.color = '#60a5fa'; 
+          this.step++;
+        } 
+        else if (block.type === 'vec') {
+          this.vec = block.val;
+          if (this.vec === 'forward' || this.vec === 'zigzag') {
+            let currentSpeed = Math.hypot(this.vx, this.vy);
+            if (currentSpeed === 0) { this.vx = this.speed; this.vy = 0; }
+            else { this.vx = (this.vx / currentSpeed) * this.speed; this.vy = (this.vy / currentSpeed) * this.speed; }
+            this.baseY = this.y; 
+          } else if (this.vec === 'homing' || this.vec === 'return') {
+            if (this.vx === 0 && this.vy === 0) { this.vx = this.speed * 0.5; this.vy = 0; }
+          }
+          this.step++;
+        } 
+        else if (block.type === 'trig') {
+          let hit = false;
+          if (block.val === 'time_half') {
+             if (this.trigAge >= 30) hit = true; 
+          } else if (block.val === 'time') {
+             if (this.trigAge >= 60) hit = true; 
+          } else if (block.val === 'tap') {
+             if (window.currentTapFlag) hit = true;
+          } 
+          // ★ 新設：対象に触れたら待機解除 ★
+          else if (block.val === 'touch') {
+             let t = block.target;
+             if (t === 'enemy') {
+               let target = getNearestEnemy(this.x, this.y);
+               if (target && Math.hypot(target.x - this.x, target.y - this.y) < (this.radius * this.scale) + target.radius) hit = true;
+             } else if (t === 'wall') {
+               if (this.x < 0 || this.x > width || this.y < 0 || this.y > height) hit = true;
+             } else if (t === 'player') {
+               if (Math.hypot(player.x - this.x, player.y - this.y) < (this.radius * this.scale) + player.radius) hit = true;
+             } else if (t === 'magic') {
+               // 他の魔法弾と衝突したか判定
+               for(let m of magics) {
+                 if (m !== this && m.active && Math.hypot(m.x - this.x, m.y - this.y) < (this.radius * this.scale) + (m.radius * m.scale)) {
+                   hit = true; break;
+                 }
+               }
+             }
+          }
+          
+          if (hit) { this.step++; this.trigAge = 0; } 
+          else { break; } 
+        } 
+        else if (block.type === 'act') {
+          this.executeAction(block.val, block.target);
+          this.step++;
+        }
+        else if (block.type === 'ctrl') {
+          if (block.val === 'repeat') {
+            if (this.repeatLeft === -1) this.repeatLeft = parseInt(block.target);
+            if (this.repeatLeft > 0) {
+              this.repeatLeft--; this.step = 0; break; 
+            } else { this.step++; }
+          }
+        }
+      }
+
+      if (this.x < -200 || this.x > width + 200 || this.y < -200 || this.y > height + 200) this.active = false;
+    }
+
+    move() {
+      if (this.vec === 'forward') {
+        this.x += this.vx; this.y += this.vy;
+      } else if (this.vec === 'zigzag') {
+        this.x += this.vx;
+        this.y = this.baseY + Math.sin(this.lifeTime * 0.15) * 50 * this.scale;
+        this.baseY += this.vy; 
+      } else if (this.vec === 'orbit') {
+        this.orbitAngle += 0.08;
+        this.x = player.x + Math.cos(this.orbitAngle) * 80 * this.scale;
+        this.y = player.y + Math.sin(this.orbitAngle) * 80 * this.scale;
+      } else if (this.vec === 'homing') {
+        let target = getNearestEnemy(this.x, this.y);
+        if (target) {
+          let dx = target.x - this.x, dy = target.y - this.y;
+          let dist = Math.hypot(dx, dy);
+          if (dist > 0) {
+            this.vx = (this.vx * 0.9) + ((dx / dist) * this.speed * 0.1);
+            this.vy = (this.vy * 0.9) + ((dy / dist) * this.speed * 0.1);
+          }
+        } else {
+          if (this.vx === 0 && this.vy === 0) this.vx = this.speed;
+        }
+        this.x += this.vx; this.y += this.vy;
+      } else if (this.vec === 'return') {
+        let dx = player.x - this.x, dy = player.y - this.y;
+        let dist = Math.hypot(dx, dy);
+        if (dist > 0) {
+          this.vx = (this.vx * 0.9) + ((dx / dist) * this.speed * 0.15);
+          this.vy = (this.vy * 0.9) + ((dy / dist) * this.speed * 0.15);
+        }
+        this.x += this.vx; this.y += this.vy;
+      }
+    }
+
+    checkCollisions() {
+      if (!this.gen || !this.active) return;
+      
+      // 敵との衝突判定
+      for (let e of enemies) {
+        if (e.active && !this.hitEnemies.has(e)) {
+          let dist = Math.hypot(e.x - this.x, e.y - this.y);
+          if (dist < (this.radius * this.scale) + e.radius) {
+            e.die();
+            this.hitEnemies.add(e);
+            this.durability--;
+            for(let i=0; i<8; i++) particles.push(new Particle(this.x, this.y, this.color || '#cbd5e1'));
+            if (this.durability <= 0) {
+              this.active = false;
+              return;
+            }
+          }
+        }
+      }
+
+      // 壁（画面端）との衝突判定
+      if (this.x < 0 || this.x > width || this.y < 0 || this.y > height) {
+        if (!this.hitWall) {
+          this.hitWall = true;
+          this.durability--;
+          for(let i=0; i<8; i++) particles.push(new Particle(this.x, this.y, this.color || '#cbd5e1'));
+          if (this.durability <= 0) {
+            this.active = false;
+            return;
+          }
+        }
+      } else {
+        this.hitWall = false; // 画面内に戻ったらフラグをリセット
+      }
+    }
+
+    executeAction(act, target) {
+      if (act === 'explode') {
+        createExplosion(this.x, this.y, this.gen);
+        enemies.forEach(e => { if(e.active && Math.hypot(e.x - this.x, e.y - this.y) < 110 * this.scale) e.die(); });
+        this.active = false;
+      } else if (act === 'split') {
+        let remainingBlocks = this.blocks.slice(this.step + 1);
+        let speed = Math.hypot(this.vx, this.vy) || this.speed;
+        let angle = Math.atan2(this.vy, this.vx);
+        if (this.vx === 0 && this.vy === 0) angle = 0;
+
+        let m1 = new Magic(this.x, this.y, remainingBlocks, { gen: this.gen, vec: 'forward', scale: this.scale, color: this.color, vx: Math.cos(angle - 0.5) * speed, vy: Math.sin(angle - 0.5) * speed, age: this.age, repeatLeft: this.repeatLeft, durability: this.durability, hitWall: this.hitWall });
+        let m2 = new Magic(this.x, this.y, remainingBlocks, { gen: this.gen, vec: 'forward', scale: this.scale, color: this.color, vx: Math.cos(angle + 0.5) * speed, vy: Math.sin(angle + 0.5) * speed, age: this.age, repeatLeft: this.repeatLeft, durability: this.durability, hitWall: this.hitWall });
+        magics.push(m1, m2);
+        this.active = false;
+        this.step = this.blocks.length; 
+      } else if (act === 'grow') {
+        this.scale *= 1.5; 
+      } else if (act === 'hard') {
+        this.durability += 1; // 耐久力を増やして貫通させる
+        
+      // ★ 対象指定のアクション ★
+      } else if (act === 'stop') {
+        if (target === 'magic') { this.vx = 0; this.vy = 0; this.vec = 'none'; } 
+        else { this.applyStatusBurst('stop', target); }
+      } else if (act === 'slow') {
+        if (target === 'magic') { this.vx *= 0.4; this.vy *= 0.4; this.speed *= 0.4; } 
+        else { this.applyStatusBurst('slow', target); }
+      } else if (act === 'speedup') {
+        if (target === 'magic') { this.vx *= 1.5; this.vy *= 1.5; this.speed *= 1.5; } 
+        else { this.applyStatusBurst('speedup', target); }
+      } else if (act === 'pull') {
+        let pullRadius = 180 * this.scale;
+        particles.push({
+          x: this.x, y: this.y, life: 1.0, color: '#a855f7',
+          update: function() { this.life -= 0.1; },
+          draw: function(ctx) {
+            if(this.life<=0) return;
+            ctx.globalAlpha = this.life; ctx.strokeStyle = this.color; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(this.x, this.y, this.life*pullRadius, 0, Math.PI*2); ctx.stroke();
+            ctx.globalAlpha = 1.0;
+          }
+        });
+        enemies.forEach(e => {
+          if (e.active) {
+            let dx = this.x - e.x; let dy = this.y - e.y;
+            if (Math.hypot(dx, dy) < pullRadius) {
+              e.applyEffect('pulled');
+              e.x += dx * 0.3; e.y += dy * 0.3;
+            }
+          }
+        });
+      }
+    }
+
+    applyStatusBurst(type, targetType) {
+      let radius = 130 * this.scale;
+      let color = type === 'stop' ? '#cbd5e1' : type === 'slow' ? '#7dd3fc' : '#fde047';
+      
+      particles.push({
+        x: this.x, y: this.y, life: 1.0, color: color,
+        update: function() { this.life -= 0.05; },
+        draw: function(ctx) {
+          if(this.life<=0) return;
+          ctx.globalAlpha = this.life; ctx.strokeStyle = this.color; ctx.lineWidth = 4;
+          ctx.beginPath(); ctx.arc(this.x, this.y, (1-this.life)*radius, 0, Math.PI*2); ctx.stroke();
+          ctx.globalAlpha = 1.0;
+        }
+      });
+
+      if (targetType === 'enemy') {
+        enemies.forEach(e => {
+          if (e.active && Math.hypot(e.x - this.x, e.y - this.y) < radius) e.applyEffect(type);
+        });
+      } else if (targetType === 'player') {
+        if (Math.hypot(player.x - this.x, player.y - this.y) < radius) player.applyEffect(type);
+      }
+    }
+
+    draw(ctx) {
+      if (!this.active || !this.gen) return;
+      ctx.save();
+      ctx.translate(this.x, this.y);
+      ctx.scale(this.scale, this.scale);
+      
+      let alpha = 1.0;
+      if (this.maxAge - this.age < 60) alpha = (Math.floor(frameCount / 4) % 2 === 0) ? 0.3 : 1.0;
+      ctx.globalAlpha = alpha;
+
+      ctx.fillStyle = this.color;
+      ctx.shadowBlur = 15;
+      ctx.shadowColor = this.color;
+
+      if (this.gen === 'fire') {
+        ctx.beginPath(); ctx.arc(0, 0, this.radius, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#fef08a'; ctx.beginPath(); ctx.arc(-2, -3, this.radius*0.5, 0, Math.PI * 2); ctx.fill();
+      } else if (this.gen === 'lightning') {
+        ctx.beginPath(); ctx.moveTo(0, -this.radius); ctx.lineTo(this.radius, 0); ctx.lineTo(0, this.radius); ctx.lineTo(-this.radius, 0); ctx.fill();
+      } else if (this.gen === 'water') {
+        ctx.beginPath(); ctx.arc(0, 2, this.radius, 0, Math.PI * 2);
+        ctx.moveTo(-this.radius, 2); ctx.lineTo(0, -this.radius * 1.5); ctx.lineTo(this.radius, 2); ctx.fill();
+      }
+      ctx.restore();
+    }
+  }
+
+  class Particle {
+    constructor(x, y, color) {
+      this.x = x; this.y = y; this.color = color;
+      const angle = Math.random() * Math.PI * 2;
+      const speed = Math.random() * 6 + 2;
+      this.vx = Math.cos(angle) * speed; this.vy = Math.sin(angle) * speed;
+      this.life = 1.0; this.decay = Math.random() * 0.04 + 0.02;
+      this.size = Math.random() * 5 + 3;
+    }
+    update() { this.x += this.vx; this.y += this.vy; this.life -= this.decay; }
+    draw(ctx) {
+      if (this.life <= 0) return;
+      ctx.globalAlpha = this.life; ctx.fillStyle = this.color;
+      ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI*2); ctx.fill();
+      ctx.globalAlpha = 1.0;
+    }
+  }
+
+  function getNearestEnemy(x, y) {
+    let nearest = null, minDist = Infinity;
+    for (let e of enemies) {
+      if (e.active) {
+        let d = Math.hypot(e.x - x, e.y - y);
+        if (d < minDist) { minDist = d; nearest = e; }
+      }
+    }
+    return nearest;
+  }
+
+  function createExplosion(x, y, type) {
+    let color = '#fff';
+    if (type === 'fire') color = '#fb923c';
+    else if (type === 'lightning') color = '#fde047';
+    else if (type === 'water') color = '#60a5fa';
+    else if (type === 'enemy') color = '#f43f5e';
+
+    for (let i = 0; i < 25; i++) particles.push(new Particle(x, y, color));
+    particles.push({
+      x: x, y: y, life: 1.0, color: color,
+      update: function() { this.life -= 0.05; },
+      draw: function(ctx) {
+        if(this.life<=0) return;
+        ctx.globalAlpha = this.life; ctx.strokeStyle = this.color; ctx.lineWidth = 6;
+        ctx.beginPath(); ctx.arc(this.x, this.y, (1-this.life)*100, 0, Math.PI*2); ctx.stroke();
+        ctx.globalAlpha = 1.0;
+      }
+    });
+  }
+
+  function init() {
+    width = window.innerWidth || 800; height = window.innerHeight || 600;
+    canvas.width = width; canvas.height = height;
+    
+    for (let i = 0; i < 5; i++) { enemies.push(new Enemy(0, 0)); }
+    gameLoop();
+  }
+
+  function gameLoop() {
+    window.currentTapFlag = globalTapFlag;
+    globalTapFlag = false; 
+
+    if (!isPaused) {
+      frameCount++;
+      player.update();
+      enemies.forEach(e => e.update());
+      magics = magics.filter(m => m.active); magics.forEach(m => m.update());
+      particles = particles.filter(p => p.life > 0); particles.forEach(p => p.update());
+    }
+
+    ctx.clearRect(0, 0, width, height);
+    ctx.fillStyle = 'rgba(255,255,255,0.02)';
+    for(let i=0; i<10; i++) { ctx.beginPath(); ctx.arc((i*87)%width, (i*131)%height, 2, 0, Math.PI*2); ctx.fill(); }
+
+    player.draw(ctx);
+    enemies.forEach(e => e.draw(ctx));
+    magics.forEach(m => m.draw(ctx));
+    particles.forEach(p => p.draw(ctx));
+
+    requestAnimationFrame(gameLoop);
+  }
+
+  document.getElementById('cast-btn').addEventListener('click', () => {
+    const blocksEl = document.querySelectorAll('.program-slot > .magic-block');
+    let blocks = [];
+    let isError = false;
+    
+    // パース処理：スロットの中身を読み取る
+    blocksEl.forEach(b => {
+      let target = 'none';
+      let slot = b.querySelector('.target-slot');
+      
+      if(slot) {
+        if(slot.children.length > 0) {
+          target = slot.children[0].dataset.val; // 嵌め込まれた対象を取得
+        } else {
+          isError = true; // スロットが空の場合はエラー
+        }
+      }
+      
+      // selectタグ（ループ回数用）
+      let selectEl = b.querySelector('select');
+      if(selectEl) target = selectEl.value;
+
+      blocks.push({ type: b.dataset.type, val: b.dataset.val, target: target });
+    });
+
+    if (blocks.length === 0) { showMessage("エラー：魔法がセットされていません！"); return; }
+    if (!blocks.some(b => b.type === 'gen')) {
+      showMessage("エラー：「ジェネレート(属性)」がないと魔法が出ません！");
+      for(let i=0; i<8; i++) particles.push(new Particle(player.x+20, player.y, '#9ca3af'));
+      return;
+    }
+    if (isError) {
+      showMessage("エラー：対象がセットされていないスロットがあります！");
+      return;
+    }
+
+    magics.push(new Magic(player.x, player.y, blocks));
+    for(let i=0; i<5; i++) particles.push(new Particle(player.x+20, player.y, '#fcd34d'));
+  });
+
+  window.onload = init;
+
+</script>
+</body>
+</html>

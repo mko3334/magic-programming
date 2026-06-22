@@ -1,0 +1,153 @@
+{
+  "tileSize": 16,
+  "terrain": {
+    "grass": {
+      "sheet": "tilesets/grass.png",
+      "sx": 0,
+      "sy": 64,
+      "sw": 16,
+      "sh": 16
+    },
+    "path": {
+      "sheet": "tilesets/dirt.png",
+      "sx": 0,
+      "sy": 64,
+      "sw": 16,
+      "sh": 16
+    },
+    "water": {
+      "sheet": "tilesets/water.png",
+      "frames": [
+        {
+          "sx": 0,
+          "sy": 0,
+          "sw": 16,
+          "sh": 16
+        },
+        {
+          "sx": 16,
+          "sy": 0,
+          "sw": 16,
+          "sh": 16
+        },
+        {
+          "sx": 32,
+          "sy": 0,
+          "sw": 16,
+          "sh": 16
+        },
+        {
+          "sx": 48,
+          "sy": 0,
+          "sw": 16,
+          "sh": 16
+        }
+      ],
+      "speed": 10
+    }
+  },
+  "props": {
+    "tree": {
+      "sheet": "props/tree.png",
+      "sx": 0,
+      "sy": 0,
+      "sw": 44,
+      "sh": 48,
+      "anchor": [
+        0.5,
+        0.92
+      ]
+    },
+    "bush": {
+      "sheet": "props/bush.png",
+      "sx": 0,
+      "sy": 0,
+      "sw": 24,
+      "sh": 31,
+      "anchor": [
+        0.5,
+        0.92
+      ]
+    },
+    "rock": {
+      "sheet": "props/rock.png",
+      "sx": 0,
+      "sy": 0,
+      "sw": 16,
+      "sh": 10,
+      "anchor": [
+        0.5,
+        0.92
+      ]
+    },
+    "log": {
+      "sheet": "props/log.png",
+      "sx": 0,
+      "sy": 0,
+      "sw": 30,
+      "sh": 16,
+      "anchor": [
+        0.5,
+        0.92
+      ]
+    },
+    "stump": {
+      "sheet": "props/stump.png",
+      "sx": 0,
+      "sy": 0,
+      "sw": 15,
+      "sh": 16,
+      "anchor": [
+        0.5,
+        0.92
+      ]
+    },
+    "mushroom": {
+      "sheet": "props/mushroom.png",
+      "sx": 0,
+      "sy": 0,
+      "sw": 13,
+      "sh": 14,
+      "anchor": [
+        0.5,
+        0.92
+      ]
+    },
+    "grassTuft": {
+      "sheet": "props/grass-tuft.png",
+      "sx": 0,
+      "sy": 0,
+      "sw": 10,
+      "sh": 8,
+      "anchor": [
+        0.5,
+        0.92
+      ]
+    }
+  },
+  "chest": {
+    "sheet": "objects/chest.png",
+    "sx": 0,
+    "sy": 0,
+    "sw": 48,
+    "sh": 48,
+    "anchor": [
+      0.5,
+      0.88
+    ]
+  },
+  "player": {
+    "walkSheet": "characters/mage-walk.png",
+    "actionSheet": "characters/mage-actions.png",
+    "frame": 48,
+    "cols": 4,
+    "rows": 4,
+    "actionCols": 2,
+    "foot": [
+      23,
+      31
+    ],
+    "scale": 2
+  },
+  "credit": "Assets - From: Sprout Lands - By: Cup Nooble"
+}

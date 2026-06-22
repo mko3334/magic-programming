@@ -1,0 +1,3552 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pop Magic Programming</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+  <style>
+    body { margin: 0; overflow: hidden; background-color: #f0f9ff; color: #334155; font-family: 'Nunito', 'Segoe UI', sans-serif; }
+    
+    .hidden-view { display: none !important; }
+
+    /* 四角いブロックのデザイン */
+    .magic-block {
+      width: 76px;
+      min-height: 80px;
+      padding: 10px 0;
+      border-radius: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: grab;
+      flex-shrink: 0;
+      box-shadow: 0 4px 0 rgba(0,0,0,0.1);
+      transition: transform 0.1s, box-shadow 0.1s;
+      user-select: none;
+      background-color: white;
+      position: relative;
+    }
+    .magic-block:active {
+      transform: translateY(4px);
+      box-shadow: 0 0 0 rgba(0,0,0,0.1);
+      cursor: grabbing;
+    }
+    
+    .magic-block .icon { font-size: 26px; line-height: 1; margin-bottom: 2px; }
+    .magic-block .text { font-size: 11px; font-weight: bold; text-align: center; line-height: 1.2; }
+    
+    /* ジャンルごとのカラー */
+    .magic-block.gen  { border: 3px solid #f97316; color: #c2410c; background: #fff7ed; } 
+    .magic-block.gen.wood  { border: 3px solid #22c55e; color: #15803d; background: #f0fdf4; }
+    .magic-block.gen.earth { border: 3px solid #a16207; color: #854d0e; background: #fefce8; }
+    .magic-block.vec  { border: 3px solid #3b82f6; color: #1d4ed8; background: #eff6ff; } 
+    .magic-block.trig { border: 3px solid #eab308; color: #a16207; background: #fefce8; } 
+    .magic-block.act  { border: 3px solid #a855f7; color: #7e22ce; background: #faf5ff; } 
+    .magic-block.ctrl { border: 3px solid #10b981; color: #047857; background: #ecfdf5; } 
+
+    /* ★ 組み込み用対象ブロックのデザイン ★ */
+    .target-block {
+      min-width: 50px;
+      height: 24px;
+      padding: 0 6px;
+      border-radius: 12px;
+      background: white;
+      border: 2px solid #cbd5e1;
+      font-size: 11px; font-weight: bold; color: #475569;
+      display: flex; align-items: center; justify-content: center; gap: 4px;
+      cursor: grab;
+      box-shadow: 0 2px 0 #cbd5e1;
+    }
+    .target-block:active { box-shadow: 0 0 0 #cbd5e1; transform: translateY(2px); }
+
+    /* ★ スロット (嵌め込む穴) のデザイン ★ */
+    .target-slot {
+      width: 66px; height: 30px;
+      border-radius: 15px; background: rgba(0,0,0,0.05);
+      border: 2px dashed #94a3b8;
+      margin-top: 6px;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.2s;
+    }
+    .target-slot:empty::before {
+      content: '対象を置く';
+      color: #94a3b8; font-size: 10px; font-weight: bold;
+    }
+
+    /* プログラミングスロットのデザイン */
+    .program-slot {
+      width: 84px;
+      min-height: 88px;
+      border: 3px dashed #94a3b8;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      margin-bottom: 32px;
+      transition: all 0.2s;
+    }
+    .program-slot:empty::before {
+      content: '魔法を置く';
+      color: #94a3b8;
+      font-size: 11px;
+      font-weight: bold;
+    }
+    .program-slot::after {
+      content: '⬇️';
+      position: absolute;
+      bottom: -28px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 18px;
+      color: #94a3b8;
+      pointer-events: none;
+    }
+    .program-slot:last-child { margin-bottom: 0; }
+    .program-slot:last-child::after { display: none; }
+
+    .magic-slot-btn {
+      flex: 1;
+      padding: 0.5rem 0;
+      background: #1e293b;
+      color: white;
+      border-radius: 0.75rem;
+      font-weight: bold;
+      font-size: 0.875rem;
+      border: 2px solid #334155;
+      transition: all 0.15s;
+      cursor: pointer;
+    }
+    .magic-slot-btn:hover { background: #334155; }
+    .magic-slot-btn.is-active {
+      background: #0284c7;
+      border-color: #0ea5e9;
+      box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.35);
+      transform: translateY(-1px);
+    }
+    .magic-slot-btn:active { transform: scale(0.97); }
+
+    .sortable-ghost { opacity: 0.3; }
+    .sortable-drag { cursor: grabbing !important; z-index: 50; transform: scale(1.05); }
+
+    .custom-scrollbar::-webkit-scrollbar { height: 10px; width: 10px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 5px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 5px; border: 2px solid #f1f5f9; }
+
+    #msg-overlay { transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); transform: translateY(-20px) scale(0.9); opacity: 0; }
+    .show-msg { opacity: 1 !important; transform: translateY(0) scale(1) !important; }
+
+    #gameCanvas, #createCanvas {
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+
+    .create-tool-thumb {
+      width: 32px;
+      height: 32px;
+      flex-shrink: 0;
+      border-radius: 6px;
+      border: 1px solid rgba(15, 23, 42, 0.12);
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+
+    .create-tool-name {
+      flex: 1;
+      min-width: 0;
+      border: none;
+      background: transparent;
+      font: inherit;
+      color: inherit;
+      padding: 0;
+      outline: none;
+      cursor: text;
+    }
+    .create-tool-name:focus {
+      background: rgba(255, 255, 255, 0.75);
+      border-radius: 4px;
+      padding: 0 4px;
+    }
+
+    .create-tool-item {
+      cursor: pointer;
+    }
+    .create-tool-item .create-tool-thumb {
+      pointer-events: none;
+    }
+
+    .stat-card { border: 2px solid #e2e8f0; border-radius: 1rem; background: #f8fafc; }
+    .stat-card:focus-within { border-color: #a78bfa; box-shadow: 0 0 0 3px rgba(167,139,250,0.2); }
+    .stat-field label { display: block; font-size: 10px; font-weight: 700; color: #64748b; margin-bottom: 2px; }
+    .stat-field input, .stat-field select, .stat-field textarea {
+      width: 100%; border: 1px solid #cbd5e1; border-radius: 0.5rem; padding: 4px 6px;
+      font-size: 12px; background: white; color: #334155;
+    }
+    .stat-field input[type="color"] { height: 32px; padding: 2px; cursor: pointer; }
+  </style>
+</head>
+<body class="flex flex-col h-screen">
+
+<!-- タブナビゲーション -->
+<div class="flex p-3 gap-3 bg-white shadow-sm z-20 relative shrink-0">
+  <button id="tab-editor" class="flex-1 py-3 bg-sky-400 text-white rounded-2xl font-bold shadow-md transform scale-105 transition-all text-lg border-2 border-sky-500">
+    🧩 プログラム
+  </button>
+  <button id="tab-create" class="flex-1 py-3 bg-gray-100 text-gray-500 rounded-2xl font-bold shadow-sm hover:bg-gray-200 transition-all text-lg border-2 border-transparent">
+    🛠️ クリエイト
+  </button>
+  <button id="tab-test" class="flex-1 py-3 bg-gray-100 text-gray-500 rounded-2xl font-bold shadow-sm hover:bg-gray-200 transition-all text-lg border-2 border-transparent">
+    🎮 テスト
+  </button>
+  <button id="tab-settings" class="flex-1 py-3 bg-gray-100 text-gray-500 rounded-2xl font-bold shadow-sm hover:bg-gray-200 transition-all text-lg border-2 border-transparent">
+    ⚙️ 設定
+  </button>
+</div>
+
+<!-- ===================== -->
+<!-- エディタビュー -->
+<!-- ===================== -->
+<div id="view-editor" class="flex-1 flex flex-row p-3 gap-3 overflow-hidden">
+  
+  <!-- 左パネル：パレット領域 (ドラッグ中はここに戻して捨てる) -->
+  <div id="left-panel" class="w-1/3 max-w-[280px] min-w-[110px] bg-white rounded-3xl shadow-sm p-3 md:p-4 flex flex-col shrink-0 border border-gray-100 overflow-hidden transition-colors duration-200">
+    <div class="text-sm font-bold text-sky-500 mb-2 text-center md:text-left">✨ 基礎魔法</div>
+    <div id="palette-blocks" class="flex-1 flex flex-wrap gap-2 content-start justify-center overflow-y-auto pb-2 custom-scrollbar">
+      <!-- ジェネレート -->
+      <div class="magic-block gen" data-type="gen" data-val="fire"><div class="icon">🔥</div><div class="text">炎</div></div>
+      <div class="magic-block gen" data-type="gen" data-val="lightning"><div class="icon">⚡️</div><div class="text">雷</div></div>
+      <div class="magic-block gen" data-type="gen" data-val="water"><div class="icon">💧</div><div class="text">水</div></div>
+      <div class="magic-block gen wood" data-type="gen" data-val="wood"><div class="icon">🌿</div><div class="text">木</div></div>
+      <div class="magic-block gen earth" data-type="gen" data-val="earth"><div class="icon">🪨</div><div class="text">土</div></div>
+      
+      <div class="w-full h-1 bg-gray-100 rounded-full my-1 shrink-0"></div>
+
+      <!-- ベクトル -->
+      <div class="magic-block vec" data-type="vec" data-val="forward"><div class="icon">➡️</div><div class="text">前へ</div></div>
+      <div class="magic-block vec" data-type="vec" data-val="zigzag"><div class="icon">〰️</div><div class="text">ジグザグ</div></div>
+      <div class="magic-block vec" data-type="vec" data-val="return"><div class="icon">🪃</div><div class="text">戻ってくる</div></div>
+      <div class="magic-block vec" data-type="vec" data-val="orbit"><div class="icon">🔄</div><div class="text">回る</div></div>
+      <div class="magic-block vec" data-type="vec" data-val="homing"><div class="icon">🎯</div><div class="text">ホーミング</div></div>
+
+      <div class="w-full h-1 bg-gray-100 rounded-full my-1 shrink-0"></div>
+
+      <!-- トリガー (スロット付き追加) -->
+      <div class="magic-block trig" data-type="trig" data-val="touch">
+        <div class="icon">💥</div><div class="text">触れたら</div>
+        <div class="target-slot"></div> <!-- スロット -->
+      </div>
+      <div class="magic-block trig" data-type="trig" data-val="tap"><div class="icon">👆</div><div class="text">タップ待機</div></div>
+      <div class="magic-block trig" data-type="trig" data-val="time_half"><div class="icon">⌛</div><div class="text">0.5秒待機</div></div>
+      <div class="magic-block trig" data-type="trig" data-val="time"><div class="icon">⏱️</div><div class="text">1秒待機</div></div>
+
+      <div class="w-full h-1 bg-gray-100 rounded-full my-1 shrink-0"></div>
+
+      <!-- アクション (スロット付き追加) -->
+      <div class="magic-block act" data-type="act" data-val="explode"><div class="icon">💥</div><div class="text">爆発</div></div>
+      <div class="magic-block act" data-type="act" data-val="pull"><div class="icon">🧲</div><div class="text">吸い寄せる</div></div>
+      <div class="magic-block act" data-type="act" data-val="split"><div class="icon">🔱</div><div class="text">分裂</div></div>
+      <div class="magic-block act" data-type="act" data-val="grow"><div class="icon">🏔️</div><div class="text">巨大化</div></div>
+      <div class="magic-block act" data-type="act" data-val="hard"><div class="icon">🛡️</div><div class="text">強固</div></div>
+      
+      <div class="magic-block act" data-type="act" data-val="stop">
+        <div class="icon">🛑</div><div class="text">止める</div>
+        <div class="target-slot"></div>
+      </div>
+      <div class="magic-block act" data-type="act" data-val="slow">
+        <div class="icon">🐢</div><div class="text">スロー</div>
+        <div class="target-slot"></div>
+      </div>
+      <div class="magic-block act" data-type="act" data-val="speedup">
+        <div class="icon">🐇</div><div class="text">加速</div>
+        <div class="target-slot"></div>
+      </div>
+
+      <div class="w-full h-1 bg-gray-100 rounded-full my-1 shrink-0"></div>
+
+      <!-- 制御構文 -->
+      <div class="magic-block ctrl" data-type="ctrl" data-val="repeat">
+        <div class="icon">🔁</div><div class="text">最初から</div>
+        <select class="mt-1 w-10/12 text-[10px] bg-white border border-emerald-300 text-emerald-700 rounded outline-none text-center font-bold">
+          <option value="1">1回</option><option value="3">3回</option><option value="5">5回</option>
+        </select>
+      </div>
+    </div>
+    
+    <!-- ★ 対象ブロックパレット ★ -->
+    <div class="text-sm font-bold text-pink-500 mb-2 mt-3 text-center md:text-left">🎯 対象</div>
+    <div id="palette-targets" class="flex flex-wrap justify-center content-start gap-2 overflow-y-auto pb-1 custom-scrollbar shrink-0 max-h-32">
+      <div class="target-block" data-type="target" data-val="enemy">👾 敵</div>
+      <div class="target-block" data-type="target" data-val="player">🧙 自分</div>
+      <div class="target-block" data-type="target" data-val="magic">✨ 魔法</div>
+      <div class="target-block" data-type="target" data-val="wall">🧱 壁</div>
+    </div>
+  </div>
+  
+  <!-- 右パネル：ワークスペース領域 -->
+  <div class="flex-1 bg-white rounded-3xl shadow-sm p-4 flex flex-col overflow-hidden border border-gray-100">
+    <div class="flex justify-between items-center mb-2">
+      <span class="text-sm font-bold text-sky-500">📜 <span id="workspace-active-key">Zキーを編集中</span></span>
+      <span id="workspace-slots-info" class="text-[11px] font-bold text-slate-400">上限: 3スロット (次: Lv.5)</span>
+    </div>
+    
+    <div id="workspace" class="flex-1 bg-sky-50 rounded-2xl border-2 border-dashed border-sky-300 p-6 overflow-y-auto flex flex-col items-center custom-scrollbar">
+      <div class="program-slot"></div>
+      <div class="program-slot"></div>
+      <div class="program-slot"></div>
+    </div>
+
+    <!-- ショートカットキー選択（選んでから組む → 自動保存） -->
+    <div class="mt-3 p-3 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col gap-2 shrink-0">
+      <div class="text-xs font-bold text-slate-500 text-center">👇 編集するキーを選んでから組む（自動保存）</div>
+      <div class="flex gap-2">
+        <button type="button" id="slot-select-z" class="magic-slot-btn is-active" data-slot="z">Z</button>
+        <button type="button" id="slot-select-x" class="magic-slot-btn" data-slot="x">X</button>
+        <button type="button" id="slot-select-c" class="magic-slot-btn" data-slot="c">C</button>
+      </div>
+      <div id="active-slot-desc" class="text-[10px] text-center text-slate-400 truncate">Zキー: 未登録</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== -->
+<!-- クリエイトビュー -->
+<!-- ===================== -->
+<div id="view-create" class="flex-1 flex flex-row p-3 gap-3 overflow-hidden hidden-view">
+  <!-- 左パネル：ツール選択 -->
+  <div class="w-1/3 max-w-[280px] min-w-[150px] bg-white rounded-3xl shadow-sm p-4 flex flex-col shrink-0 border border-gray-100 overflow-y-auto custom-scrollbar">
+    <div class="text-sm font-bold text-emerald-500 mb-1 text-center md:text-left">🛠️ 配置ツール</div>
+    <div class="text-[10px] text-slate-400 mb-3 text-center md:text-left">タイル名をクリックして編集（自動保存）</div>
+    
+    <div class="flex flex-col gap-2 flex-1">
+      <div class="text-[10px] font-bold text-emerald-600 uppercase tracking-wide">🗺️ 地形タイル</div>
+      <div id="tool-grass" data-tool="grass" class="create-tool-item py-2 px-3 bg-slate-50 border-2 border-transparent text-slate-600 rounded-xl font-bold text-xs text-left flex items-center gap-2 hover:bg-slate-100 transition-all">
+        <canvas class="create-tool-thumb" data-thumb="grass" width="32" height="32" aria-hidden="true"></canvas>
+        <input type="text" class="create-tool-name" data-tool="grass" value="草地" spellcheck="false" aria-label="草地の名前">
+      </div>
+      <div id="tool-path" data-tool="path" class="create-tool-item py-2 px-3 bg-slate-50 border-2 border-transparent text-slate-600 rounded-xl font-bold text-xs text-left flex items-center gap-2 hover:bg-slate-100 transition-all">
+        <canvas class="create-tool-thumb" data-thumb="path" width="32" height="32" aria-hidden="true"></canvas>
+        <input type="text" class="create-tool-name" data-tool="path" value="石畳" spellcheck="false" aria-label="石畳の名前">
+      </div>
+      <div id="tool-water" data-tool="water" class="create-tool-item py-2 px-3 bg-slate-50 border-2 border-transparent text-slate-600 rounded-xl font-bold text-xs text-left flex items-center gap-2 hover:bg-slate-100 transition-all">
+        <canvas class="create-tool-thumb" data-thumb="water" width="32" height="32" aria-hidden="true"></canvas>
+        <input type="text" class="create-tool-name" data-tool="water" value="水場" spellcheck="false" aria-label="水場の名前">
+      </div>
+
+      <div class="text-[10px] font-bold text-emerald-600 uppercase tracking-wide mt-1">🌲 オブジェクト</div>
+      <div id="tool-tree" data-tool="tree" class="create-tool-item py-2 px-3 bg-slate-50 border-2 border-transparent text-slate-600 rounded-xl font-bold text-xs text-left flex items-center gap-2 hover:bg-slate-100 transition-all">
+        <canvas class="create-tool-thumb" data-thumb="tree" width="32" height="32" aria-hidden="true"></canvas>
+        <input type="text" class="create-tool-name" data-tool="tree" value="木" spellcheck="false" aria-label="木の名前">
+      </div>
+      <div id="tool-bush" data-tool="bush" class="create-tool-item py-2 px-3 bg-slate-50 border-2 border-transparent text-slate-600 rounded-xl font-bold text-xs text-left flex items-center gap-2 hover:bg-slate-100 transition-all">
+        <canvas class="create-tool-thumb" data-thumb="bush" width="32" height="32" aria-hidden="true"></canvas>
+        <input type="text" class="create-tool-name" data-tool="bush" value="茂み" spellcheck="false" aria-label="茂みの名前">
+      </div>
+      <div id="tool-log" data-tool="log" class="create-tool-item py-2 px-3 bg-slate-50 border-2 border-transparent text-slate-600 rounded-xl font-bold text-xs text-left flex items-center gap-2 hover:bg-slate-100 transition-all">
+        <canvas class="create-tool-thumb" data-thumb="log" width="32" height="32" aria-hidden="true"></canvas>
+        <input type="text" class="create-tool-name" data-tool="log" value="丸太" spellcheck="false" aria-label="丸太の名前">
+      </div>
+      <div id="tool-stump" data-tool="stump" class="create-tool-item py-2 px-3 bg-slate-50 border-2 border-transparent text-slate-600 rounded-xl font-bold text-xs text-left flex items-center gap-2 hover:bg-slate-100 transition-all">
+        <canvas class="create-tool-thumb" data-thumb="stump" width="32" height="32" aria-hidden="true"></canvas>
+        <input type="text" class="create-tool-name" data-tool="stump" value="切り株" spellcheck="false" aria-label="切り株の名前">
+      </div>
+      <div id="tool-mushroom" data-tool="mushroom" class="create-tool-item py-2 px-3 bg-slate-50 border-2 border-transparent text-slate-600 rounded-xl font-bold text-xs text-left flex items-center gap-2 hover:bg-slate-100 transition-all">
+        <canvas class="create-tool-thumb" data-thumb="mushroom" width="32" height="32" aria-hidden="true"></canvas>
+        <input type="text" class="create-tool-name" data-tool="mushroom" value="キノコ" spellcheck="false" aria-label="キノコの名前">
+      </div>
+      <div id="tool-grassTuft" data-tool="grassTuft" class="create-tool-item py-2 px-3 bg-slate-50 border-2 border-transparent text-slate-600 rounded-xl font-bold text-xs text-left flex items-center gap-2 hover:bg-slate-100 transition-all">
+        <canvas class="create-tool-thumb" data-thumb="grassTuft" width="32" height="32" aria-hidden="true"></canvas>
+        <input type="text" class="create-tool-name" data-tool="grassTuft" value="草むら" spellcheck="false" aria-label="草むらの名前">
+      </div>
+      <div id="tool-rock" data-tool="rock" class="create-tool-item py-2 px-3 bg-slate-50 border-2 border-transparent text-slate-600 rounded-xl font-bold text-xs text-left flex items-center gap-2 hover:bg-slate-100 transition-all">
+        <canvas class="create-tool-thumb" data-thumb="rock" width="32" height="32" aria-hidden="true"></canvas>
+        <input type="text" class="create-tool-name" data-tool="rock" value="岩" spellcheck="false" aria-label="岩の名前">
+      </div>
+
+      <div class="text-[10px] font-bold text-emerald-600 uppercase tracking-wide mt-1">🎮 ゲーム</div>
+      <div id="tool-player" data-tool="player" class="create-tool-item py-2.5 px-3 bg-emerald-50 border-2 border-emerald-400 text-emerald-700 rounded-2xl font-bold text-sm text-left flex items-center gap-2 transition-all">
+        <canvas class="create-tool-thumb" data-thumb="player" width="32" height="32" aria-hidden="true"></canvas>
+        <input type="text" class="create-tool-name" data-tool="player" value="スタート位置" spellcheck="false" aria-label="スタート位置の名前">
+      </div>
+      <div id="tool-enemy" data-tool="enemy" class="create-tool-item py-2.5 px-3 bg-slate-50 border-2 border-transparent text-slate-600 rounded-2xl font-bold text-sm text-left flex items-center gap-2 hover:bg-slate-100 transition-all">
+        <canvas class="create-tool-thumb" data-thumb="enemy" width="32" height="32" aria-hidden="true"></canvas>
+        <input type="text" class="create-tool-name" data-tool="enemy" value="敵スポーン" spellcheck="false" aria-label="敵スポーンの名前">
+      </div>
+      <div id="tool-chest" data-tool="chest" class="create-tool-item py-2.5 px-3 bg-slate-50 border-2 border-transparent text-slate-600 rounded-2xl font-bold text-sm text-left flex items-center gap-2 hover:bg-slate-100 transition-all">
+        <canvas class="create-tool-thumb" data-thumb="chest" width="32" height="32" aria-hidden="true"></canvas>
+        <input type="text" class="create-tool-name" data-tool="chest" value="宝箱 (ゴール)" spellcheck="false" aria-label="宝箱の名前">
+      </div>
+
+      <div class="border-t border-gray-100 my-2 pt-2">
+        <label class="block text-xs font-bold text-slate-400 mb-1">🎁 宝箱のクリア報酬魔法</label>
+        <select id="chest-reward-select" class="w-full p-2 bg-slate-50 border border-slate-200 text-slate-700 rounded-xl font-bold text-xs outline-none">
+          <option value="lightning">⚡️ 雷の魔法</option>
+          <option value="water">💧 水の魔法</option>
+          <option value="wood">🌿 木の魔法</option>
+          <option value="earth">🪨 土の魔法</option>
+          <option value="split">🔱 分裂のアクション</option>
+          <option value="homing">🎯 ホーミングのベクトル</option>
+          <option value="grow">🏔️ 巨大化のアクション</option>
+          <option value="pull">🧲 吸引のアクション</option>
+          <option value="zigzag">〰️ ジグザグのベクトル</option>
+          <option value="return">🪃 戻るベクトル</option>
+          <option value="orbit">🔄 回るベクトル</option>
+          <option value="hard">🛡️ 貫通のアクション</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- 操作ボタン -->
+    <div class="mt-4 flex flex-col gap-2 shrink-0">
+      <button id="btn-clear-map" class="py-2 px-3 bg-rose-50 border border-rose-200 text-rose-600 rounded-xl font-bold text-xs hover:bg-rose-100 transition-all">🗑️ 全て消去</button>
+      <button id="btn-start-custom-play" class="py-3 px-3 bg-gradient-to-r from-emerald-400 to-teal-500 hover:from-emerald-500 hover:to-teal-600 text-white rounded-2xl font-bold text-sm shadow-md transition-all active:scale-95">🎮 テストプレイ！</button>
+    </div>
+  </div>
+
+  <!-- 右パネル：エディタキャンバス -->
+  <div class="flex-1 bg-white rounded-3xl shadow-sm p-4 flex flex-col overflow-hidden border border-gray-100 relative">
+    <div class="text-[11px] font-bold text-slate-400 mb-2">🖱️ クリックで配置 / ドラッグで連続配置 / 再度クリックで消去</div>
+    <div id="create-canvas-container" class="flex-1 bg-slate-900 rounded-2xl overflow-hidden relative cursor-crosshair">
+      <canvas id="createCanvas" class="w-full h-full block"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== -->
+<!-- 設定ビュー -->
+<!-- ===================== -->
+<div id="view-settings" class="flex-1 flex flex-col p-3 gap-3 overflow-hidden hidden-view">
+  <div class="bg-white rounded-3xl shadow-sm border border-gray-100 flex flex-col flex-1 overflow-hidden">
+    <div class="p-4 border-b border-gray-100 shrink-0">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h2 class="text-base font-bold text-violet-600">⚙️ 基礎魔法ステータス</h2>
+          <p class="text-[11px] text-slate-500 mt-1">変更はブラウザに保存され、次回起動時も反映されます。</p>
+        </div>
+        <div id="magic-stats-source-badge" class="text-[10px] font-bold px-2 py-1 rounded-full bg-slate-100 text-slate-500">読込中…</div>
+      </div>
+      <div class="flex flex-wrap gap-2 mt-3">
+        <button id="btn-save-magic-stats" class="px-4 py-2 bg-violet-500 hover:bg-violet-600 text-white rounded-xl font-bold text-sm shadow-sm active:scale-95 transition-all">💾 保存して反映</button>
+        <button id="btn-reset-magic-stats" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-sm border border-slate-200 active:scale-95 transition-all">↩️ 初期値に戻す</button>
+      </div>
+    </div>
+    <div id="magic-stats-editor" class="flex-1 overflow-y-auto p-4 custom-scrollbar space-y-4"></div>
+  </div>
+</div>
+
+<!-- ===================== -->
+<!-- テストビュー -->
+<!-- ===================== -->
+<div id="view-test" class="flex-1 relative hidden-view bg-emerald-100 overflow-hidden cursor-crosshair">
+  <canvas id="gameCanvas" class="w-full h-full block"></canvas>
+  
+  <!-- プレイヤーのHP/MP/EXP HUD -->
+  <div class="absolute top-4 left-4 z-10 bg-slate-800/80 backdrop-blur border border-slate-700 p-4 rounded-2xl w-60 shadow-lg pointer-events-none">
+    <div class="flex items-center justify-between mb-1">
+      <div class="flex items-center gap-1.5">
+        <span class="text-xs font-bold text-yellow-400">Lv. <span id="player-level">1</span></span>
+        <span class="text-[10px] text-slate-400">🧙 HP</span>
+      </div>
+      <span id="player-hp-text" class="text-[10px] font-bold text-white">100 / 100</span>
+    </div>
+    <div class="w-full bg-slate-900 rounded-full h-2.5 mb-2.5 overflow-hidden">
+      <div id="player-hp-bar" class="bg-red-500 h-full transition-all duration-100" style="width: 100%"></div>
+    </div>
+    
+    <div class="flex items-center justify-between mb-1">
+      <span class="text-[10px] font-bold text-sky-400">✨ MP</span>
+      <span id="player-mp-text" class="text-[10px] font-bold text-white">100 / 100</span>
+    </div>
+    <div class="w-full bg-slate-900 rounded-full h-2.5 mb-2.5 overflow-hidden">
+      <div id="player-mp-bar" class="bg-sky-500 h-full transition-all duration-100" style="width: 100%"></div>
+    </div>
+
+    <!-- 経験値バー -->
+    <div class="flex items-center justify-between mb-1">
+      <span class="text-[10px] font-bold text-emerald-400">📈 EXP</span>
+      <span id="player-exp-text" class="text-[10px] font-bold text-white">0 / 40</span>
+    </div>
+    <div class="w-full bg-slate-900 rounded-full h-1.5 overflow-hidden">
+      <div id="player-exp-bar" class="bg-emerald-500 h-full transition-all duration-100" style="width: 0%"></div>
+    </div>
+  </div>
+
+  <!-- 登録魔法スロットHUD (Z/X/C) -->
+  <div class="absolute top-4 right-4 z-10 bg-slate-800/80 backdrop-blur border border-slate-700 p-4 rounded-2xl w-56 shadow-lg pointer-events-none text-white text-xs flex flex-col gap-2">
+    <div class="font-bold text-sky-400 mb-1 border-b border-slate-700 pb-1 text-[11px]">🪄 登録魔法 (Z/X/Cキー)</div>
+    <div id="hud-slot-z" class="flex items-center gap-2">
+      <span class="bg-slate-900 px-1.5 py-0.5 rounded font-mono font-bold text-pink-400">Z</span>
+      <span id="hud-slot-z-desc" class="truncate text-slate-300">未登録</span>
+    </div>
+    <div id="hud-slot-x" class="flex items-center gap-2">
+      <span class="bg-slate-900 px-1.5 py-0.5 rounded font-mono font-bold text-pink-400">X</span>
+      <span id="hud-slot-x-desc" class="truncate text-slate-300">未登録</span>
+    </div>
+    <div id="hud-slot-c" class="flex items-center gap-2">
+      <span class="bg-slate-900 px-1.5 py-0.5 rounded font-mono font-bold text-pink-400">C</span>
+      <span id="hud-slot-c-desc" class="truncate text-slate-300">未登録</span>
+    </div>
+  </div>
+
+  <div id="msg-overlay" class="absolute top-10 left-0 w-full text-center pointer-events-none z-10">
+    <span id="msg-text" class="bg-white text-pink-500 px-6 py-3 rounded-full font-bold shadow-xl border-4 border-pink-200 text-lg"></span>
+  </div>
+
+</div>
+
+<script src="/js/magic-stats.js"></script>
+<script src="/js/sprout-assets.js"></script>
+<script src="/js/sprout-player-sprites.js"></script>
+<script src="/js/pop-art.js"></script>
+<script>
+  // --- タブ切り替えロジック ---
+  const tabEditor = document.getElementById('tab-editor');
+  const tabCreate = document.getElementById('tab-create');
+  const tabTest = document.getElementById('tab-test');
+  const tabSettings = document.getElementById('tab-settings');
+  const viewEditor = document.getElementById('view-editor');
+  const viewCreate = document.getElementById('view-create');
+  const viewTest = document.getElementById('view-test');
+  const viewSettings = document.getElementById('view-settings');
+  let isPaused = true; 
+
+  function resetTabStyles() {
+    tabEditor.className = 'flex-1 py-3 bg-gray-100 text-gray-500 rounded-2xl font-bold shadow-sm hover:bg-gray-200 transition-all text-lg border-2 border-transparent';
+    tabCreate.className = 'flex-1 py-3 bg-gray-100 text-gray-500 rounded-2xl font-bold shadow-sm hover:bg-gray-200 transition-all text-lg border-2 border-transparent';
+    tabTest.className = 'flex-1 py-3 bg-gray-100 text-gray-500 rounded-2xl font-bold shadow-sm hover:bg-gray-200 transition-all text-lg border-2 border-transparent';
+    tabSettings.className = 'flex-1 py-3 bg-gray-100 text-gray-500 rounded-2xl font-bold shadow-sm hover:bg-gray-200 transition-all text-lg border-2 border-transparent';
+    
+    viewEditor.classList.add('hidden-view');
+    viewCreate.classList.add('hidden-view');
+    viewTest.classList.add('hidden-view');
+    viewSettings.classList.add('hidden-view');
+  }
+
+  tabEditor.addEventListener('click', () => {
+    resetTabStyles();
+    viewEditor.classList.remove('hidden-view');
+    tabEditor.className = 'flex-1 py-3 bg-sky-400 text-white rounded-2xl font-bold shadow-md transform scale-105 transition-all text-lg border-2 border-sky-500';
+    isPaused = true;
+  });
+
+  tabCreate.addEventListener('click', () => {
+    resetTabStyles();
+    viewCreate.classList.remove('hidden-view');
+    tabCreate.className = 'flex-1 py-3 bg-emerald-400 text-white rounded-2xl font-bold shadow-md transform scale-105 transition-all text-lg border-2 border-emerald-500';
+    isPaused = true;
+    requestAnimationFrame(() => { resizeCreateCanvas(); drawCreateCanvas(); startCreateCanvasAnim(); refreshCreateToolThumbnails(); });
+  });
+
+  tabTest.addEventListener('click', () => {
+    resetTabStyles();
+    viewTest.classList.remove('hidden-view');
+    tabTest.className = 'flex-1 py-3 bg-pink-400 text-white rounded-2xl font-bold shadow-md transform scale-105 transition-all text-lg border-2 border-pink-500';
+    isPaused = true;
+    requestAnimationFrame(() => {
+      try {
+        resize();
+        initLevel(isCustomPlay ? 'custom' : currentLevel);
+      } finally {
+        isPaused = false;
+      }
+    });
+  });
+
+  tabSettings.addEventListener('click', () => {
+    resetTabStyles();
+    viewSettings.classList.remove('hidden-view');
+    tabSettings.className = 'flex-1 py-3 bg-violet-400 text-white rounded-2xl font-bold shadow-md transform scale-105 transition-all text-lg border-2 border-violet-500';
+    isPaused = true;
+    renderMagicStatsEditor();
+    updateMagicStatsSourceBadge();
+  });
+
+  // --- 基礎魔法ステータス設定 UI ---
+  const MAGIC_STAT_FIELDS = [
+    { key: '名前', label: '名前', type: 'text' },
+    { key: '直接ダメージ', label: '直接ダメージ', type: 'number', step: '0.1', min: '0' },
+    { key: '持続ダメージ', label: '持続ダメージ', type: 'select', options: ['なし', 'あり'] },
+    { key: '持続ダメージ量', label: '持続Dmg/回', type: 'number', step: '0.1', min: '0' },
+    { key: '持続秒', label: '持続秒', type: 'number', step: '0.1', min: '0' },
+    { key: '持続間隔秒', label: '持続間隔(秒)', type: 'number', step: '0.1', min: '0.1' },
+    { key: '質量', label: '質量', type: 'number', step: '1', min: '0' },
+    { key: 'フィールド残留秒', label: '残留秒', type: 'number', step: '0.1', min: '0' },
+    { key: '範囲ダメージ', label: '範囲Dmg', type: 'number', step: '0.1', min: '0' },
+    { key: '弾速', label: '弾速', type: 'number', step: '0.1', min: '0' },
+    { key: '欠片弾速', label: '欠片弾速', type: 'number', step: '0.1', min: '0' },
+    { key: '拘束秒', label: '拘束秒', type: 'number', step: '0.1', min: '0' },
+    { key: '色', label: '色', type: 'color' },
+    { key: 'glow', label: 'グロー', type: 'color' },
+    { key: 'icon', label: 'アイコン', type: 'text' },
+    { key: '備考', label: '備考', type: 'textarea' },
+  ];
+
+  function updateMagicStatsSourceBadge() {
+    const badge = document.getElementById('magic-stats-source-badge');
+    if (!badge) return;
+    if (MagicStats.hasStoredOverride()) {
+      badge.textContent = '💾 保存済み設定を使用中';
+      badge.className = 'text-[10px] font-bold px-2 py-1 rounded-full bg-violet-100 text-violet-600';
+    } else {
+      badge.textContent = '📄 CSV初期値';
+      badge.className = 'text-[10px] font-bold px-2 py-1 rounded-full bg-slate-100 text-slate-500';
+    }
+  }
+
+  function updateGenPaletteFromConfig() {
+    document.querySelectorAll('#palette-blocks .magic-block.gen').forEach((block) => {
+      const id = block.dataset.val;
+      const cfg = GEN_CONFIG[id];
+      if (!cfg) return;
+      const iconEl = block.querySelector('.icon');
+      const textEl = block.querySelector('.text');
+      if (iconEl) iconEl.textContent = cfg.icon || '?';
+      if (textEl) textEl.textContent = cfg.label || id;
+    });
+  }
+
+  function renderMagicStatsEditor() {
+    const container = document.getElementById('magic-stats-editor');
+    if (!container) return;
+    const rows = MagicStats.getRows();
+    container.innerHTML = '';
+
+    rows.forEach((row) => {
+      const card = document.createElement('div');
+      card.className = 'stat-card p-4';
+      card.dataset.statId = row.id;
+
+      const title = document.createElement('div');
+      title.className = 'flex items-center gap-2 mb-3 pb-2 border-b border-slate-200';
+      title.innerHTML = `<span class="text-2xl">${row.icon || '?'}</span><div><div class="font-bold text-slate-700">${row['名前'] || row.id}</div><div class="text-[10px] text-slate-400 font-mono">${row.id}</div></div>`;
+      card.appendChild(title);
+
+      const grid = document.createElement('div');
+      grid.className = 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3';
+
+      MAGIC_STAT_FIELDS.forEach((field) => {
+        const wrap = document.createElement('div');
+        wrap.className = 'stat-field';
+        if (field.type === 'textarea') wrap.classList.add('col-span-2', 'md:col-span-4');
+
+        const label = document.createElement('label');
+        label.textContent = field.label;
+        wrap.appendChild(label);
+
+        let input;
+        if (field.type === 'select') {
+          input = document.createElement('select');
+          field.options.forEach((opt) => {
+            const o = document.createElement('option');
+            o.value = opt;
+            o.textContent = opt;
+            input.appendChild(o);
+          });
+          input.value = row[field.key] || field.options[0];
+        } else if (field.type === 'textarea') {
+          input = document.createElement('textarea');
+          input.rows = 2;
+          input.value = row[field.key] || '';
+        } else {
+          input = document.createElement('input');
+          input.type = field.type;
+          if (field.step) input.step = field.step;
+          if (field.min) input.min = field.min;
+          input.value = row[field.key] || '';
+        }
+        input.dataset.field = field.key;
+        wrap.appendChild(input);
+        grid.appendChild(wrap);
+      });
+
+      card.appendChild(grid);
+      container.appendChild(card);
+    });
+  }
+
+  function collectMagicStatsFromEditor() {
+    const cards = document.querySelectorAll('#magic-stats-editor .stat-card');
+    return Array.from(cards).map((card) => {
+      const row = { id: card.dataset.statId };
+      card.querySelectorAll('[data-field]').forEach((input) => {
+        row[input.dataset.field] = input.value;
+      });
+      return row;
+    });
+  }
+
+  document.getElementById('btn-save-magic-stats').addEventListener('click', () => {
+    const rows = collectMagicStatsFromEditor();
+    MagicStats.saveMagicStats(rows);
+    syncGenConfigRef();
+    updateGenPaletteFromConfig();
+    updateMagicStatsSourceBadge();
+    showMessage('基礎魔法ステータスを保存しました！');
+  });
+
+  document.getElementById('btn-reset-magic-stats').addEventListener('click', async () => {
+    await MagicStats.resetMagicStats();
+    syncGenConfigRef();
+    renderMagicStatsEditor();
+    updateGenPaletteFromConfig();
+    updateMagicStatsSourceBadge();
+    showMessage('CSVの初期値に戻しました。');
+  });
+
+  // --- ダンジョンクリエイト（マップエディタ）システム ---
+  let isCustomPlay = false; // カスタムマップでプレイ中かのフラグ
+  let activeTool = 'player';
+  const CREATE_PROP_TYPES = ['tree', 'bush', 'log', 'stump', 'mushroom', 'grassTuft', 'rock'];
+  const CREATE_TILE_NAMES_KEY = 'pop-magic-create-tile-names-v1';
+  const DEFAULT_CREATE_TILE_NAMES = {
+    grass: '草地',
+    path: '石畳',
+    water: '水場',
+    tree: '木',
+    bush: '茂み',
+    log: '丸太',
+    stump: '切り株',
+    mushroom: 'キノコ',
+    grassTuft: '草むら',
+    rock: '岩',
+    player: 'スタート位置',
+    enemy: '敵スポーン',
+    chest: '宝箱 (ゴール)',
+  };
+  let createTileNames = { ...DEFAULT_CREATE_TILE_NAMES };
+
+  function loadCreateTileNames() {
+    try {
+      const raw = localStorage.getItem(CREATE_TILE_NAMES_KEY);
+      if (!raw) return;
+      const data = JSON.parse(raw);
+      Object.keys(DEFAULT_CREATE_TILE_NAMES).forEach((id) => {
+        if (typeof data[id] === 'string' && data[id].trim()) {
+          createTileNames[id] = data[id].trim();
+        }
+      });
+    } catch (_) {
+      /* ignore */
+    }
+  }
+
+  function persistCreateTileNames() {
+    try {
+      localStorage.setItem(CREATE_TILE_NAMES_KEY, JSON.stringify(createTileNames));
+    } catch (_) {
+      /* ignore */
+    }
+  }
+
+  function applyCreateTileNamesToUI() {
+    document.querySelectorAll('.create-tool-name').forEach((input) => {
+      const id = input.dataset.tool;
+      const name = createTileNames[id] || DEFAULT_CREATE_TILE_NAMES[id] || id;
+      input.value = name;
+      input.setAttribute('aria-label', `${name}の名前`);
+    });
+  }
+
+  function saveCreateTileName(id, value) {
+    const trimmed = String(value || '').trim();
+    const fallback = DEFAULT_CREATE_TILE_NAMES[id] || id;
+    createTileNames[id] = trimmed || fallback;
+    persistCreateTileNames();
+    const input = document.querySelector(`.create-tool-name[data-tool="${id}"]`);
+    if (input) {
+      input.value = createTileNames[id];
+      input.setAttribute('aria-label', `${createTileNames[id]}の名前`);
+    }
+  }
+
+  function initCreateTileNameEditors() {
+    document.querySelectorAll('.create-tool-name').forEach((input) => {
+      const stop = (e) => e.stopPropagation();
+      input.addEventListener('mousedown', stop);
+      input.addEventListener('click', stop);
+      input.addEventListener('keydown', (e) => {
+        e.stopPropagation();
+        if (e.isComposing || e.keyCode === 229) return;
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          input.blur();
+        }
+      });
+      input.addEventListener('blur', () => {
+        saveCreateTileName(input.dataset.tool, input.value);
+      });
+    });
+  }
+
+  function getCreateTileName(id) {
+    return createTileNames[id] || DEFAULT_CREATE_TILE_NAMES[id] || id;
+  }
+  const CREATE_TERRAIN_TOOLS = ['grass', 'path', 'water'];
+
+  const createMapData = {
+    terrain: {},
+    props: [],
+    player: { x: 160, y: 240 },
+    chest: { x: 480, y: 240, reward: 'lightning' },
+    enemies: [],
+  };
+
+  const createCanvas = document.getElementById('createCanvas');
+  const createCtx = createCanvas.getContext('2d');
+  PopArt.setupCrisp(createCtx);
+  
+  const gridW = 32;
+  const gridH = 32;
+  let createW = 800;
+  let createH = 600;
+
+  function resizeCreateCanvas() {
+    const container = document.getElementById('create-canvas-container');
+    if (!container) return;
+    createW = container.clientWidth || 800;
+    createH = container.clientHeight || 600;
+    createCanvas.width = createW;
+    createCanvas.height = createH;
+  }
+
+  function drawCreateCanvas() {
+    createCtx.clearRect(0, 0, createW, createH);
+    const anim = Math.floor(performance.now() / 60);
+    PopArt.drawGround(createCtx, createW, createH, anim, gridW, createMapData.terrain);
+
+    createMapData.props.forEach((pos) => {
+      PopArt.drawMapProp(createCtx, pos.type, {
+        x: pos.gridX * gridW,
+        y: pos.gridY * gridH,
+        width: gridW,
+        height: gridH,
+        active: true,
+        isBurning: false,
+      }, anim);
+    });
+
+    createMapData.enemies.forEach(pos => {
+      PopArt.drawEnemy(createCtx, {
+        x: pos.x, y: pos.y, radius: 14, active: true,
+        hp: 10, maxHp: 10, effectType: null, offset: pos.x, burnTimer: 0
+      }, anim);
+    });
+
+    if (createMapData.player) {
+      PopArt.drawPlayer(createCtx, {
+        x: createMapData.player.x, y: createMapData.player.y,
+        radius: 22, facing: 'right', invincibleTimer: 0, effectType: null,
+        animState: 'idle', animTimer: 0, isMoving: false,
+      }, anim);
+    }
+
+    if (createMapData.chest) {
+      PopArt.drawChest(createCtx, {
+        x: createMapData.chest.x - 20, y: createMapData.chest.y - 16,
+        width: 40, height: 32, active: true
+      }, anim);
+
+      createCtx.fillStyle = '#fde047';
+      createCtx.font = 'bold 10px Nunito, sans-serif';
+      createCtx.strokeStyle = '#1e293b';
+      createCtx.lineWidth = 3;
+      let rName = createMapData.chest.reward;
+      if (rName === 'lightning') rName = '⚡雷';
+      else if (rName === 'water') rName = '💧水';
+      else if (rName === 'wood') rName = '🌿木';
+      else if (rName === 'earth') rName = '🪨土';
+      else if (rName === 'split') rName = '🔱分裂';
+      else if (rName === 'homing') rName = '🎯追尾';
+      else if (rName === 'grow') rName = '🏔巨大';
+      else if (rName === 'pull') rName = '🧲吸引';
+      else if (rName === 'zigzag') rName = '〰ジグ';
+      else if (rName === 'return') rName = '🪃戻る';
+      else if (rName === 'orbit') rName = '🔄回る';
+      else if (rName === 'hard') rName = '🛡強固';
+      createCtx.strokeText(rName, createMapData.chest.x - 18, createMapData.chest.y - 28);
+      createCtx.fillText(rName, createMapData.chest.x - 18, createMapData.chest.y - 28);
+    }
+  }
+
+  let createAnimId = null;
+  function startCreateCanvasAnim() {
+    if (createAnimId) return;
+    const loop = () => {
+      if (viewCreate.classList.contains('hidden-view')) {
+        createAnimId = null;
+        return;
+      }
+      drawCreateCanvas();
+      createAnimId = requestAnimationFrame(loop);
+    };
+    createAnimId = requestAnimationFrame(loop);
+  }
+
+  // --- クリエイトビューのイベントリスナー ---
+  let createThumbTimer = null;
+
+  function refreshCreateToolThumbnails() {
+    const frame = Math.floor(performance.now() / 120);
+    document.querySelectorAll('.create-tool-thumb').forEach((canvas) => {
+      const ctx = canvas.getContext('2d');
+      PopArt.setupCrisp(ctx);
+      PopArt.drawCreateToolThumb(ctx, canvas.dataset.thumb, canvas.width, frame);
+    });
+  }
+
+  function tryRefreshCreateThumbs(attempts = 0) {
+    refreshCreateToolThumbnails();
+    const saReady = !window.SproutAssets || window.SproutAssets.isReady();
+    const spsReady = !window.SproutPlayerSprites || window.SproutPlayerSprites.isReady();
+    if (!(saReady && spsReady) && attempts < 40) {
+      setTimeout(() => tryRefreshCreateThumbs(attempts + 1), 150);
+    }
+  }
+
+  function startCreateThumbRefresh() {
+    tryRefreshCreateThumbs();
+    if (createThumbTimer) return;
+    createThumbTimer = setInterval(() => {
+      if (!viewCreate.classList.contains('hidden-view')) {
+        refreshCreateToolThumbnails();
+      }
+    }, 400);
+  }
+
+  const tools = {
+    grass: document.getElementById('tool-grass'),
+    path: document.getElementById('tool-path'),
+    water: document.getElementById('tool-water'),
+    tree: document.getElementById('tool-tree'),
+    bush: document.getElementById('tool-bush'),
+    log: document.getElementById('tool-log'),
+    stump: document.getElementById('tool-stump'),
+    mushroom: document.getElementById('tool-mushroom'),
+    grassTuft: document.getElementById('tool-grassTuft'),
+    rock: document.getElementById('tool-rock'),
+    player: document.getElementById('tool-player'),
+    enemy: document.getElementById('tool-enemy'),
+    chest: document.getElementById('tool-chest'),
+  };
+
+  const CREATE_TOOL_CLASS = {
+    sm: {
+      idle: 'create-tool-item py-2 px-3 bg-slate-50 border-2 border-transparent text-slate-600 rounded-xl font-bold text-xs text-left flex items-center gap-2 hover:bg-slate-100 transition-all',
+      active: 'create-tool-item py-2 px-3 bg-emerald-50 border-2 border-emerald-400 text-emerald-700 rounded-xl font-bold text-xs text-left flex items-center gap-2 transition-all',
+    },
+    lg: {
+      idle: 'create-tool-item py-2.5 px-3 bg-slate-50 border-2 border-transparent text-slate-600 rounded-2xl font-bold text-sm text-left flex items-center gap-2 hover:bg-slate-100 transition-all',
+      active: 'create-tool-item py-2.5 px-3 bg-emerald-50 border-2 border-emerald-400 text-emerald-700 rounded-2xl font-bold text-sm text-left flex items-center gap-2 transition-all',
+    },
+  };
+
+  function selectTool(toolKey) {
+    activeTool = toolKey;
+    for (let key in tools) {
+      const el = tools[key];
+      if (!el) continue;
+      const size = el.className.includes('rounded-2xl') ? 'lg' : 'sm';
+      el.className = key === toolKey ? CREATE_TOOL_CLASS[size].active : CREATE_TOOL_CLASS[size].idle;
+    }
+  }
+
+  Object.keys(tools).forEach((key) => {
+    if (tools[key]) tools[key].addEventListener('click', (e) => {
+      if (e.target.closest('.create-tool-name')) return;
+      selectTool(key);
+    });
+  });
+
+  loadCreateTileNames();
+  applyCreateTileNamesToUI();
+  initCreateTileNameEditors();
+
+  // 宝箱の報酬設定変更
+  const rewardSelect = document.getElementById('chest-reward-select');
+  rewardSelect.addEventListener('change', (e) => {
+    if (createMapData.chest) {
+      createMapData.chest.reward = e.target.value;
+      drawCreateCanvas();
+    }
+  });
+
+  // 全て消去ボタン
+  document.getElementById('btn-clear-map').addEventListener('click', () => {
+    createMapData.terrain = {};
+    createMapData.props = [];
+    createMapData.player = null;
+    createMapData.chest = null;
+    createMapData.enemies = [];
+    drawCreateCanvas();
+    showMessage("マップを全消去しました。");
+  });
+
+  // テストプレイ開始ボタン
+  document.getElementById('btn-start-custom-play').addEventListener('click', () => {
+    if (!createMapData.player) {
+      showMessage("エラー：プレイヤーのスタート位置を配置してください！");
+      return;
+    }
+    if (!createMapData.chest) {
+      showMessage("エラー：宝箱（ゴール）を配置してください！");
+      return;
+    }
+    
+    normalizeCreateMapOccupancy();
+    // カスタムテストプレイフラグを立ててテスト画面へ遷移
+    isCustomPlay = true;
+    
+    resetTabStyles();
+    viewTest.classList.remove('hidden-view');
+    tabTest.className = 'flex-1 py-3 bg-pink-400 text-white rounded-2xl font-bold shadow-md transform scale-105 transition-all text-lg border-2 border-pink-500';
+    isPaused = true;
+    requestAnimationFrame(() => {
+      try {
+        resize();
+        initLevel('custom');
+      } finally {
+        isPaused = false;
+      }
+    });
+  });
+
+  // エディタキャンバス：クリック配置 + ドラッグで連続配置
+  let isCreatePainting = false;
+  let lastPaintCell = null;
+
+  function getCreateCanvasCoords(e) {
+    const rect = createCanvas.getBoundingClientRect();
+    const scaleX = createCanvas.width / rect.width;
+    const scaleY = createCanvas.height / rect.height;
+    const clickX = (e.clientX - rect.left) * scaleX;
+    const clickY = (e.clientY - rect.top) * scaleY;
+    const gridX = Math.floor(clickX / gridW);
+    const gridY = Math.floor(clickY / gridH);
+    return { clickX, clickY, gridX, gridY };
+  }
+
+  function isInsideCreateGrid(gridX, gridY) {
+    return gridX >= 0 && gridX < Math.floor(createW / gridW) && gridY >= 0 && gridY < Math.floor(createH / gridH);
+  }
+
+  function getCreateGridCenter(gridX, gridY) {
+    return { x: gridX * gridW + gridW / 2, y: gridY * gridH + gridH / 2 };
+  }
+
+  function findCreateProp(gridX, gridY) {
+    return createMapData.props.findIndex(pos => pos.gridX === gridX && pos.gridY === gridY);
+  }
+
+  function findCreateEnemyAtGrid(gridX, gridY) {
+    return createMapData.enemies.findIndex(pos =>
+      Math.floor(pos.x / gridW) === gridX && Math.floor(pos.y / gridH) === gridY
+    );
+  }
+
+  function removeCreatePropAt(gridX, gridY) {
+    const idx = findCreateProp(gridX, gridY);
+    if (idx !== -1) createMapData.props.splice(idx, 1);
+  }
+
+  function removeCreateEnemyAtGrid(gridX, gridY) {
+    const idx = findCreateEnemyAtGrid(gridX, gridY);
+    if (idx !== -1) createMapData.enemies.splice(idx, 1);
+  }
+
+  /** 1マスに1オブジェクト — そのマスの prop / 敵を除去 */
+  function clearCreateCellObjects(gridX, gridY) {
+    removeCreatePropAt(gridX, gridY);
+    removeCreateEnemyAtGrid(gridX, gridY);
+  }
+
+  function normalizeCreateMapOccupancy() {
+    const propByCell = new Map();
+    createMapData.props.forEach(p => propByCell.set(`${p.gridX},${p.gridY}`, p));
+    createMapData.props = [...propByCell.values()];
+
+    const enemyByCell = new Map();
+    createMapData.enemies.forEach(e => {
+      const gx = Math.floor(e.x / gridW);
+      const gy = Math.floor(e.y / gridH);
+      const c = getCreateGridCenter(gx, gy);
+      enemyByCell.set(`${gx},${gy}`, { x: c.x, y: c.y });
+    });
+    createMapData.enemies = [...enemyByCell.values()];
+  }
+
+  function applyCreateTool(clickX, clickY, gridX, gridY, paintMode) {
+    if (!isInsideCreateGrid(gridX, gridY)) return false;
+
+    const cellKey = PopArt.terrainKey(gridX, gridY);
+    if (paintMode && lastPaintCell === cellKey && activeTool !== 'player' && activeTool !== 'chest' && activeTool !== 'enemy') {
+      return false;
+    }
+
+    if (CREATE_TERRAIN_TOOLS.includes(activeTool)) {
+      if (paintMode) lastPaintCell = cellKey;
+      const current = createMapData.terrain[cellKey] || 'grass';
+      if (current === activeTool) {
+        delete createMapData.terrain[cellKey];
+      } else {
+        createMapData.terrain[cellKey] = activeTool;
+      }
+      return true;
+    }
+
+    if (CREATE_PROP_TYPES.includes(activeTool)) {
+      if (paintMode) lastPaintCell = cellKey;
+      const existing = findCreateProp(gridX, gridY);
+      if (existing !== -1 && createMapData.props[existing].type === activeTool) {
+        if (paintMode) return false;
+        createMapData.props.splice(existing, 1);
+        return true;
+      }
+      if (paintMode && existing !== -1) return false;
+      clearCreateCellObjects(gridX, gridY);
+      createMapData.props.push({ gridX, gridY, type: activeTool });
+      return true;
+    }
+
+    if (activeTool === 'player') {
+      const center = getCreateGridCenter(gridX, gridY);
+      clearCreateCellObjects(gridX, gridY);
+      createMapData.player = { x: center.x, y: center.y };
+      if (paintMode) lastPaintCell = cellKey;
+      return true;
+    }
+    if (activeTool === 'chest') {
+      const center = getCreateGridCenter(gridX, gridY);
+      clearCreateCellObjects(gridX, gridY);
+      createMapData.chest = { x: center.x, y: center.y, reward: rewardSelect.value };
+      if (paintMode) lastPaintCell = cellKey;
+      return true;
+    }
+    if (activeTool === 'enemy') {
+      if (paintMode) lastPaintCell = cellKey;
+      const existingIdx = findCreateEnemyAtGrid(gridX, gridY);
+      if (existingIdx !== -1) {
+        if (paintMode) return false;
+        createMapData.enemies.splice(existingIdx, 1);
+        return true;
+      }
+      clearCreateCellObjects(gridX, gridY);
+      const center = getCreateGridCenter(gridX, gridY);
+      createMapData.enemies.push({ x: center.x, y: center.y });
+      return true;
+    }
+    return false;
+  }
+
+  function handleCreateCanvasPointer(e, paintMode) {
+    const { clickX, clickY, gridX, gridY } = getCreateCanvasCoords(e);
+    if (applyCreateTool(clickX, clickY, gridX, gridY, paintMode)) {
+      drawCreateCanvas();
+    }
+  }
+
+  function stopCreatePainting() {
+    isCreatePainting = false;
+    lastPaintCell = null;
+  }
+
+  createCanvas.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    isCreatePainting = true;
+    lastPaintCell = null;
+    handleCreateCanvasPointer(e, false);
+  });
+
+  createCanvas.addEventListener('mousemove', (e) => {
+    if (!isCreatePainting) return;
+    handleCreateCanvasPointer(e, true);
+  });
+
+  window.addEventListener('mouseup', stopCreatePainting);
+  createCanvas.addEventListener('mouseleave', stopCreatePainting);
+
+  // --- キーボード操作の監視 ---
+  const keys = {};
+  window.addEventListener('keydown', (e) => {
+    if (e.target.matches('.create-tool-name')) return;
+    const key = e.key.toLowerCase();
+    keys[key] = true;
+    
+    // Z/X/Cキーによる魔法のショートカット発射
+    if (e.repeat) return;
+    if (!isPaused && (key === 'z' || key === 'x' || key === 'c')) {
+      castSavedMagic(key);
+    }
+  });
+  window.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
+
+  // --- Z/X/Cショートカット魔法保存用データ ---
+  const MAGIC_SLOTS_STORAGE_KEY = 'pop-magic-slots-v1';
+  const savedMagics = {
+    z: null,
+    x: null,
+    c: null
+  };
+  let activeMagicSlot = 'z';
+  let autoSaveTimer = null;
+
+  // --- インベントリ管理（魔法ブロック消費制） ---
+  const inventory = {
+    total: {
+      fire: 1, lightning: 0, water: 0, wood: 0, earth: 0,
+      forward: 1, homing: 0, zigzag: 0, orbit: 0, return: 0,
+      touch: 0, tap: 0, time_half: 0, time: 0,
+      explode: 0, pull: 0, split: 0, grow: 0, hard: 0, stop: 0, slow: 0, speedup: 0,
+      repeat: 0
+    },
+    available: {
+      fire: 0, lightning: 0, water: 0, wood: 0, earth: 0,
+      forward: 0, homing: 0, zigzag: 0, orbit: 0, return: 0,
+      touch: 0, tap: 0, time_half: 0, time: 0,
+      explode: 0, pull: 0, split: 0, grow: 0, hard: 0, stop: 0, slow: 0, speedup: 0,
+      repeat: 0
+    }
+  };
+
+  // パレット描画更新関数
+  function updatePalette() {
+    const blocks = document.querySelectorAll('#palette-blocks .magic-block');
+    blocks.forEach(b => {
+      const val = b.dataset.val;
+      const count = inventory.available[val] || 0;
+      let badge = b.querySelector('.badge');
+      
+      if (count > 0) {
+        b.style.display = 'flex';
+        if (inventory.total[val] > 1) {
+          if (!badge) {
+            badge = document.createElement('div');
+            badge.className = 'badge absolute -top-2 -right-2 bg-pink-500 text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold border-2 border-white shadow-sm';
+            b.appendChild(badge);
+          }
+          badge.innerText = count;
+        } else {
+          if (badge) b.removeChild(badge);
+        }
+      } else {
+        b.style.display = 'none';
+      }
+    });
+
+    // 仕切り線の表示・非表示制御
+    const dividers = document.querySelectorAll('#palette-blocks .w-full.h-1');
+    dividers.forEach(div => {
+      let nextBlock = div.nextElementSibling;
+      let hasVisibleNext = false;
+      while (nextBlock && !nextBlock.classList.contains('w-full')) {
+        if (nextBlock.classList.contains('magic-block') && nextBlock.style.display !== 'none') {
+          hasVisibleNext = true;
+          break;
+        }
+        nextBlock = nextBlock.nextElementSibling;
+      }
+      div.style.display = hasVisibleNext ? 'block' : 'none';
+    });
+  }
+
+  // ワークスペース内の使用状況を反映してavailableを同期する
+  function syncInventory() {
+    for (let key in inventory.total) {
+      inventory.available[key] = inventory.total[key];
+    }
+    const usedBlocks = document.querySelectorAll('#workspace .magic-block');
+    usedBlocks.forEach(b => {
+      const val = b.dataset.val;
+      if (inventory.available[val] !== undefined) {
+        inventory.available[val]--;
+      }
+    });
+    updatePalette();
+  }
+
+  function unlockAllBasicMagic() {
+    for (let key in inventory.total) {
+      inventory.total[key] = 1;
+    }
+  }
+
+  // --- 画面クリックによる魔法発射 ---
+  let globalTapFlag = false;
+  viewTest.addEventListener('mousedown', (e) => {
+    if (isPaused) return;
+    if (e.target.id !== 'cast-btn' && !e.target.closest('#cast-btn')) {
+      globalTapFlag = true;
+      for(let i=0; i<3; i++) particles.push(new Particle(e.offsetX, e.offsetY, '#fff'));
+      
+      // クリック位置に向けて魔法を放つ
+      const rect = canvas.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const clickY = e.clientY - rect.top;
+      castMagicToward(clickX, clickY);
+    }
+  });
+
+  // --- 茨ブロックと宝箱の定義 ---
+  class IbaraBlock {
+    constructor(x, y, width, height) {
+      this.x = x;
+      this.y = y;
+      this.width = width;
+      this.height = height;
+      this.active = true;
+      this.isBurning = false;
+      this.burnTimer = BURN_DURATION_FRAMES;
+    }
+    update() {
+      if (!this.active) return;
+      updateBurningNatural(this);
+    }
+    draw(ctx) {
+      if (!this.active) return;
+      PopArt.drawIbara(ctx, this, frameCount);
+    }
+  }
+
+  class RockBlock {
+    constructor(x, y, width, height) {
+      this.x = x;
+      this.y = y;
+      this.width = width;
+      this.height = height;
+      this.active = true;
+    }
+    update() {}
+    draw(ctx) {
+      if (!this.active) return;
+      PopArt.drawRock(ctx, this, frameCount);
+    }
+  }
+
+  class MapProp {
+    constructor(gridX, gridY, type, tileSize = TILE_W) {
+      this.gridX = gridX;
+      this.gridY = gridY;
+      this.type = type;
+      this.x = gridX * tileSize;
+      this.y = gridY * tileSize;
+      this.width = tileSize;
+      this.height = tileSize;
+      this.active = true;
+      this.isBurning = false;
+      this.burnTimer = BURN_DURATION_FRAMES;
+    }
+    update() {
+      if (!this.active) return;
+      if (!NATURAL_PROP_TYPES.has(this.type)) return;
+      updateBurningNatural(this);
+    }
+    draw(ctx) {
+      if (!this.active) return;
+      PopArt.drawMapProp(ctx, this.type, this, frameCount);
+    }
+  }
+
+  // --- 生成（ジェネレート）系：属性フィールド＆質量システム ---
+  // 基礎魔法ステータス → public/data/basic-magic-stats.csv（スプレッドシート連携）
+  let GEN_CONFIG = {};
+  function syncGenConfigRef() {
+    GEN_CONFIG = MagicStats.getGenConfig();
+    updateGenPaletteFromConfig();
+  }
+  window.addEventListener('magicstats:updated', syncGenConfigRef);
+
+  const WATER_BOUNCE_DAMP = 0.8;
+  const TILE_W = 32;
+  const TILE_H = 32;
+  const BURN_DURATION_FRAMES = 180; // 3秒
+  const NATURAL_PROP_TYPES = new Set(['tree', 'bush', 'log', 'stump', 'mushroom', 'grassTuft']);
+  const PULL_MASS_LIMIT = 3; // 初期：土・岩(質量5)は吸収不可
+  const MAGIC_OVERLOAD_LIMIT = 45;
+  let magicSpawnCount = 0;
+
+  function igniteNaturalBlock(block) {
+    block.isBurning = true;
+    block.burnTimer = BURN_DURATION_FRAMES;
+  }
+
+  function updateBurningNatural(block) {
+    if (!block.active || !block.isBurning) return;
+    block.burnTimer--;
+    const cx = block.x + block.width / 2;
+    const cy = block.y + block.height / 2;
+    if (block.burnTimer <= 0) {
+      block.active = false;
+      block.isBurning = false;
+      for (let i = 0; i < 12; i++) {
+        particles.push(new Particle(cx, cy, '#78350f'));
+      }
+      return;
+    }
+    if (Math.random() < 0.35) {
+      particles.push(new Particle(
+        block.x + Math.random() * block.width,
+        block.y + Math.random() * block.height,
+        '#f97316'
+      ));
+    }
+  }
+
+  function getNaturalBlocks() {
+    return [
+      ...ibaraBlocks.filter(b => b.active),
+      ...propBlocks.filter(b => b.active && NATURAL_PROP_TYPES.has(b.type)),
+    ];
+  }
+
+  function getEffectiveGen(blocks) {
+    const gens = blocks.filter(b => b.type === 'gen');
+    return gens.length ? gens[gens.length - 1].val : null;
+  }
+
+  function spawnImpactField(x, y, type, scale = 1) {
+    if (!type || !GEN_CONFIG[type]) return;
+    spawnGenField(x, y, type, scale);
+    const cfg = GEN_CONFIG[type];
+    for (let i = 0; i < 10; i++) {
+      particles.push(new Particle(
+        x + (Math.random() - 0.5) * 24,
+        y + (Math.random() - 0.5) * 24,
+        cfg.glow || cfg.color
+      ));
+    }
+  }
+
+  function drawGenVisual(ctx, type, radius, opts = {}) {
+    const cfg = GEN_CONFIG[type] || GEN_CONFIG.fire;
+    const alpha = opts.alpha !== undefined ? opts.alpha : 1;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.shadowBlur = opts.shadowBlur !== undefined ? opts.shadowBlur : 18;
+    ctx.shadowColor = cfg.glow;
+
+    ctx.fillStyle = cfg.fill;
+    ctx.strokeStyle = cfg.ring;
+    ctx.lineWidth = opts.lineWidth || 3;
+    ctx.beginPath();
+    ctx.arc(0, 0, radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    if (type === 'fire') {
+      ctx.fillStyle = '#fef08a';
+      ctx.beginPath(); ctx.arc(-radius * 0.15, -radius * 0.2, radius * 0.45, 0, Math.PI * 2); ctx.fill();
+    } else if (type === 'lightning') {
+      ctx.fillStyle = cfg.color;
+      ctx.beginPath();
+      ctx.moveTo(0, -radius); ctx.lineTo(radius * 0.55, 0); ctx.lineTo(0, radius); ctx.lineTo(-radius * 0.55, 0);
+      ctx.closePath(); ctx.fill();
+    } else if (type === 'water') {
+      ctx.fillStyle = cfg.ring;
+      ctx.beginPath(); ctx.arc(0, radius * 0.15, radius * 0.55, 0, Math.PI * 2); ctx.fill();
+    } else if (type === 'wood') {
+      ctx.fillStyle = cfg.ring;
+      ctx.fillRect(-radius * 0.55, -radius * 0.55, radius * 1.1, radius * 1.1);
+    } else if (type === 'earth') {
+      ctx.fillStyle = cfg.ring;
+      ctx.fillRect(-radius * 0.65, -radius * 0.45, radius * 1.3, radius * 0.9);
+    }
+
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  let genFields = [];
+  let woodBlocks = [];
+  let earthBlocks = [];
+  let machines = [];
+  let weightSwitches = [];
+
+  function snapGrid(x, y) {
+    return {
+      gx: Math.floor(x / TILE_W),
+      gy: Math.floor(y / TILE_H),
+      x: Math.floor(x / TILE_W) * TILE_W,
+      y: Math.floor(y / TILE_H) * TILE_H
+    };
+  }
+
+  function spawnGenField(x, y, type, scale = 1, lifetime = null) {
+    const age = lifetime !== null ? lifetime : MagicStats.getFieldLifetimeFrames(type);
+    genFields.push(new GenField(x, y, type, scale, age));
+  }
+
+  function triggerMagicOverload() {
+    showMessage('魔法が暴発した！構成が過負荷です…');
+    createMassExplosion(player.x, player.y, 'fire', 80, 0);
+    applyDamage(player, 12, player.x, player.y - player.radius, 'player');
+    updatePlayerHUD();
+    magics = [];
+    magicSpawnCount = 0;
+    for (let i = 0; i < 20; i++) particles.push(new Particle(player.x, player.y, '#f97316'));
+  }
+
+  function registerMagicSpawn(count = 1) {
+    if (magicSpawnCount + count > MAGIC_OVERLOAD_LIMIT || magics.length + count > MAGIC_OVERLOAD_LIMIT) {
+      triggerMagicOverload();
+      return false;
+    }
+    magicSpawnCount += count;
+    return true;
+  }
+
+  class WoodBlock {
+    constructor(x, y, width = TILE_W, height = TILE_H, grown = false) {
+      this.x = x; this.y = y; this.width = width; this.height = height;
+      this.active = true; this.isBurning = false; this.burnTimer = 120;
+      this.grown = grown; this.isCharcoal = false;
+    }
+    update() {
+      if (!this.active) return;
+      if (this.isBurning) {
+        this.burnTimer--;
+        if (this.burnTimer <= 0) { this.isCharcoal = true; this.isBurning = false; }
+        if (Math.random() < 0.3) particles.push(new Particle(this.x + Math.random() * this.width, this.y + Math.random() * this.height, '#f97316'));
+      }
+    }
+    draw(ctx) {
+      if (!this.active) return;
+      PopArt.drawWood(ctx, this);
+    }
+  }
+
+  class EarthBlock {
+    constructor(x, y, width = TILE_W, height = TILE_H) {
+      this.x = x; this.y = y; this.width = width; this.height = height;
+      this.active = true; this.mass = GEN_CONFIG.earth.mass;
+    }
+    update() {}
+    draw(ctx) {
+      if (!this.active) return;
+      PopArt.drawEarth(ctx, this);
+    }
+  }
+
+  class Machine {
+    constructor(x, y) {
+      this.x = x; this.y = y; this.width = 50; this.height = 40;
+      this.active = false; this.pulse = 0;
+    }
+    activate() {
+      if (this.active) return;
+      this.active = true;
+      showMessage('機械装置が起動した！');
+      for (let i = 0; i < 15; i++) particles.push(new Particle(this.x + 25, this.y + 20, '#fde047'));
+    }
+    update() { if (this.active) this.pulse++; }
+    draw(ctx) {
+      PopArt.drawMachine(ctx, this, frameCount);
+    }
+  }
+
+  class WeightSwitch {
+    constructor(x, y) {
+      this.x = x; this.y = y; this.width = 50; this.height = 20;
+      this.pressed = false;
+    }
+    update() {
+      let weight = 0;
+      const cx = this.x + this.width / 2, cy = this.y + this.height / 2;
+      earthBlocks.forEach(b => {
+        if (!b.active) return;
+        if (cx >= b.x && cx <= b.x + b.width && cy >= b.y - 10 && cy <= b.y + b.height) weight += b.mass;
+      });
+      genFields.forEach(g => {
+        if (!g.active || g.type !== 'earth') return;
+        if (Math.hypot(g.x - cx, g.y - cy) < 30) weight += g.cfg.mass;
+      });
+      const was = this.pressed;
+      this.pressed = weight >= GEN_CONFIG.earth.mass;
+      if (this.pressed && !was) showMessage('重量スイッチが押された！');
+    }
+    draw(ctx) {
+      PopArt.drawWeightSwitch(ctx, this);
+    }
+  }
+
+  class GenField {
+    constructor(x, y, type, scale = 1, maxAge = null) {
+      if (maxAge === null) maxAge = MagicStats.getFieldLifetimeFrames(type);
+      this.x = x; this.y = y; this.type = type; this.scale = scale;
+      this.maxAge = maxAge; this.age = 0; this.active = true;
+      this.cfg = GEN_CONFIG[type] || GEN_CONFIG.fire;
+      this.radius = TILE_W * 0.75 * scale;
+      this.spawnEffectDone = false;
+      this.boosted = false;
+      this.woodSynergyDone = false;
+    }
+
+    onSpawn() {
+      if (this.type === 'fire') this.igniteAtPoint();
+      else if (this.type === 'lightning') this.lightningBurst(this.radius);
+      else if (this.type === 'wood') this.placeWood();
+      else if (this.type === 'earth') this.placeEarth();
+    }
+
+    igniteAtPoint() {
+      getBurnableBlocks().forEach(b => {
+        if (b.active && collideCircleRect(this.x, this.y, this.radius + 8, b)) {
+          igniteNaturalBlock(b);
+        }
+      });
+      for (let i = 0; i < 14; i++) {
+        particles.push(new Particle(this.x, this.y, '#f97316'));
+      }
+    }
+
+    lightningBurst(radius) {
+      const r = this.boosted ? radius * 2.2 : radius;
+      enemies.forEach(e => {
+        if (e.active && Math.hypot(e.x - this.x, e.y - this.y) < r) {
+          const aoe = MagicStats.getCombat('lightning').aoeDamage;
+          applyDamage(e, aoe, e.x, e.y - e.radius, 'enemy');
+          if (e.hp <= 0) e.die();
+          else for (let i = 0; i < 6; i++) particles.push(new Particle(e.x, e.y, '#fde047'));
+        }
+      });
+      machines.forEach(m => {
+        if (Math.hypot(m.x + 25 - this.x, m.y + 20 - this.y) < r + 30) m.activate();
+      });
+      for (let i = 0; i < 16; i++) particles.push(new Particle(this.x, this.y, '#fde047'));
+    }
+
+    placeWood() {
+      const g = snapGrid(this.x, this.y);
+      if (woodBlocks.some(b => b.active && b.x === g.x && b.y === g.y)) return;
+      woodBlocks.push(new WoodBlock(g.x, g.y));
+    }
+
+    placeEarth() {
+      const g = snapGrid(this.x, this.y);
+      if (earthBlocks.some(b => b.active && b.x === g.x && b.y === g.y)) return;
+      if (rockBlocks.some(b => b.active && b.x === g.x && b.y === g.y)) return;
+      if (propBlocks.some(b => b.active && b.type === 'rock' && b.x === g.x && b.y === g.y)) return;
+      earthBlocks.push(new EarthBlock(g.x, g.y));
+    }
+
+    affectEnvironment() {
+      const r = this.radius;
+      if (this.type === 'fire') {
+        getBurnableBlocks().forEach(b => {
+          if (!b.active) return;
+          const cx = b.x + b.width / 2, cy = b.y + b.height / 2;
+          if (Math.hypot(cx - this.x, cy - this.y) < r + 8) {
+            igniteNaturalBlock(b);
+          }
+        });
+      } else if (this.type === 'water') {
+        genFields.forEach(g => {
+          if (g !== this && g.active && g.type === 'fire' && Math.hypot(g.x - this.x, g.y - this.y) < r + g.radius) g.active = false;
+        });
+        getBurnableBlocks().forEach(b => {
+          if (b.isBurning) {
+            b.isBurning = false;
+            b.burnTimer = 0;
+          }
+        });
+      } else if (this.type === 'wood') {
+        enemies.forEach(e => {
+          if (e.active && Math.hypot(e.x - this.x, e.y - this.y) < r) {
+            e.applyEffect('stop');
+            e.bindTimer = Math.max(e.bindTimer || 0, MagicStats.secToFrames(MagicStats.getCombat('wood').bindDurationSec));
+          }
+        });
+      }
+    }
+
+    checkSynergies() {
+      genFields.forEach(other => {
+        if (other === this || !other.active || !this.active) return;
+        const dist = Math.hypot(other.x - this.x, other.y - this.y);
+        if (dist > this.radius + other.radius) return;
+
+        if (this.type === 'water' && other.type === 'fire') other.active = false;
+        if (this.type === 'fire' && other.type === 'water') this.active = false;
+
+        if (this.type === 'water' && other.type === 'lightning' && !other.boosted) {
+          other.boosted = true;
+          other.lightningBurst(other.radius * 2);
+        }
+        if (this.type === 'lightning' && other.type === 'water' && !this.boosted) {
+          this.boosted = true;
+          this.lightningBurst(this.radius * 2);
+        }
+
+        if (this.type === 'water' && other.type === 'wood' && !this.woodSynergyDone) {
+          this.woodSynergyDone = true;
+          const g = snapGrid(other.x, other.y);
+          [-1, 0, 1].forEach(ox => {
+            [-1, 0, 1].forEach(oy => {
+              const px = g.x + ox * TILE_W, py = g.y + oy * TILE_H;
+              if (!woodBlocks.some(b => b.active && b.x === px && b.y === py)) {
+                woodBlocks.push(new WoodBlock(px, py, TILE_W, TILE_H, true));
+              }
+            });
+          });
+        }
+        if (this.type === 'fire' && other.type === 'wood') {
+          woodBlocks.forEach(b => {
+            if (Math.hypot(b.x + b.width / 2 - this.x, b.y + b.height / 2 - this.y) < this.radius + 30) b.isBurning = true;
+          });
+        }
+      });
+    }
+
+    update() {
+      if (!this.active) return;
+      if (!this.spawnEffectDone) { this.spawnEffectDone = true; this.onSpawn(); }
+      this.affectEnvironment();
+      if (this.age % 15 === 0) this.checkSynergies();
+      this.age++;
+      if (this.age >= this.maxAge) this.active = false;
+    }
+
+    draw(ctx) {
+      if (!this.active) return;
+      const cfg = this.cfg;
+      const alpha = 0.45 + (1 - this.age / this.maxAge) * 0.4;
+      ctx.save();
+      ctx.translate(this.x, this.y);
+      drawGenVisual(ctx, this.type, this.radius, { alpha, lineWidth: 2, shadowBlur: 12 });
+      ctx.globalAlpha = Math.min(1, alpha + 0.2);
+      ctx.font = 'bold 14px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(cfg.icon || '?', 0, 5);
+      ctx.textAlign = 'left';
+      ctx.restore();
+    }
+  }
+
+  function createMassExplosion(x, y, type, baseRadius = 100, extraMass = null) {
+    let totalMass = extraMass !== null ? extraMass : 0;
+    if (extraMass === null) {
+      genFields.forEach(g => {
+        if (g.active && Math.hypot(g.x - x, g.y - y) < baseRadius) totalMass += g.cfg.mass;
+      });
+      earthBlocks.forEach(b => {
+        if (b.active) {
+          const cx = b.x + b.width / 2, cy = b.y + b.height / 2;
+          if (Math.hypot(cx - x, cy - y) < baseRadius) totalMass += b.mass;
+        }
+      });
+      woodBlocks.forEach(b => {
+        if (b.active && !b.isCharcoal) {
+          const cx = b.x + b.width / 2, cy = b.y + b.height / 2;
+          if (Math.hypot(cx - x, cy - y) < baseRadius) totalMass += GEN_CONFIG.wood.mass;
+        }
+      });
+    }
+    const radius = baseRadius * (1 + totalMass * 0.18);
+    const color = GEN_CONFIG[type]?.color || '#fff';
+    for (let i = 0; i < 15 + totalMass * 3; i++) particles.push(new Particle(x, y, color));
+    particles.push({
+      x, y, life: 1.0, color,
+      update: function() { this.life -= 0.04; },
+      draw: function(ctx) {
+        if (this.life <= 0) return;
+        ctx.globalAlpha = this.life; ctx.strokeStyle = this.color; ctx.lineWidth = 4 + totalMass;
+        ctx.beginPath(); ctx.arc(this.x, this.y, (1 - this.life) * radius, 0, Math.PI * 2); ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+    });
+    enemies.forEach(e => {
+      if (e.active && Math.hypot(e.x - x, e.y - y) < radius) {
+        applyDamage(e, 2 + totalMass, e.x, e.y - e.radius, 'enemy');
+        if (e.hp <= 0) e.die();
+      }
+    });
+  }
+
+  function getBurnableBlocks() {
+    return [
+      ...getNaturalBlocks(),
+      ...woodBlocks.filter(b => b.active),
+    ];
+  }
+
+  function getSolidBlocks() {
+    return [
+      ...ibaraBlocks,
+      ...rockBlocks,
+      ...woodBlocks,
+      ...earthBlocks,
+      ...propBlocks.filter(b => b.active && PopArt.isSolidPropType(b.type)),
+    ].filter(b => b.active);
+  }
+
+  function collideCircleRect(cx, cy, radius, block) {
+    const closestX = Math.max(block.x, Math.min(cx, block.x + block.width));
+    const closestY = Math.max(block.y, Math.min(cy, block.y + block.height));
+    return Math.hypot(cx - closestX, cy - closestY) < radius;
+  }
+
+  const chest = {
+    x: 0, y: 0, width: 50, height: 40,
+    active: true,
+    draw: function(ctx) {
+      if (!this.active) return;
+      PopArt.drawChest(ctx, this, frameCount);
+    }
+  };
+
+  // --- Sortable.js (ドラッグ＆ドロップとスロットのネスト) ---
+  
+  const leftPanel = document.getElementById('left-panel');
+
+  // パレット (基礎魔法 - 消費制)
+  new Sortable(document.getElementById('palette-blocks'), {
+    group: { name: 'blocks', pull: 'clone', put: ['program-slot'] }, animation: 150, sort: false,
+    onStart: function() { leftPanel.classList.add('bg-red-50', 'border-red-200'); },
+    onEnd: function() { leftPanel.classList.remove('bg-red-50', 'border-red-200'); },
+    onAdd: function (evt) { 
+      evt.item.parentNode.removeChild(evt.item); 
+      syncInventory(); 
+    }
+  });
+
+  // パレット (対象ブロック - 消費なし)
+  new Sortable(document.getElementById('palette-targets'), {
+    group: { name: 'targets', pull: 'clone', put: ['targets'] }, animation: 150, sort: false,
+    onStart: function() { leftPanel.classList.add('bg-red-50', 'border-red-200'); },
+    onEnd: function() { leftPanel.classList.remove('bg-red-50', 'border-red-200'); },
+    onAdd: function (evt) { evt.item.parentNode.removeChild(evt.item); }
+  });
+
+  // ★ プログラミングスロットの初期化 ★
+  function initProgramSlots() {
+    const pSlots = document.querySelectorAll('.program-slot');
+    pSlots.forEach(slot => {
+      if (!slot.dataset.sortableInitialized) {
+        new Sortable(slot, {
+          group: { 
+            name: 'program-slot', 
+            put: ['blocks', 'program-slot'] // ブロックと他のスロットからの移動を許可
+          },
+          animation: 150,
+          ghostClass: 'sortable-ghost',
+          onStart: function() { leftPanel.classList.add('bg-red-50', 'border-red-200'); },
+          onEnd: function() {
+            leftPanel.classList.remove('bg-red-50', 'border-red-200');
+            syncInventory();
+            scheduleAutoSave();
+          },
+          onAdd: function(evt) {
+            // スロットに1つしか入らないように、古いブロックを削除
+            if (slot.children.length > 1) {
+              Array.from(slot.children).forEach(child => {
+                if (child !== evt.item) slot.removeChild(child);
+              });
+            }
+            initSlots(evt.item);
+            syncInventory();
+            scheduleAutoSave();
+          },
+          onRemove: function() {
+            syncInventory();
+            scheduleAutoSave();
+          }
+        });
+        slot.dataset.sortableInitialized = 'true';
+      }
+    });
+  }
+  initProgramSlots();
+
+  // ★ スロットをドラッグ＆ドロップ可能にする関数 ★
+  function initSlots(element) {
+    const slots = element.querySelectorAll('.target-slot');
+    slots.forEach(slot => {
+      // パレット内のスロットは初期化しない
+      if (slot.closest('#palette-blocks')) return;
+      if (!slot.dataset.sortableInitialized) {
+        new Sortable(slot, {
+          group: { name: 'targets', put: ['targets'] }, // 対象ブロックのみ受け入れる
+          animation: 150,
+          onStart: function() { leftPanel.classList.add('bg-red-50', 'border-red-200'); },
+          onEnd: function() {
+            leftPanel.classList.remove('bg-red-50', 'border-red-200');
+            scheduleAutoSave();
+          },
+          onAdd: function (evt) {
+            // 新しいブロックが入ったら、元々入っていた古いブロックを削除する
+            if (slot.children.length > 1) {
+              Array.from(slot.children).forEach(child => {
+                 if (child !== evt.item) slot.removeChild(child);
+              });
+            }
+            scheduleAutoSave();
+          },
+          onRemove: function() { scheduleAutoSave(); }
+        });
+        slot.dataset.sortableInitialized = 'true';
+      }
+    });
+  }
+  // ロード時にワークスペース内の既存スロットを初期化
+  initSlots(document.getElementById('workspace'));
+  document.getElementById('workspace')?.addEventListener('change', (e) => {
+    if (e.target.tagName === 'SELECT') scheduleAutoSave();
+  });
+  ['z', 'x', 'c'].forEach((key) => {
+    document.getElementById(`slot-select-${key}`)?.addEventListener('click', () => selectMagicSlot(key));
+  });
+
+
+  // --- ゲームロジック ---
+  const canvas = document.getElementById('gameCanvas');
+  const ctx = canvas.getContext('2d');
+  PopArt.setupCrisp(ctx);
+  
+  let width, height;
+  function resize() {
+    if (viewTest.classList.contains('hidden-view')) return;
+    width = viewTest.clientWidth; height = viewTest.clientHeight;
+    if (width === 0) width = window.innerWidth || 800;
+    if (height === 0) height = window.innerHeight || 600;
+    canvas.width = width; canvas.height = height;
+    player.x = width * 0.15; player.y = height / 2;
+  }
+  function resetEnemies() {
+    enemies.forEach(e => {
+      e.x = width * 0.7 + Math.random() * (width * 0.2);
+      e.startY = height * 0.2 + Math.random() * (height * 0.6);
+      e.y = e.startY;
+    });
+  }
+  window.addEventListener('resize', () => { if(!isPaused) { resize(); resetEnemies(); } });
+
+  let magics = [];
+  let particles = [];
+  let damageNumbers = [];
+
+  class DamageNumber {
+    constructor(x, y, amount, kind = 'enemy') {
+      this.x = x + (Math.random() - 0.5) * 12;
+      this.y = y;
+      this.amount = Math.max(1, Math.round(amount));
+      this.life = 1;
+      this.decay = 0.028;
+      this.vy = -1.4;
+      this.kind = kind;
+    }
+    update() {
+      this.y += this.vy;
+      this.vy *= 0.98;
+      this.life -= this.decay;
+    }
+    draw(ctx) {
+      if (this.life <= 0) return;
+      const text = String(this.amount);
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, this.life * 1.4);
+      ctx.font = this.kind === 'player' ? 'bold 18px Nunito, sans-serif' : 'bold 15px Nunito, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = '#1e293b';
+      ctx.fillStyle = this.kind === 'player' ? '#fb7185' : (this.kind === 'dot' ? '#fb923c' : '#fde047');
+      ctx.strokeText(text, this.x, this.y);
+      ctx.fillText(text, this.x, this.y);
+      ctx.restore();
+    }
+  }
+
+  function showDamage(x, y, amount, kind = 'enemy') {
+    if (!amount || amount <= 0) return;
+    damageNumbers.push(new DamageNumber(x, y, amount, kind));
+  }
+
+  function applyDamage(target, amount, x, y, kind = 'enemy') {
+    const dmg = Math.max(0, Math.round(amount));
+    if (dmg <= 0) return 0;
+    target.hp = Math.max(0, target.hp - dmg);
+    showDamage(x, y, dmg, kind);
+    return dmg;
+  }
+  let enemies = [];
+  let frameCount = 0;
+  let gameLoopStarted = false;
+
+  function showMessage(msg) {
+    const overlay = document.getElementById('msg-overlay');
+    document.getElementById('msg-text').innerText = msg;
+    overlay.classList.add('show-msg');
+    setTimeout(() => overlay.classList.remove('show-msg'), 2500);
+  }
+
+  // 経験値獲得とレベルアップ
+  function gainExp(amount) {
+    if (isPaused) return; // テスト中ではない場合は付与しない
+    
+    player.exp += amount;
+    if (player.exp >= player.maxExp) {
+      player.level++;
+      player.exp -= player.maxExp;
+      
+      // レベルアップ演出（金色の光）
+      for (let i = 0; i < 30; i++) {
+        particles.push(new Particle(player.x, player.y, '#fbbf24'));
+      }
+      
+      // HP & MP全回復
+      player.hp = player.maxHp;
+      player.mp = player.maxMp;
+      
+      showMessage(`レベルアップ！Lv. ${player.level} になりました！`);
+      
+      // スロット解放チェック (5レベルごと)
+      if (player.level % 5 === 0) {
+        setTimeout(() => {
+          showMessage(`おめでとう！魔法スロットが1つ解放されました！`);
+        }, 1500);
+      }
+      
+      updateWorkspaceSlots();
+    }
+    updatePlayerHUD();
+  }
+
+  // プレイヤーのレベルに応じてワークスペースのスロットを更新する
+  function updateWorkspaceSlots() {
+    const workspace = document.getElementById('workspace');
+    if (!workspace) return;
+    
+    const maxSlots = 3 + Math.floor(player.level / 5);
+    const slots = workspace.querySelectorAll('.program-slot');
+    const currentSlotCount = slots.length;
+    
+    // UI側のスロット上限数表示を更新
+    const infoSpan = document.getElementById('workspace-slots-info');
+    if (infoSpan) {
+      const nextUnlock = (Math.floor(player.level / 5) + 1) * 5;
+      infoSpan.innerText = `上限: ${maxSlots}スロット (次: Lv.${nextUnlock})`;
+    }
+    
+    // 不足しているスロットを末尾に追加
+    if (currentSlotCount < maxSlots) {
+      const needed = maxSlots - currentSlotCount;
+      for (let i = 0; i < needed; i++) {
+        const newSlot = document.createElement('div');
+        newSlot.className = 'program-slot';
+        workspace.appendChild(newSlot);
+      }
+      
+      // 追加した新しいスロットに対してSortableを初期化
+      initProgramSlots();
+    }
+    scheduleAutoSave();
+  }
+
+  function loadSavedMagicsFromStorage() {
+    try {
+      const raw = localStorage.getItem(MAGIC_SLOTS_STORAGE_KEY);
+      if (!raw) return;
+      const data = JSON.parse(raw);
+      if (data.z) savedMagics.z = data.z;
+      if (data.x !== undefined) savedMagics.x = data.x;
+      if (data.c !== undefined) savedMagics.c = data.c;
+      if (data.activeSlot && ['z', 'x', 'c'].includes(data.activeSlot)) {
+        activeMagicSlot = data.activeSlot;
+      }
+    } catch (_) {
+      /* ignore */
+    }
+  }
+
+  function persistSavedMagics() {
+    try {
+      localStorage.setItem(MAGIC_SLOTS_STORAGE_KEY, JSON.stringify({
+        z: savedMagics.z,
+        x: savedMagics.x,
+        c: savedMagics.c,
+        activeSlot: activeMagicSlot,
+      }));
+    } catch (_) {
+      /* ignore */
+    }
+  }
+
+  function ensureDefaultSavedMagics() {
+    if (!savedMagics.z) {
+      savedMagics.z = [
+        { type: 'gen', val: 'fire', target: 'none' },
+        { type: 'vec', val: 'forward', target: 'none' },
+      ];
+    }
+  }
+
+  function getWorkspaceSlotCount(blockCount) {
+    const maxSlots = 3 + Math.floor(player.level / 5);
+    return Math.max(maxSlots, blockCount, 3);
+  }
+
+  function cloneMagicBlockFromPalette(type, val) {
+    const template = document.querySelector(
+      `#palette-blocks .magic-block[data-type="${type}"][data-val="${val}"]`
+    );
+    if (!template) return null;
+    const clone = template.cloneNode(true);
+    clone.style.display = 'flex';
+    const badge = clone.querySelector('.badge');
+    if (badge) badge.remove();
+    return clone;
+  }
+
+  function applyBlockTarget(el, target) {
+    if (!target || target === 'none') return;
+    const slot = el.querySelector('.target-slot');
+    if (slot) {
+      const tTemplate = document.querySelector(
+        `#palette-targets .target-block[data-val="${target}"]`
+      );
+      if (tTemplate) {
+        slot.innerHTML = '';
+        slot.appendChild(tTemplate.cloneNode(true));
+      }
+      return;
+    }
+    const select = el.querySelector('select');
+    if (select) select.value = target;
+  }
+
+  function createBlockElement(block) {
+    const el = cloneMagicBlockFromPalette(block.type, block.val);
+    if (!el) return null;
+    applyBlockTarget(el, block.target);
+    return el;
+  }
+
+  function loadWorkspaceForSlot(key) {
+    const workspace = document.getElementById('workspace');
+    if (!workspace) return;
+    const blocks = savedMagics[key] || [];
+    const slotCount = getWorkspaceSlotCount(blocks.length);
+
+    workspace.innerHTML = '';
+    for (let i = 0; i < slotCount; i++) {
+      const slot = document.createElement('div');
+      slot.className = 'program-slot';
+      if (blocks[i]) {
+        const el = createBlockElement(blocks[i]);
+        if (el) slot.appendChild(el);
+      }
+      workspace.appendChild(slot);
+    }
+
+    workspace.querySelectorAll('.program-slot').forEach((s) => {
+      delete s.dataset.sortableInitialized;
+    });
+    initProgramSlots();
+    initSlots(workspace);
+    syncInventory();
+    updateMagicSlotSelectorUI();
+  }
+
+  function parseWorkspaceBlocksRaw() {
+    const blocksEl = document.querySelectorAll('#workspace .program-slot > .magic-block');
+    const blocks = [];
+    blocksEl.forEach((b) => {
+      let target = 'none';
+      const slot = b.querySelector('.target-slot');
+      if (slot && slot.children.length > 0) {
+        target = slot.children[0].dataset.val;
+      }
+      const selectEl = b.querySelector('select');
+      if (selectEl) target = selectEl.value;
+      blocks.push({ type: b.dataset.type, val: b.dataset.val, target });
+    });
+    return blocks;
+  }
+
+  function autoSaveActiveSlot() {
+    const blocks = parseWorkspaceBlocksRaw();
+    savedMagics[activeMagicSlot] = blocks.length > 0
+      ? JSON.parse(JSON.stringify(blocks))
+      : null;
+    persistSavedMagics();
+    updateSavedMagicsHUD();
+    updateMagicSlotSelectorUI();
+  }
+
+  function scheduleAutoSave() {
+    clearTimeout(autoSaveTimer);
+    autoSaveTimer = setTimeout(autoSaveActiveSlot, 120);
+  }
+
+  function selectMagicSlot(key) {
+    if (!['z', 'x', 'c'].includes(key)) return;
+    if (key === activeMagicSlot) return;
+    autoSaveActiveSlot();
+    activeMagicSlot = key;
+    persistSavedMagics();
+    loadWorkspaceForSlot(key);
+  }
+
+  function updateMagicSlotSelectorUI() {
+    ['z', 'x', 'c'].forEach((k) => {
+      const btn = document.getElementById(`slot-select-${k}`);
+      if (btn) btn.classList.toggle('is-active', k === activeMagicSlot);
+    });
+    const header = document.getElementById('workspace-active-key');
+    const desc = document.getElementById('active-slot-desc');
+    const label = activeMagicSlot.toUpperCase();
+    if (header) header.textContent = `${label}キーを編集中`;
+    if (desc) desc.textContent = `${label}キー: ${getMagicSummaryText(savedMagics[activeMagicSlot])}`;
+  }
+
+  // プレイヤーHUD更新関数
+  function updatePlayerHUD() {
+    const hpText = document.getElementById('player-hp-text');
+    const hpBar = document.getElementById('player-hp-bar');
+    const mpText = document.getElementById('player-mp-text');
+    const mpBar = document.getElementById('player-mp-bar');
+    const expText = document.getElementById('player-exp-text');
+    const expBar = document.getElementById('player-exp-bar');
+    const lvSpan = document.getElementById('player-level');
+    
+    if (hpText) hpText.innerText = `${Math.ceil(player.hp)} / ${player.maxHp}`;
+    if (hpBar) hpBar.style.width = `${Math.max(0, (player.hp / player.maxHp) * 100)}%`;
+    if (mpText) mpText.innerText = `${Math.ceil(player.mp)} / ${player.maxMp}`;
+    if (mpBar) mpBar.style.width = `${Math.max(0, (player.mp / player.maxMp) * 100)}%`;
+    if (expText) expText.innerText = `${Math.ceil(player.exp)} / ${player.maxExp}`;
+    if (expBar) expBar.style.width = `${Math.max(0, (player.exp / player.maxExp) * 100)}%`;
+    if (lvSpan) lvSpan.innerText = player.level;
+  }
+
+  // ★ プレイヤーオブジェクト (移動機能・状態異常・当たり判定を追加) ★
+  const playerFacingAngles = { up: 0, right: Math.PI / 2, down: Math.PI, left: -Math.PI / 2 };
+
+  function getPlayerAimPoint(distance = 100) {
+    const dirs = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
+    const [dx, dy] = dirs[player.facing] || dirs.right;
+    return { x: player.x + dx * distance, y: player.y + dy * distance };
+  }
+
+  const player = { 
+    x: 0, y: 0, radius: 22, speed: 4, facing: 'down',
+    hp: 100, maxHp: 100,
+    mp: 100, maxMp: 100,
+    level: 1, exp: 0, maxExp: 40,
+    invincibleTimer: 0,
+    effectType: null, effectTimer: 0,
+    animState: 'idle',
+    animTimer: 0,
+    isMoving: false,
+    applyEffect: function(type) {
+      this.effectType = type;
+      this.effectTimer = 180;
+    },
+    update: function() {
+      if (this.effectTimer > 0) {
+        this.effectTimer--;
+        if (this.effectTimer <= 0) this.effectType = null;
+      }
+
+      // 無敵タイマー更新
+      if (this.invincibleTimer > 0) {
+        this.invincibleTimer--;
+      }
+
+      // 移動処理
+      let currentSpeed = this.speed;
+      if (this.effectType === 'slow') currentSpeed *= 0.5;
+      if (this.effectType === 'speedup') currentSpeed *= 1.5;
+      if (this.effectType === 'stop') currentSpeed = 0;
+
+      let dx = 0;
+      let dy = 0;
+      if (keys['w'] || keys['arrowup']) dy -= currentSpeed;
+      if (keys['s'] || keys['arrowdown']) dy += currentSpeed;
+      if (keys['a'] || keys['arrowleft']) dx -= currentSpeed;
+      if (keys['d'] || keys['arrowright']) dx += currentSpeed;
+
+      // 入力方向に向きを更新（移動できなくても方向転換できる）
+      let faceDx = 0;
+      let faceDy = 0;
+      if (keys['w'] || keys['arrowup']) faceDy -= 1;
+      if (keys['s'] || keys['arrowdown']) faceDy += 1;
+      if (keys['a'] || keys['arrowleft']) faceDx -= 1;
+      if (keys['d'] || keys['arrowright']) faceDx += 1;
+      if (faceDx !== 0 || faceDy !== 0) {
+        if (Math.abs(faceDx) > Math.abs(faceDy)) {
+          this.facing = faceDx > 0 ? 'right' : 'left';
+        } else {
+          this.facing = faceDy > 0 ? 'down' : 'up';
+        }
+      }
+
+      // 斜め移動の速度調整
+      if (dx !== 0 && dy !== 0) {
+        dx *= 0.7071;
+        dy *= 0.7071;
+      }
+
+      let nextX = this.x + dx;
+      let nextY = this.y + dy;
+
+      // 画面境界チェック
+      if (nextX < this.radius) nextX = this.radius;
+      if (nextX > width - this.radius) nextX = width - this.radius;
+      if (nextY < this.radius) nextY = this.radius;
+      if (nextY > height - this.radius) nextY = height - this.radius;
+
+      // 障害物ブロックとの衝突判定
+      let collide = false;
+      for (let block of getSolidBlocks()) {
+        if (collideCircleRect(nextX, nextY, this.radius, block)) {
+          collide = true;
+          break;
+        }
+      }
+
+      if (!collide && mapTerrain) {
+        const gx = Math.floor(nextX / TILE_W);
+        const gy = Math.floor(nextY / TILE_H);
+        if (PopArt.isWaterTerrain(PopArt.getTerrainAt(mapTerrain, gx, gy))) {
+          collide = true;
+        }
+      }
+
+      if (!collide) {
+        this.x = nextX;
+        this.y = nextY;
+      }
+
+      this.isMoving = dx !== 0 || dy !== 0;
+      if (this.animState === 'attack') {
+        this.animTimer--;
+        if (this.animTimer <= 0) this.animState = 'idle';
+      } else if (this.invincibleTimer > 40) {
+        this.animState = 'hurt';
+      } else if (this.animState === 'hurt') {
+        this.animState = 'idle';
+      }
+
+      // 敵との衝突判定（被ダメージ＆無敵）
+      if (this.invincibleTimer <= 0) {
+        for (let e of enemies) {
+          if (e.active) {
+            let dist = Math.hypot(e.x - this.x, e.y - this.y);
+            if (dist < this.radius + e.radius) {
+              applyDamage(this, 15, this.x, this.y - this.radius, 'player');
+              this.invincibleTimer = 60; // 1秒間無敵
+              updatePlayerHUD();
+              
+              // 被ダメージエフェクト
+              for (let i = 0; i < 12; i++) {
+                particles.push(new Particle(this.x, this.y, '#f43f5e'));
+              }
+
+              if (this.hp <= 0) {
+                showMessage("ゲームオーバー！プレイヤーが倒れました。");
+                isPaused = true;
+                setTimeout(() => {
+                  init();
+                  isPaused = false;
+                }, 2500);
+              }
+              break;
+            }
+          }
+        }
+      }
+
+      // MP自動回復
+      if (this.mp < this.maxMp) {
+        this.mp = Math.min(this.maxMp, this.mp + 0.16); // 1秒で約10回復
+        updatePlayerHUD();
+      }
+    },
+    draw: function(ctx) {
+      PopArt.drawPlayer(ctx, this, frameCount);
+    }
+  };
+
+  class Enemy {
+    constructor(x, y) {
+      this.x = x; this.startY = y; this.y = y;
+      this.radius = 18; this.active = true;
+      this.offset = Math.random() * Math.PI * 2;
+      this.time = 0; this.speedMult = 1.0;
+      this.effectTimer = 0; this.effectType = null;
+      this.hp = 10; this.maxHp = 10; // HPの概念を追加
+      this.burnTimer = 0; // 炎上デバフタイマー
+      this.burnTickTimer = 0; // 持続ダメージ用
+      this.bindTimer = 0; // 木属性：バインド
+    }
+    update() {
+      if (!this.active) return;
+      this.time += 1 * this.speedMult;
+      if(this.effectType !== 'pulled') {
+        this.y = this.startY + Math.sin(this.time * 0.05 + this.offset) * 60;
+      }
+      if (this.effectTimer > 0) {
+        this.effectTimer--;
+        if (this.effectTimer <= 0) {
+          this.speedMult = 1.0; this.effectType = null;
+          this.startY = this.y;
+        }
+      }
+
+      if (this.bindTimer > 0) {
+        this.bindTimer--;
+        if (this.bindTimer <= 0 && this.effectType === 'stop') {
+          this.effectType = null;
+          this.speedMult = 1.0;
+        }
+      }
+
+      // 炎上（火傷）による持続ダメージ処理
+      if (this.burnTimer > 0) {
+        this.burnTimer--;
+        this.burnTickTimer--;
+
+        // 炎上エフェクトの火の粉
+        if (Math.random() < 0.25) {
+          particles.push(new Particle(
+            this.x + (Math.random() - 0.5) * this.radius * 2,
+            this.y + (Math.random() - 0.5) * this.radius * 2,
+            '#fb923c' // 炎の色
+          ));
+        }
+
+        if (this.burnTickTimer <= 0) {
+          const dot = MagicStats.getCombat('fire').dotDamage;
+          applyDamage(this, dot, this.x, this.y - this.radius, 'dot');
+          this.burnTickTimer = MagicStats.secToFrames(MagicStats.getCombat('fire').dotIntervalSec) || 60;
+          
+          // ドットダメージの小さな飛び火
+          for (let i = 0; i < 3; i++) {
+            particles.push(new Particle(this.x, this.y, '#f97316'));
+          }
+
+          if (this.hp <= 0) {
+            this.die();
+          }
+        }
+      }
+    }
+    applyEffect(type) {
+      this.effectType = type;
+      if (type === 'stop') { this.speedMult = 0; this.effectTimer = 180; }
+      if (type === 'slow') { this.speedMult = 0.3; this.effectTimer = 180; }
+      if (type === 'speedup') { this.speedMult = 2.5; this.effectTimer = 180; }
+      if (type === 'pulled') { this.effectTimer = 5; }
+    }
+    draw(ctx) {
+      PopArt.drawEnemy(ctx, this, frameCount);
+    }
+    die() {
+      this.active = false;
+      createExplosion(this.x, this.y, 'enemy');
+      this.burnTimer = 0; // デバフリセット
+      this.burnTickTimer = 0;
+      
+      // 経験値獲得処理
+      gainExp(20);
+
+      setTimeout(() => {
+        this.active = true;
+        this.hp = this.maxHp; // 復活時にHPを全回復
+        this.x = width * 0.7 + Math.random() * (width * 0.2);
+        this.startY = height * 0.2 + Math.random() * (height * 0.6);
+        this.speedMult = 1.0; this.effectType = null; this.effectTimer = 0;
+      }, 2500);
+    }
+  }
+
+  class Magic {
+    constructor(x, y, blocks, state = {}) {
+      this.x = x; this.y = y;
+      this.blocks = blocks;
+      this.step = 0;
+      
+      this.gen = state.gen || null;
+      this.vec = state.vec || 'none';
+      this.scale = state.scale || 1;
+      this.vx = state.vx || 0;
+      this.vy = state.vy || 0;
+      this.color = state.color || 'transparent';
+      this.orbitAngle = state.orbitAngle || 0;
+      this.baseY = y; this.lifeTime = 0;
+      this.age = state.age || 0;
+      this.maxAge = 120; 
+      this.repeatLeft = state.repeatLeft !== undefined ? state.repeatLeft : -1;
+      this.durability = state.durability !== undefined ? state.durability : 1; // 耐久力（初期値1）
+      this.hitWall = state.hitWall || false; // 壁に触れているかのフラグ
+      this.angle = state.angle !== undefined ? state.angle : 0; // 追加
+
+      this.active = true;
+      this.radius = 10;
+      this.mass = 1;
+      this.speed = state.speed !== undefined ? state.speed : 8;
+      this.trigAge = 0;
+      this.hitEnemies = new Set();
+      this.hitSurfaces = new Set();
+      this.hasSplit = state.hasSplit || false;
+      this.isWaterShard = state.isWaterShard || false;
+      this.spawnGrace = state.spawnGrace !== undefined ? state.spawnGrace : 0;
+      this.wallBounced = state.wallBounced || false;
+
+      const effectiveGen = state.gen || getEffectiveGen(blocks);
+      if (effectiveGen) this.setGen(effectiveGen);
+      if (state.vec && state.vec !== 'none') this.vec = state.vec;
+      if (!state.gen) this.processGenVecBlocks();
+      if (state.speed === undefined && this.gen) {
+        this.speed = MagicStats.getProjectileSpeed(this.gen, this.isWaterShard);
+      }
+      this.ensureInitialMovement();
+    }
+
+    ensureInitialMovement() {
+      if (this.vx !== 0 || this.vy !== 0) return;
+      const vecBlock = this.blocks.find(b => b.type === 'vec');
+      if (vecBlock) {
+        this.applyVec(vecBlock.val);
+        return;
+      }
+      if (!this.blocks.some(b => b.type === 'vec')) {
+        this.vec = 'forward';
+        const moveSpeed = MagicStats.getProjectileSpeed(this.gen || 'fire', this.isWaterShard);
+        this.vx = Math.cos(this.angle) * moveSpeed;
+        this.vy = Math.sin(this.angle) * moveSpeed;
+      }
+    }
+
+    setGen(val) {
+      this.gen = val;
+      const cfg = GEN_CONFIG[val];
+      if (cfg) {
+        this.color = cfg.color;
+        this.mass = cfg.mass;
+      }
+    }
+
+    applyVec(val) {
+      this.vec = val;
+      const moveSpeed = MagicStats.getProjectileSpeed(this.gen || 'fire', this.isWaterShard);
+      if (val === 'forward' || val === 'zigzag') {
+        let currentSpeed = Math.hypot(this.vx, this.vy);
+        if (currentSpeed === 0) {
+          this.vx = Math.cos(this.angle) * moveSpeed;
+          this.vy = Math.sin(this.angle) * moveSpeed;
+        } else {
+          this.vx = (this.vx / currentSpeed) * moveSpeed;
+          this.vy = (this.vy / currentSpeed) * moveSpeed;
+        }
+        this.baseY = this.y;
+      } else if (val === 'homing' || val === 'return') {
+        if (this.vx === 0 && this.vy === 0) {
+          this.vx = Math.cos(this.angle) * moveSpeed * 0.5;
+          this.vy = Math.sin(this.angle) * moveSpeed * 0.5;
+        }
+      }
+    }
+
+    processGenVecBlocks() {
+      while (this.step < this.blocks.length && this.active) {
+        const block = this.blocks[this.step];
+        if (block.type === 'gen') {
+          this.step++;
+        } else if (block.type === 'vec') {
+          this.applyVec(block.val);
+          this.step++;
+        } else {
+          break;
+        }
+      }
+    }
+
+    refreshGen() {
+      const g = getEffectiveGen(this.blocks);
+      if (!g || g === this.gen) return;
+      const prevSpeed = MagicStats.getProjectileSpeed(this.gen || g, this.isWaterShard);
+      this.setGen(g);
+      const newSpeed = MagicStats.getProjectileSpeed(g, this.isWaterShard);
+      this.speed = newSpeed;
+      const cur = Math.hypot(this.vx, this.vy);
+      if (cur > 0 && prevSpeed > 0) {
+        const ratio = newSpeed / prevSpeed;
+        this.vx *= ratio;
+        this.vy *= ratio;
+      }
+    }
+
+    update() {
+      if (!this.active) return;
+      this.trigAge++; this.age++; this.lifeTime++;
+
+      if (this.age >= this.maxAge) {
+        this.active = false;
+        for(let i=0; i<8; i++) particles.push(new Particle(this.x, this.y, this.color || '#cbd5e1'));
+        return;
+      }
+
+      this.processGenVecBlocks();
+      this.refreshGen();
+      this.move();
+      this.checkCollisions(); // 属性確定後に衝突判定
+
+      while (this.step < this.blocks.length && this.active) {
+        let block = this.blocks[this.step];
+        
+        if (block.type === 'gen') {
+          this.step++;
+        } 
+        else if (block.type === 'vec') {
+          this.applyVec(block.val);
+          this.step++;
+        } 
+        else if (block.type === 'trig') {
+          let hit = false;
+          if (block.val === 'time_half') {
+             if (this.trigAge >= 30) hit = true; 
+          } else if (block.val === 'time') {
+             if (this.trigAge >= 60) hit = true; 
+          } else if (block.val === 'tap') {
+             if (window.currentTapFlag) hit = true;
+          } 
+          // ★ 新設：対象に触れたら待機解除 ★
+          else if (block.val === 'touch') {
+             let t = block.target;
+             if (t === 'enemy') {
+               let target = getNearestEnemy(this.x, this.y);
+               if (target && Math.hypot(target.x - this.x, target.y - this.y) < (this.radius * this.scale) + target.radius) hit = true;
+             } else if (t === 'wall') {
+               if (this.x < 0 || this.x > width || this.y < 0 || this.y > height) hit = true;
+             } else if (t === 'player') {
+               if (Math.hypot(player.x - this.x, player.y - this.y) < (this.radius * this.scale) + player.radius) hit = true;
+             } else if (t === 'magic') {
+               // 他の魔法弾と衝突したか判定
+               for(let m of magics) {
+                 if (m !== this && m.active && Math.hypot(m.x - this.x, m.y - this.y) < (this.radius * this.scale) + (m.radius * m.scale)) {
+                   hit = true; break;
+                 }
+               }
+             }
+          }
+          
+          if (hit) { this.step++; this.trigAge = 0; } 
+          else { break; } 
+        } 
+        else if (block.type === 'act') {
+          this.executeAction(block.val, block.target);
+          this.step++;
+        }
+        else if (block.type === 'ctrl') {
+          if (block.val === 'repeat') {
+            if (this.repeatLeft === -1) this.repeatLeft = parseInt(block.target);
+            if (this.repeatLeft > 0) {
+              this.repeatLeft--; this.step = 0; break; 
+            } else { this.step++; }
+          }
+        }
+      }
+
+      if (this.x < -200 || this.x > width + 200 || this.y < -200 || this.y > height + 200) this.active = false;
+    }
+
+    move() {
+      if (this.vec === 'forward') {
+        this.x += this.vx; this.y += this.vy;
+      } else if (this.vec === 'zigzag') {
+        this.x += this.vx;
+        this.y = this.baseY + Math.sin(this.lifeTime * 0.15) * 50 * this.scale;
+        this.baseY += this.vy; 
+      } else if (this.vec === 'orbit') {
+        this.orbitAngle += 0.08;
+        this.x = player.x + Math.cos(this.orbitAngle) * 80 * this.scale;
+        this.y = player.y + Math.sin(this.orbitAngle) * 80 * this.scale;
+      } else if (this.vec === 'homing') {
+        let target = getNearestEnemy(this.x, this.y);
+        if (target) {
+          let dx = target.x - this.x, dy = target.y - this.y;
+          let dist = Math.hypot(dx, dy);
+          if (dist > 0) {
+            this.vx = (this.vx * 0.9) + ((dx / dist) * this.speed * 0.1);
+            this.vy = (this.vy * 0.9) + ((dy / dist) * this.speed * 0.1);
+          }
+        } else {
+          if (this.vx === 0 && this.vy === 0) this.vx = this.speed;
+        }
+        this.x += this.vx; this.y += this.vy;
+      } else if (this.vec === 'return') {
+        let dx = player.x - this.x, dy = player.y - this.y;
+        let dist = Math.hypot(dx, dy);
+        if (dist > 0) {
+          this.vx = (this.vx * 0.9) + ((dx / dist) * this.speed * 0.15);
+          this.vy = (this.vy * 0.9) + ((dy / dist) * this.speed * 0.15);
+        }
+        this.x += this.vx; this.y += this.vy;
+      } else if (this.vx !== 0 || this.vy !== 0) {
+        this.x += this.vx; this.y += this.vy;
+      }
+    }
+
+    waterVanish() {
+      if (!this.active) return;
+      this.active = false;
+      for (let i = 0; i < 10; i++) {
+        particles.push(new Particle(this.x, this.y, GEN_CONFIG.water.glow));
+      }
+    }
+
+    waterSplitOnImpact() {
+      if (this.gen !== 'water' || this.hasSplit || !this.active) return;
+      this.hasSplit = true;
+      const speed = MagicStats.getProjectileSpeed('water', true);
+      const shardBlocks = [
+        { type: 'gen', val: 'water', target: 'none' },
+        { type: 'vec', val: 'forward', target: 'none' }
+      ];
+      const mk = (vx, vy, ox) => new Magic(this.x + ox, this.y, shardBlocks, {
+        gen: 'water', vec: 'forward', scale: this.scale * 0.85,
+        color: GEN_CONFIG.water.color, speed: speed,
+        vx, vy, angle: Math.atan2(vy, vx),
+        hasSplit: true, isWaterShard: true, durability: 1, spawnGrace: 5, wallBounced: false
+      });
+      if (!registerMagicSpawn(2)) { this.active = false; return; }
+      const off = this.radius * 2;
+      magics.push(mk(-speed, 0, -off), mk(speed, 0, off));
+      spawnImpactField(this.x, this.y, 'water', this.scale);
+      this.active = false;
+    }
+
+    waterBounceSplash() {
+      for (let i = 0; i < 6; i++) {
+        particles.push(new Particle(this.x, this.y, GEN_CONFIG.water.glow));
+      }
+    }
+
+    waterBounceWalls() {
+      const r = this.radius * this.scale;
+      const hitWall = this.x < r || this.x > width - r || this.y < r || this.y > height - r;
+      if (!hitWall) return false;
+
+      if (this.wallBounced) {
+        this.waterVanish();
+        return true;
+      }
+
+      if (this.x < r) { this.x = r; this.vx = Math.abs(this.vx) * WATER_BOUNCE_DAMP; }
+      if (this.x > width - r) { this.x = width - r; this.vx = -Math.abs(this.vx) * WATER_BOUNCE_DAMP; }
+      if (this.y < r) { this.y = r; this.vy = Math.abs(this.vy) * WATER_BOUNCE_DAMP; }
+      if (this.y > height - r) { this.y = height - r; this.vy = -Math.abs(this.vy) * WATER_BOUNCE_DAMP; }
+      this.wallBounced = true;
+      this.waterBounceSplash();
+      return true;
+    }
+
+    handleWaterHit(onPrimaryHit) {
+      if (this.gen !== 'water' || !this.active) return false;
+      if (this.isWaterShard) return false;
+      if (onPrimaryHit) onPrimaryHit();
+      this.waterSplitOnImpact();
+      return true;
+    }
+
+    applyGenElementHit(block, isIbara) {
+      if (this.gen === 'fire') {
+        const canBurn = isIbara || NATURAL_PROP_TYPES.has(block.type) || block.burnTimer !== undefined;
+        if (canBurn) {
+          igniteNaturalBlock(block);
+          for (let i = 0; i < 10; i++) {
+            particles.push(new Particle(
+              block.x + Math.random() * block.width,
+              block.y + Math.random() * block.height,
+              '#f97316'
+            ));
+          }
+        }
+      } else if (this.gen === 'lightning') {
+        // 雷は弾体ヒットでは燃やさない
+      } else if (this.gen === 'water') {
+        if (block.isBurning) {
+          block.isBurning = false;
+          block.burnTimer = 0;
+        }
+      } else if (this.gen === 'wood' && isIbara) {
+        const g = snapGrid(block.x, block.y);
+        if (!woodBlocks.some(b => b.active && b.x === g.x && b.y === g.y)) {
+          woodBlocks.push(new WoodBlock(g.x, g.y));
+        }
+      } else if (this.gen === 'earth') {
+        // 土は既存の岩ブロックには追加ダメージのみ
+      }
+    }
+
+    checkCollisions() {
+      if (!this.gen || !this.active) return;
+
+      // 水の欠片：壁で1回だけ跳ね返る / 敵に触れたら消える
+      if (this.gen === 'water' && this.isWaterShard) {
+        if (this.spawnGrace > 0) {
+          this.spawnGrace--;
+        } else {
+          for (let e of enemies) {
+            if (e.active && Math.hypot(e.x - this.x, e.y - this.y) < (this.radius * this.scale) + e.radius) {
+              this.waterVanish();
+              return;
+            }
+          }
+          this.waterBounceWalls();
+        }
+      }
+      
+      // 敵との衝突判定
+      for (let e of enemies) {
+        if (e.active && !this.hitEnemies.has(e)) {
+          let dist = Math.hypot(e.x - this.x, e.y - this.y);
+          if (dist < (this.radius * this.scale) + e.radius) {
+            
+            const combat = MagicStats.getCombat(this.gen);
+            const damage = combat.hitDamage;
+            MagicStats.applyElementHitEffects(e, this.gen);
+
+            applyDamage(e, damage, e.x, e.y - e.radius, 'enemy');
+            this.hitEnemies.add(e);
+            if (this.gen === 'water') {
+              if (e.hp <= 0) e.die();
+              if (this.isWaterShard) { this.waterVanish(); return; }
+              this.handleWaterHit(() => spawnImpactField(e.x, e.y, 'water', this.scale));
+              return;
+            }
+            spawnImpactField(e.x, e.y, this.gen, this.scale);
+            this.durability--;
+            
+            for(let i=0; i<8; i++) particles.push(new Particle(this.x, this.y, this.color || '#cbd5e1'));
+
+            if (e.hp <= 0) {
+              e.die();
+            }
+
+            if (this.durability <= 0) {
+              this.active = false;
+              return;
+            }
+          }
+        }
+      }
+
+      // 自然物との衝突判定
+      for (let block of getNaturalBlocks()) {
+        if (block.active) {
+          let closestX = Math.max(block.x, Math.min(this.x, block.x + block.width));
+          let closestY = Math.max(block.y, Math.min(this.y, block.y + block.height));
+          let dist = Math.hypot(this.x - closestX, this.y - closestY);
+          if (dist < (this.radius * this.scale)) {
+            if (this.gen === 'water') {
+              if (block.isBurning) {
+                block.isBurning = false;
+                block.burnTimer = 0;
+              }
+              if (this.isWaterShard) {
+                if (this.spawnGrace <= 0) this.waterVanish();
+                return;
+              }
+              this.handleWaterHit(() => spawnImpactField(closestX, closestY, 'water', this.scale));
+              return;
+            }
+            if (!this.hitSurfaces.has(block)) {
+              this.hitSurfaces.add(block);
+              this.applyGenElementHit(block, !block.type || block.type === 'bush');
+              spawnImpactField(closestX, closestY, this.gen, this.scale);
+            }
+            this.durability--;
+            for(let i=0; i<8; i++) particles.push(new Particle(this.x, this.y, this.color || '#cbd5e1'));
+            if (this.durability <= 0) { this.active = false; return; }
+          }
+        }
+      }
+
+      for (let block of woodBlocks) {
+        if (!block.active || block.isCharcoal) continue;
+        if (collideCircleRect(this.x, this.y, this.radius * this.scale, block)) {
+          if (this.gen === 'water') {
+            if (this.isWaterShard) {
+              if (this.spawnGrace <= 0) this.waterVanish();
+              return;
+            }
+            this.handleWaterHit(() => spawnImpactField(block.x + block.width / 2, block.y + block.height / 2, 'water', this.scale));
+            return;
+          }
+          if (!this.hitSurfaces.has(block)) {
+            this.hitSurfaces.add(block);
+            this.applyGenElementHit(block, false);
+            spawnImpactField(block.x + block.width / 2, block.y + block.height / 2, this.gen, this.scale);
+          }
+          this.durability--;
+          if (this.durability <= 0) { this.active = false; return; }
+        }
+      }
+
+      // 岩・土ブロックとの衝突判定
+      if (this.active) {
+        for (let block of [...rockBlocks, ...earthBlocks]) {
+          if (block.active) {
+            let closestX = Math.max(block.x, Math.min(this.x, block.x + block.width));
+            let closestY = Math.max(block.y, Math.min(this.y, block.y + block.height));
+            let dist = Math.hypot(this.x - closestX, this.y - closestY);
+            if (dist < (this.radius * this.scale)) {
+              if (this.gen === 'water') {
+                if (this.isWaterShard) {
+                  if (this.spawnGrace <= 0) this.waterVanish();
+                  return;
+                }
+                this.handleWaterHit(() => spawnImpactField(closestX, closestY, 'water', this.scale));
+                return;
+              }
+              this.durability--;
+              for(let i=0; i<8; i++) particles.push(new Particle(this.x, this.y, this.color || '#cbd5e1'));
+              if (this.durability <= 0) {
+                this.active = false;
+                return;
+              }
+            }
+          }
+        }
+      }
+
+      // 壁（画面端）との衝突判定
+      if (this.x - this.radius * this.scale < 0 || this.x + this.radius * this.scale > width ||
+          this.y - this.radius * this.scale < 0 || this.y + this.radius * this.scale > height) {
+        if (this.gen === 'water') {
+          if (this.isWaterShard) {
+            if (this.spawnGrace <= 0) this.waterBounceWalls();
+          } else {
+            this.handleWaterHit();
+          }
+          return;
+        }
+        if (!this.hitWall) {
+          this.hitWall = true;
+          this.durability--;
+          for(let i=0; i<8; i++) particles.push(new Particle(this.x, this.y, this.color || '#cbd5e1'));
+          if (this.durability <= 0) {
+            this.active = false;
+            return;
+          }
+        }
+      } else {
+        this.hitWall = false;
+      }
+    }
+
+    executeAction(act, target) {
+      if (act === 'explode') {
+        createMassExplosion(this.x, this.y, this.gen, 100 * this.scale);
+        this.active = false;
+      } else if (act === 'split') {
+        let remainingBlocks = this.blocks.slice(this.step + 1);
+        let speed = Math.hypot(this.vx, this.vy) || this.speed;
+        let angle = Math.atan2(this.vy, this.vx);
+        if (this.vx === 0 && this.vy === 0) angle = this.angle;
+
+        if (!registerMagicSpawn(2)) { this.active = false; return; }
+        let m1 = new Magic(this.x, this.y, remainingBlocks, { gen: this.gen, vec: 'forward', scale: this.scale, color: this.color, vx: Math.cos(angle - 0.5) * speed, vy: Math.sin(angle - 0.5) * speed, age: this.age, repeatLeft: this.repeatLeft, durability: this.durability, hitWall: this.hitWall, angle: angle - 0.5, hasSplit: this.hasSplit });
+        let m2 = new Magic(this.x, this.y, remainingBlocks, { gen: this.gen, vec: 'forward', scale: this.scale, color: this.color, vx: Math.cos(angle + 0.5) * speed, vy: Math.sin(angle + 0.5) * speed, age: this.age, repeatLeft: this.repeatLeft, durability: this.durability, hitWall: this.hitWall, angle: angle + 0.5, hasSplit: this.hasSplit });
+        magics.push(m1, m2);
+        this.active = false;
+        this.step = this.blocks.length; 
+      } else if (act === 'grow') {
+        this.scale *= 1.5;
+        genFields.forEach(g => {
+          if (g.active && Math.hypot(g.x - this.x, g.y - this.y) < 55 * this.scale) {
+            g.maxAge += 60;
+            g.radius *= 1.2;
+          }
+        });
+      } else if (act === 'hard') {
+        this.durability += 1; // 耐久力を増やして貫通させる
+        
+      // ★ 対象指定のアクション ★
+      } else if (act === 'stop') {
+        if (target === 'magic') { this.vx = 0; this.vy = 0; this.vec = 'none'; } 
+        else { this.applyStatusBurst('stop', target); }
+      } else if (act === 'slow') {
+        if (target === 'magic') { this.vx *= 0.4; this.vy *= 0.4; this.speed *= 0.4; } 
+        else { this.applyStatusBurst('slow', target); }
+      } else if (act === 'speedup') {
+        if (target === 'magic') { this.vx *= 1.5; this.vy *= 1.5; this.speed *= 1.5; } 
+        else { this.applyStatusBurst('speedup', target); }
+      } else if (act === 'pull') {
+        let pullRadius = 180 * this.scale;
+        const pullLimit = PULL_MASS_LIMIT + Math.floor(player.level / 5);
+        particles.push({
+          x: this.x, y: this.y, life: 1.0, color: '#a855f7',
+          update: function() { this.life -= 0.1; },
+          draw: function(ctx) {
+            if(this.life<=0) return;
+            ctx.globalAlpha = this.life; ctx.strokeStyle = this.color; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(this.x, this.y, this.life*pullRadius, 0, Math.PI*2); ctx.stroke();
+            ctx.globalAlpha = 1.0;
+          }
+        });
+        enemies.forEach(e => {
+          if (e.active) {
+            let dx = this.x - e.x; let dy = this.y - e.y;
+            if (Math.hypot(dx, dy) < pullRadius) {
+              e.applyEffect('pulled');
+              e.x += dx * 0.3; e.y += dy * 0.3;
+            }
+          }
+        });
+        genFields.forEach(g => {
+          if (!g.active || g.cfg.mass > pullLimit) return;
+          const dx = this.x - g.x, dy = this.y - g.y;
+          if (Math.hypot(dx, dy) < pullRadius) { g.x += dx * 0.2; g.y += dy * 0.2; }
+        });
+        earthBlocks.forEach(b => {
+          if (!b.active || b.mass > pullLimit) return;
+          const cx = b.x + b.width / 2, cy = b.y + b.height / 2;
+          const dx = this.x - cx, dy = this.y - cy;
+          if (Math.hypot(dx, dy) < pullRadius) { b.x += dx * 0.08; b.y += dy * 0.08; }
+        });
+      }
+    }
+
+    applyStatusBurst(type, targetType) {
+      let radius = 130 * this.scale;
+      let color = type === 'stop' ? '#cbd5e1' : type === 'slow' ? '#7dd3fc' : '#fde047';
+      
+      particles.push({
+        x: this.x, y: this.y, life: 1.0, color: color,
+        update: function() { this.life -= 0.05; },
+        draw: function(ctx) {
+          if(this.life<=0) return;
+          ctx.globalAlpha = this.life; ctx.strokeStyle = this.color; ctx.lineWidth = 4;
+          ctx.beginPath(); ctx.arc(this.x, this.y, (1-this.life)*radius, 0, Math.PI*2); ctx.stroke();
+          ctx.globalAlpha = 1.0;
+        }
+      });
+
+      if (targetType === 'enemy') {
+        enemies.forEach(e => {
+          if (e.active && Math.hypot(e.x - this.x, e.y - this.y) < radius) e.applyEffect(type);
+        });
+      } else if (targetType === 'player') {
+        if (Math.hypot(player.x - this.x, player.y - this.y) < radius) player.applyEffect(type);
+      }
+    }
+
+    draw(ctx) {
+      if (!this.active || !this.gen) return;
+      ctx.save();
+      ctx.translate(this.x, this.y);
+      ctx.scale(this.scale, this.scale);
+
+      let alpha = 1.0;
+      if (this.maxAge - this.age < 60) alpha = (Math.floor(frameCount / 4) % 2 === 0) ? 0.35 : 1.0;
+      drawGenVisual(ctx, this.gen, this.radius, { alpha, shadowBlur: 20, lineWidth: 3 });
+
+      ctx.restore();
+    }
+  }
+
+  class Particle {
+    constructor(x, y, color) {
+      this.x = x; this.y = y; this.color = color;
+      const angle = Math.random() * Math.PI * 2;
+      const speed = Math.random() * 6 + 2;
+      this.vx = Math.cos(angle) * speed; this.vy = Math.sin(angle) * speed;
+      this.life = 1.0; this.decay = Math.random() * 0.04 + 0.02;
+      this.size = Math.random() * 5 + 3;
+    }
+    update() { this.x += this.vx; this.y += this.vy; this.life -= this.decay; }
+    draw(ctx) {
+      if (this.life <= 0) return;
+      ctx.globalAlpha = this.life; ctx.fillStyle = this.color;
+      ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI*2); ctx.fill();
+      ctx.globalAlpha = 1.0;
+    }
+  }
+
+  function getNearestEnemy(x, y) {
+    let nearest = null, minDist = Infinity;
+    for (let e of enemies) {
+      if (e.active) {
+        let d = Math.hypot(e.x - x, e.y - y);
+        if (d < minDist) { minDist = d; nearest = e; }
+      }
+    }
+    return nearest;
+  }
+
+  function createExplosion(x, y, type) {
+    let color = '#fff';
+    if (type === 'fire') color = '#fb923c';
+    else if (type === 'lightning') color = '#fde047';
+    else if (type === 'water') color = '#60a5fa';
+    else if (type === 'enemy') color = '#f43f5e';
+
+    for (let i = 0; i < 25; i++) particles.push(new Particle(x, y, color));
+    particles.push({
+      x: x, y: y, life: 1.0, color: color,
+      update: function() { this.life -= 0.05; },
+      draw: function(ctx) {
+        if(this.life<=0) return;
+        ctx.globalAlpha = this.life; ctx.strokeStyle = this.color; ctx.lineWidth = 6;
+        ctx.beginPath(); ctx.arc(this.x, this.y, (1-this.life)*100, 0, Math.PI*2); ctx.stroke();
+        ctx.globalAlpha = 1.0;
+      }
+    });
+  }
+
+  let ibaraBlocks = [];
+  let rockBlocks = [];
+  let propBlocks = [];
+  let mapTerrain = null;
+  let gameCleared = false;
+  let currentLevel = 1;
+
+  function initLevel(level) {
+    ibaraBlocks = [];
+    rockBlocks = [];
+    propBlocks = [];
+    mapTerrain = null;
+    woodBlocks = [];
+    earthBlocks = [];
+    genFields = [];
+    machines = [];
+    weightSwitches = [];
+    enemies = [];
+    magics = [];
+    particles = [];
+    damageNumbers = [];
+    magicSpawnCount = 0;
+
+    let blockWidth = TILE_W;
+    let blockHeight = TILE_H;
+
+    if (level === 'custom') {
+      if (createMapData.player) {
+        player.x = createMapData.player.x;
+        player.y = createMapData.player.y;
+      }
+      chest.active = true;
+      if (createMapData.chest) {
+        chest.x = createMapData.chest.x - chest.width / 2;
+        chest.y = createMapData.chest.y - chest.height / 2;
+      }
+
+      mapTerrain = { ...createMapData.terrain };
+      createMapData.enemies.forEach(pos => {
+        enemies.push(new Enemy(pos.x, pos.y));
+      });
+      createMapData.props.forEach(pos => {
+        propBlocks.push(new MapProp(pos.gridX, pos.gridY, pos.type));
+      });
+    }
+    else {
+      // 通常レベルのロード
+      player.x = width * 0.15; player.y = height / 2;
+      chest.active = true;
+      chest.x = width * 0.8;
+      chest.y = height / 2 - chest.height / 2;
+
+      if (level === 1) {
+      // 第1階層: 中央に縦一列の茨の壁
+      let ibaraX = width * 0.45;
+      let numBlocks = Math.ceil(height / blockHeight);
+      for (let i = 0; i < numBlocks; i++) {
+        ibaraBlocks.push(new IbaraBlock(ibaraX, i * blockHeight, blockWidth, blockHeight));
+      }
+      enemies = []; // 第1階層は敵なし
+    } 
+    else if (level === 2) {
+      // 第2階層: 二重の壁（分裂を活かせる配置）
+      let ibaraX1 = width * 0.4;
+      let ibaraX2 = width * 0.55;
+      let numBlocks = Math.ceil(height / blockHeight);
+      
+      for (let i = 0; i < numBlocks; i++) {
+        // 1重目の壁 (上側と下側を塞ぐ)
+        if (i < numBlocks * 0.45 || i > numBlocks * 0.55) {
+          ibaraBlocks.push(new IbaraBlock(ibaraX1, i * blockHeight, blockWidth, blockHeight));
+        }
+        // 2重目の壁 (中央付近を塞ぐ)
+        if (i >= numBlocks * 0.35 && i <= numBlocks * 0.65) {
+          ibaraBlocks.push(new IbaraBlock(ibaraX2, i * blockHeight, blockWidth, blockHeight));
+        }
+      }
+      
+      // 敵を2体配置
+      enemies.push(new Enemy(width * 0.7, height * 0.3));
+      enemies.push(new Enemy(width * 0.7, height * 0.7));
+    } 
+    else if (level === 3) {
+      // 第3階層: 複雑な配置（ホーミング等を活かす）
+      let numBlocks = Math.ceil(height / blockHeight);
+      for (let i = 0; i < numBlocks; i++) {
+        if (i % 3 !== 0) {
+          ibaraBlocks.push(new IbaraBlock(width * 0.35, i * blockHeight, blockWidth, blockHeight));
+        }
+        if ((i + 1) % 3 !== 0) {
+          ibaraBlocks.push(new IbaraBlock(width * 0.55, i * blockHeight, blockWidth, blockHeight));
+        }
+      }
+      
+      // 敵を3体配置
+      enemies.push(new Enemy(width * 0.7, height * 0.25));
+      enemies.push(new Enemy(width * 0.7, height * 0.5));
+      enemies.push(new Enemy(width * 0.7, height * 0.75));
+
+      machines.push(new Machine(width * 0.62, height * 0.15));
+      weightSwitches.push(new WeightSwitch(width * 0.55, height * 0.85));
+    }
+
+    // インベントリの同期
+    syncInventory();
+    }
+  }
+
+  function nextLevel() {
+    isPaused = true;
+    
+    if (isCustomPlay) {
+      const reward = createMapData.chest.reward;
+      inventory.total[reward] = 1; // 報酬をインベントリへ追加
+      
+      const rText = getMagicSummaryText([{ type: 'gen', val: reward }]).replace(/[a-zA-Z]/g, '');
+      showMessage(`カスタムマップクリア！『${rText}』を獲得した！`);
+      
+      isCustomPlay = false;
+      
+      setTimeout(() => {
+        resetTabStyles();
+        viewEditor.classList.remove('hidden-view');
+        tabEditor.className = 'flex-1 py-3 bg-sky-400 text-white rounded-2xl font-bold shadow-md transform scale-105 transition-all text-lg border-2 border-sky-500';
+        syncInventory();
+      }, 2500);
+      return;
+    }
+    
+    if (currentLevel === 1) {
+      inventory.total.split = 1;
+      inventory.total.water = 1;
+      showMessage("第1階層クリア！『分裂』と『水』の魔法を獲得した！");
+      currentLevel = 2;
+      setTimeout(() => {
+        initLevel(2);
+        isPaused = false;
+      }, 2500);
+    } else if (currentLevel === 2) {
+      inventory.total.homing = 1;
+      inventory.total.wood = 1;
+      showMessage("第2階層クリア！『ホーミング』と『木』の魔法を獲得した！");
+      currentLevel = 3;
+      setTimeout(() => {
+        initLevel(3);
+        isPaused = false;
+      }, 2500);
+    } else if (currentLevel === 3) {
+      inventory.total.lightning = 1;
+      inventory.total.earth = 1;
+      gameCleared = true;
+      showMessage("ダンジョンクリア！『雷』と『土』の魔法を獲得した！");
+    }
+  }
+
+  function init() {
+    width = window.innerWidth || 800; height = window.innerHeight || 600;
+    canvas.width = width; canvas.height = height;
+    
+    currentLevel = 1;
+    gameCleared = false;
+    chest.active = true;
+
+    // プレイヤーのステータスをリセット
+    player.hp = player.maxHp;
+    player.mp = player.maxMp;
+    player.level = 1;
+    player.exp = 0;
+    player.maxExp = 40;
+    player.invincibleTimer = 0;
+    player.animState = 'idle';
+    player.animTimer = 0;
+    player.facing = 'down';
+    
+    // ワークスペースを選択中キーの魔法で復元
+    loadSavedMagicsFromStorage();
+    ensureDefaultSavedMagics();
+    loadWorkspaceForSlot(activeMagicSlot);
+    updateWorkspaceSlots();
+    updatePlayerHUD();
+    updateSavedMagicsHUD();
+
+    // インベントリの初期状態設定（基礎魔法すべて解放）
+    unlockAllBasicMagic();
+
+    initLevel(1);
+    if (!gameLoopStarted) {
+      gameLoopStarted = true;
+      gameLoop();
+    }
+  }
+
+  function gameLoop() {
+    try {
+      window.currentTapFlag = globalTapFlag;
+      globalTapFlag = false; 
+
+      if (!isPaused) {
+        frameCount++;
+        player.update();
+        enemies.forEach(e => e.update());
+        ibaraBlocks.forEach(b => b.update());
+        propBlocks.forEach(b => b.update());
+        woodBlocks.forEach(b => b.update());
+        genFields = genFields.filter(g => g.active); genFields.forEach(g => g.update());
+        machines.forEach(m => m.update());
+        weightSwitches.forEach(s => s.update());
+        const activeMagics = magics.filter(m => m.active);
+        activeMagics.forEach(m => m.update());
+        magics = magics.filter(m => m.active);
+        particles = particles.filter(p => p.life > 0); particles.forEach(p => p.update());
+        damageNumbers = damageNumbers.filter(d => d.life > 0); damageNumbers.forEach(d => d.update());
+        
+        // クリア判定
+        if (!gameCleared && chest.active) {
+          let closestX = Math.max(chest.x, Math.min(player.x, chest.x + chest.width));
+          let closestY = Math.max(chest.y, Math.min(player.y, chest.y + chest.height));
+          let dist = Math.hypot(player.x - closestX, player.y - closestY);
+          if (dist < player.radius) {
+            nextLevel();
+          }
+        }
+      }
+
+      ctx.clearRect(0, 0, width, height);
+      PopArt.drawGround(ctx, width, height, frameCount, TILE_W, mapTerrain);
+
+      propBlocks.filter(b => b.active && !PopArt.isSolidPropType(b.type)).forEach(b => b.draw(ctx));
+
+      ibaraBlocks.forEach(b => b.draw(ctx));
+      woodBlocks.forEach(b => b.draw(ctx));
+      earthBlocks.forEach(b => b.draw(ctx));
+      rockBlocks.forEach(b => b.draw(ctx));
+      propBlocks.filter(b => b.active && PopArt.isSolidPropType(b.type)).forEach(b => b.draw(ctx));
+
+      // ギミック描画
+      machines.forEach(m => m.draw(ctx));
+      weightSwitches.forEach(s => s.draw(ctx));
+
+      // 生成フィールド（属性残留）の描画
+      genFields.forEach(g => g.draw(ctx));
+
+      // 宝箱の描画
+      chest.draw(ctx);
+
+      player.draw(ctx);
+      enemies.forEach(e => e.draw(ctx));
+      magics.forEach(m => m.draw(ctx));
+      particles.forEach(p => p.draw(ctx));
+      damageNumbers.forEach(d => d.draw(ctx));
+    } catch (err) {
+      console.error('gameLoop error:', err);
+    }
+
+    requestAnimationFrame(gameLoop);
+  }
+
+  // 魔法発射の共通ロジック
+  function castMagicToward(targetX, targetY) {
+    if (isPaused) return;
+    const blocksEl = document.querySelectorAll('.program-slot > .magic-block');
+    let blocks = [];
+    let isError = false;
+    
+    blocksEl.forEach(b => {
+      let target = 'none';
+      let slot = b.querySelector('.target-slot');
+      
+      if(slot) {
+        if(slot.children.length > 0) {
+          target = slot.children[0].dataset.val;
+        } else {
+          isError = true;
+        }
+      }
+      
+      let selectEl = b.querySelector('select');
+      if(selectEl) target = selectEl.value;
+
+      blocks.push({ type: b.dataset.type, val: b.dataset.val, target: target });
+    });
+
+    // 複数ジェネレートがある場合は最後の属性のみ有効
+    const genBlocks = blocks.filter(b => b.type === 'gen');
+    if (genBlocks.length > 1) {
+      const effectiveGen = genBlocks[genBlocks.length - 1].val;
+      blocks = blocks.filter(b => b.type !== 'gen');
+      blocks.unshift({ type: 'gen', val: effectiveGen, target: 'none' });
+    }
+
+    if (blocks.length === 0) { showMessage("エラー：魔法がセットされていません！"); return; }
+    if (!blocks.some(b => b.type === 'gen')) {
+      showMessage("エラー：「ジェネレート(属性)」がないと魔法が出ません！");
+      for(let i=0; i<8; i++) particles.push(new Particle(player.x+20, player.y, '#9ca3af'));
+      return;
+    }
+    if (isError) {
+      showMessage("エラー：対象がセットされていないスロットがあります！");
+      return;
+    }
+
+    // MPのチェックと消費
+    if (player.mp < 20) {
+      showMessage("MPが足りません！");
+      // MP不足時のグレーの煙エフェクト
+      for(let i=0; i<5; i++) particles.push(new Particle(player.x+20, player.y, '#64748b'));
+      return;
+    }
+    player.mp = Math.max(0, player.mp - 20);
+    updatePlayerHUD();
+
+    let angle = 0;
+    if (targetX !== undefined && targetY !== undefined) {
+      angle = Math.atan2(targetY - player.y, targetX - player.x);
+    }
+
+    if (!registerMagicSpawn(1)) return;
+    player.animState = 'attack';
+    player.animTimer = 18;
+    magics.push(new Magic(player.x, player.y, blocks, { angle: angle }));
+    for(let i=0; i<5; i++) particles.push(new Particle(player.x+20, player.y, '#fcd34d'));
+  }
+
+  // 魔法ブロック構成を要約した日本語テキストを返す
+  function getMagicSummaryText(blocks) {
+    if (!blocks || blocks.length === 0) return "未登録";
+    return blocks.map(b => {
+      let icon = "";
+      let name = "";
+      if (b.type === 'gen') {
+        if (b.val === 'fire') { icon = "🔥"; name = "炎"; }
+        else if (b.val === 'lightning') { icon = "⚡️"; name = "雷"; }
+        else if (b.val === 'water') { icon = "💧"; name = "水"; }
+        else if (b.val === 'wood') { icon = "🌿"; name = "木"; }
+        else if (b.val === 'earth') { icon = "🪨"; name = "土"; }
+      } else if (b.type === 'vec') {
+        if (b.val === 'forward') { icon = "➡️"; name = "前へ"; }
+        else if (b.val === 'zigzag') { icon = "〰️"; name = "ジグザグ"; }
+        else if (b.val === 'return') { icon = "🪃"; name = "戻る"; }
+        else if (b.val === 'orbit') { icon = "🔄"; name = "回る"; }
+        else if (b.val === 'homing') { icon = "🎯"; name = "ホーミング"; }
+      } else if (b.type === 'trig') {
+        if (b.val === 'touch') { icon = "💥"; name = `接触(${b.target})`; }
+        else if (b.val === 'tap') { icon = "👆"; name = "タップ"; }
+        else if (b.val === 'time_half') { icon = "⌛"; name = "0.5秒"; }
+        else if (b.val === 'time') { icon = "⏱️"; name = "1秒"; }
+      } else if (b.type === 'act') {
+        if (b.val === 'explode') { icon = "💥"; name = "爆発"; }
+        else if (b.val === 'pull') { icon = "🧲"; name = "吸引"; }
+        else if (b.val === 'split') { icon = "🔱"; name = "分裂"; }
+        else if (b.val === 'grow') { icon = "🏔️"; name = "巨大化"; }
+        else if (b.val === 'hard') { icon = "🛡️"; name = "貫通"; }
+        else if (b.val === 'stop') { icon = "🛑"; name = `停止(${b.target})`; }
+        else if (b.val === 'slow') { icon = "🐢"; name = `鈍足(${b.target})`; }
+        else if (b.val === 'speedup') { icon = "🐇"; name = `加速(${b.target})`; }
+      } else if (b.type === 'ctrl') {
+        if (b.val === 'repeat') { icon = "🔁"; name = `反復(${b.target}回)`; }
+      }
+      return `${icon}${name}`;
+    }).join("➔");
+  }
+
+  // 登録魔法HUDの更新
+  function updateSavedMagicsHUD() {
+    const slotZ = document.getElementById('hud-slot-z-desc');
+    const slotX = document.getElementById('hud-slot-x-desc');
+    const slotC = document.getElementById('hud-slot-c-desc');
+    
+    if (slotZ) slotZ.innerText = getMagicSummaryText(savedMagics.z);
+    if (slotX) slotX.innerText = getMagicSummaryText(savedMagics.x);
+    if (slotC) slotC.innerText = getMagicSummaryText(savedMagics.c);
+  }
+
+  // 現在のワークスペースの魔法をパースして取得（バリデーション付き）
+  function getWorkspaceBlocks() {
+    const blocks = parseWorkspaceBlocksRaw();
+    let isError = false;
+
+    document.querySelectorAll('#workspace .program-slot > .magic-block').forEach((b) => {
+      const slot = b.querySelector('.target-slot');
+      if (slot && slot.children.length === 0) isError = true;
+    });
+
+    if (blocks.length === 0) {
+      showMessage("エラー：ワークスペースが空です！");
+      return null;
+    }
+    if (!blocks.some(b => b.type === 'gen')) {
+      showMessage("エラー：「ジェネレート(属性)」を組み込んでください！");
+      return null;
+    }
+    if (isError) {
+      showMessage("エラー：対象スロットをすべて埋めてください！");
+      return null;
+    }
+    return blocks;
+  }
+
+  // 保存されたショートカット魔法の発射
+  function castSavedMagic(key) {
+    if (isPaused) return;
+    const blocks = savedMagics[key];
+    if (!blocks || blocks.length === 0 || !blocks.some(b => b.type === 'gen')) {
+      showMessage(`エラー：${key.toUpperCase()}キーには使える魔法がありません！`);
+      return;
+    }
+
+    // MPのチェックと消費
+    if (player.mp < 20) {
+      showMessage("MPが足りません！");
+      for(let i=0; i<5; i++) particles.push(new Particle(player.x+20, player.y, '#64748b'));
+      return;
+    }
+    player.mp = Math.max(0, player.mp - 20);
+    updatePlayerHUD();
+
+    // プレイヤーの前方向に向けて発射
+    const aim = getPlayerAimPoint();
+    const angle = Math.atan2(aim.y - player.y, aim.x - player.x);
+
+    // blocksはディープコピーして使用する
+    const magicBlocks = JSON.parse(JSON.stringify(blocks));
+    if (!registerMagicSpawn(1)) return;
+    magics.push(new Magic(player.x, player.y, magicBlocks, { angle: angle }));
+    for(let i=0; i<5; i++) particles.push(new Particle(player.x+20, player.y, '#fcd34d'));
+  }
+
+  // cast-btnが存在する場合のみイベントを登録（削除済みの場合はスキップ）
+  const castBtn = document.getElementById('cast-btn');
+  if (castBtn) {
+    castBtn.addEventListener('click', () => {
+      const aim = getPlayerAimPoint();
+      castMagicToward(aim.x, aim.y);
+    });
+  }
+
+  async function bootstrap() {
+    const result = await MagicStats.loadMagicStats();
+    syncGenConfigRef();
+    updateMagicStatsSourceBadge();
+    MagicStats.startAutoReload(3000);
+    init();
+    startCreateThumbRefresh();
+  }
+
+  window.onload = bootstrap;
+
+</script>
+</body>
+</html>

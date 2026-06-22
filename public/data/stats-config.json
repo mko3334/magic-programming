@@ -1,0 +1,4 @@
+{
+  "csvUrl": "/data/basic-magic-stats.csv",
+  "_comment": "Googleスプレッドシート連携: シートを「ウェブに公開」→ CSV形式のURLを csvUrl に貼り付け"
+}
