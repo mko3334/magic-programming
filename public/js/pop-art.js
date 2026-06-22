@@ -501,6 +501,15 @@
       if (player.effectType === 'stop') {
         blitAt(ctx, ['O..', '.O.'], cx - 14, cy - 28, 2, false, { ...PAL, O: '#fff', '.': null });
       }
+      if (player.burnTimer > 0) {
+        drawBurnOverlay(ctx, {
+          x: cx - player.radius,
+          y: cy - player.radius,
+          width: player.radius * 2,
+          height: player.radius * 2,
+          isBurning: true,
+        });
+      }
       return;
     }
 
@@ -508,6 +517,15 @@
     ctx.beginPath();
     ctx.arc(cx, cy, player.radius, 0, Math.PI * 2);
     ctx.fill();
+    if (player.burnTimer > 0) {
+      drawBurnOverlay(ctx, {
+        x: cx - player.radius,
+        y: cy - player.radius,
+        width: player.radius * 2,
+        height: player.radius * 2,
+        isBurning: true,
+      });
+    }
   }
 
   function drawEnemy(ctx, enemy, frame) {

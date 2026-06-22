@@ -1,0 +1,35 @@
+{
+  "bgm": {
+    "field": {
+      "label": "フィールド",
+      "file": "/assets/audio/BGM/フィールド.mp3",
+      "volume": 0.5,
+      "loop": true
+    },
+    "shoujo": {
+      "label": "乙女心はむずかしい",
+      "file": "/assets/audio/BGM/乙女心はむずかしい.mp3",
+      "volume": 0.5,
+      "loop": true
+    },
+    "chocomint": {
+      "label": "チョコミント",
+      "file": "/assets/audio/BGM/チョコミント.mp3",
+      "volume": 0.5,
+      "loop": true
+    },
+    "ponkotsu": {
+      "label": "ポンコツだっていいじゃない！",
+      "file": "/assets/audio/BGM/ポンコツだっていいじゃない！.mp3",
+      "volume": 0.5,
+      "loop": true
+    }
+  },
+  "se": {
+    "cast": {
+      "label": "魔法発動",
+      "file": "/assets/audio/SE/魔法発動.mp3",
+      "volume": 0.8
+    }
+  }
+}

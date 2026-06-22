@@ -11,113 +11,390 @@
     
     .hidden-view { display: none !important; }
 
+    /* プログラミングブロックサイズ（--block-scale で一括調整） */
+    #view-editor {
+      --block-scale: 1;
+    }
+
     /* 四角いブロックのデザイン */
-    .magic-block {
-      width: 76px;
-      min-height: 80px;
-      padding: 10px 0;
-      border-radius: 16px;
+    #view-editor .magic-block {
+      width: calc(76px * var(--block-scale));
+      min-height: calc(80px * var(--block-scale));
+      padding: calc(10px * var(--block-scale)) 0;
+      border-radius: calc(16px * var(--block-scale));
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       cursor: grab;
       flex-shrink: 0;
-      box-shadow: 0 4px 0 rgba(0,0,0,0.1);
+      box-shadow: 0 calc(4px * var(--block-scale)) 0 rgba(0,0,0,0.1);
       transition: transform 0.1s, box-shadow 0.1s;
       user-select: none;
       background-color: white;
       position: relative;
     }
-    .magic-block:active {
-      transform: translateY(4px);
+    #view-editor .magic-block:active {
+      transform: translateY(calc(4px * var(--block-scale)));
       box-shadow: 0 0 0 rgba(0,0,0,0.1);
       cursor: grabbing;
     }
     
-    .magic-block .icon { font-size: 26px; line-height: 1; margin-bottom: 2px; }
-    .magic-block .text { font-size: 11px; font-weight: bold; text-align: center; line-height: 1.2; }
+    #view-editor .magic-block .icon {
+      font-size: calc(26px * var(--block-scale));
+      line-height: 1;
+      margin-bottom: calc(2px * var(--block-scale));
+    }
+    #view-editor .magic-block .text {
+      font-size: calc(11px * var(--block-scale));
+      font-weight: bold;
+      text-align: center;
+      line-height: 1.2;
+    }
+    #view-editor .magic-block select {
+      width: 83%;
+      margin-top: calc(4px * var(--block-scale));
+      font-size: calc(10px * var(--block-scale));
+      padding: calc(2px * var(--block-scale)) 0;
+      border-radius: calc(4px * var(--block-scale));
+      border-width: calc(1px * var(--block-scale));
+    }
     
     /* ジャンルごとのカラー */
-    .magic-block.gen  { border: 3px solid #f97316; color: #c2410c; background: #fff7ed; } 
-    .magic-block.gen.wood  { border: 3px solid #22c55e; color: #15803d; background: #f0fdf4; }
-    .magic-block.gen.earth { border: 3px solid #a16207; color: #854d0e; background: #fefce8; }
-    .magic-block.vec  { border: 3px solid #3b82f6; color: #1d4ed8; background: #eff6ff; } 
-    .magic-block.trig { border: 3px solid #eab308; color: #a16207; background: #fefce8; } 
-    .magic-block.act  { border: 3px solid #a855f7; color: #7e22ce; background: #faf5ff; } 
-    .magic-block.ctrl { border: 3px solid #10b981; color: #047857; background: #ecfdf5; } 
+    #view-editor .magic-block.gen  { border: calc(3px * var(--block-scale)) solid #f97316; color: #c2410c; background: #fff7ed; } 
+    #view-editor .magic-block.gen.wood  { border: calc(3px * var(--block-scale)) solid #22c55e; color: #15803d; background: #f0fdf4; }
+    #view-editor .magic-block.gen.earth { border: calc(3px * var(--block-scale)) solid #a16207; color: #854d0e; background: #fefce8; }
+    #view-editor .magic-block.vec  { border: calc(3px * var(--block-scale)) solid #3b82f6; color: #1d4ed8; background: #eff6ff; } 
+    #view-editor .magic-block.trig { border: calc(3px * var(--block-scale)) solid #eab308; color: #a16207; background: #fefce8; } 
+    #view-editor .magic-block.act  { border: calc(3px * var(--block-scale)) solid #a855f7; color: #7e22ce; background: #faf5ff; } 
+    #view-editor .magic-block.ctrl { border: calc(3px * var(--block-scale)) solid #10b981; color: #047857; background: #ecfdf5; } 
 
     /* ★ 組み込み用対象ブロックのデザイン ★ */
-    .target-block {
-      min-width: 50px;
-      height: 24px;
-      padding: 0 6px;
-      border-radius: 12px;
+    #view-editor .target-block {
+      min-width: calc(50px * var(--block-scale));
+      height: calc(24px * var(--block-scale));
+      padding: 0 calc(6px * var(--block-scale));
+      border-radius: calc(12px * var(--block-scale));
       background: white;
-      border: 2px solid #cbd5e1;
-      font-size: 11px; font-weight: bold; color: #475569;
-      display: flex; align-items: center; justify-content: center; gap: 4px;
+      border: calc(2px * var(--block-scale)) solid #cbd5e1;
+      font-size: calc(11px * var(--block-scale));
+      font-weight: bold;
+      color: #475569;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: calc(4px * var(--block-scale));
       cursor: grab;
-      box-shadow: 0 2px 0 #cbd5e1;
+      box-shadow: 0 calc(2px * var(--block-scale)) 0 #cbd5e1;
     }
-    .target-block:active { box-shadow: 0 0 0 #cbd5e1; transform: translateY(2px); }
+    #view-editor .target-block:active {
+      box-shadow: 0 0 0 #cbd5e1;
+      transform: translateY(calc(2px * var(--block-scale)));
+    }
 
     /* ★ スロット (嵌め込む穴) のデザイン ★ */
-    .target-slot {
-      width: 66px; height: 30px;
-      border-radius: 15px; background: rgba(0,0,0,0.05);
-      border: 2px dashed #94a3b8;
-      margin-top: 6px;
-      display: flex; align-items: center; justify-content: center;
+    #view-editor .target-slot {
+      width: calc(66px * var(--block-scale));
+      height: calc(30px * var(--block-scale));
+      border-radius: calc(15px * var(--block-scale));
+      background: rgba(0,0,0,0.05);
+      border: calc(2px * var(--block-scale)) dashed #94a3b8;
+      margin-top: calc(6px * var(--block-scale));
+      display: flex;
+      align-items: center;
+      justify-content: center;
       transition: background 0.2s;
     }
-    .target-slot:empty::before {
+    #view-editor .target-slot:empty::before {
       content: '対象を置く';
-      color: #94a3b8; font-size: 10px; font-weight: bold;
+      color: #94a3b8;
+      font-size: calc(10px * var(--block-scale));
+      font-weight: bold;
     }
 
+    .block-target-row {
+      display: flex;
+      flex-direction: column;
+      gap: calc(3px * var(--block-scale));
+      width: 88%;
+      margin-top: calc(4px * var(--block-scale));
+    }
+    .block-target-row--dual {
+      gap: calc(2px * var(--block-scale));
+    }
+    .block-target-picker {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1px;
+      width: 100%;
+    }
+    .block-target-label {
+      font-size: calc(8px * var(--block-scale));
+      font-weight: bold;
+      color: #64748b;
+      line-height: 1;
+    }
+    .block-target-btn {
+      width: 100%;
+      min-height: calc(22px * var(--block-scale));
+      padding: calc(2px * var(--block-scale)) calc(4px * var(--block-scale));
+      border-radius: calc(10px * var(--block-scale));
+      border: calc(1.5px * var(--block-scale)) solid #cbd5e1;
+      background: white;
+      font-size: calc(9px * var(--block-scale));
+      font-weight: bold;
+      color: #475569;
+      cursor: pointer;
+      line-height: 1.2;
+    }
+    .block-target-btn.is-unset {
+      color: #94a3b8;
+      border-style: dashed;
+    }
+    .block-target-btn:hover { background: #f8fafc; border-color: #a855f7; }
+
+    #block-target-menu {
+      position: fixed;
+      z-index: 100;
+      min-width: 7.5rem;
+      background: white;
+      border: 2px solid #e9d5ff;
+      border-radius: 0.75rem;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.15);
+      padding: 0.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.125rem;
+    }
+    #block-target-menu.hidden { display: none; }
+    .block-target-menu-item {
+      border: none;
+      background: transparent;
+      text-align: left;
+      padding: 0.375rem 0.5rem;
+      border-radius: 0.5rem;
+      font-size: 0.6875rem;
+      font-weight: bold;
+      color: #334155;
+      cursor: pointer;
+    }
+    .block-target-menu-item:hover { background: #f3e8ff; color: #6d28d9; }
+
     /* プログラミングスロットのデザイン */
-    .program-slot {
-      width: 84px;
-      min-height: 88px;
-      border: 3px dashed #94a3b8;
-      border-radius: 20px;
+    #view-editor .program-slot {
+      width: calc(84px * var(--block-scale));
+      min-height: calc(88px * var(--block-scale));
+      border: calc(3px * var(--block-scale)) dashed #94a3b8;
+      border-radius: calc(20px * var(--block-scale));
       background: rgba(255, 255, 255, 0.5);
       display: flex;
       align-items: center;
       justify-content: center;
       position: relative;
-      margin-bottom: 32px;
+      margin-bottom: calc(32px * var(--block-scale));
       transition: all 0.2s;
     }
-    .program-slot:empty::before {
+    #view-editor .program-slot:empty::before {
       content: '魔法を置く';
       color: #94a3b8;
-      font-size: 11px;
+      font-size: calc(11px * var(--block-scale));
       font-weight: bold;
     }
-    .program-slot::after {
+    #view-editor .program-slot::after {
       content: '⬇️';
       position: absolute;
-      bottom: -28px;
+      bottom: calc(-28px * var(--block-scale));
       left: 50%;
       transform: translateX(-50%);
-      font-size: 18px;
+      font-size: calc(18px * var(--block-scale));
       color: #94a3b8;
       pointer-events: none;
     }
-    .program-slot:last-child { margin-bottom: 0; }
-    .program-slot:last-child::after { display: none; }
+    #view-editor .program-slot:last-child { margin-bottom: 0; }
+    #view-editor .program-slot:last-child::after { display: none; }
+
+    #view-editor #palette-blocks,
+    #view-editor #palette-targets {
+      gap: calc(8px * var(--block-scale));
+    }
+    #view-editor .magic-block .badge {
+      font-size: calc(10px * var(--block-scale));
+      width: calc(20px * var(--block-scale));
+      height: calc(20px * var(--block-scale));
+      top: calc(-8px * var(--block-scale));
+      right: calc(-8px * var(--block-scale));
+      border-width: calc(2px * var(--block-scale));
+    }
+
+    #view-editor .magic-block.has-infusion::after {
+      content: '✦';
+      position: absolute;
+      top: calc(-4px * var(--block-scale));
+      left: calc(-2px * var(--block-scale));
+      font-size: calc(11px * var(--block-scale));
+      color: #a855f7;
+      text-shadow: 0 0 4px rgba(168, 85, 247, 0.6);
+      pointer-events: none;
+    }
+    #view-editor .magic-block.infusion-selected {
+      outline: 2px solid #a855f7;
+      outline-offset: 2px;
+    }
+
+    #infusion-panel {
+      border: 2px solid #e9d5ff;
+      background: linear-gradient(180deg, #faf5ff 0%, #f8fafc 100%);
+    }
+    .infusion-panel-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+    .infusion-block-title {
+      font-size: 0.6875rem;
+      font-weight: bold;
+      color: #6d28d9;
+      line-height: 1.35;
+      word-break: keep-all;
+    }
+    .infusion-stat-row {
+      padding: 0.375rem 0;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+    }
+    .infusion-stat-row:last-child { border-bottom: none; }
+    .infusion-stat-label {
+      display: block;
+      font-size: 0.625rem;
+      font-weight: bold;
+      color: #475569;
+      line-height: 1.35;
+      margin-bottom: 0.25rem;
+      word-break: keep-all;
+    }
+    .infusion-stat-controls {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.25rem;
+    }
+    .infusion-stat-meta {
+      display: flex;
+      align-items: baseline;
+      gap: 0.375rem;
+      min-width: 0;
+    }
+    .infusion-stat-level {
+      font-size: 0.625rem;
+      font-weight: bold;
+      font-family: ui-monospace, monospace;
+      color: #7c3aed;
+      white-space: nowrap;
+    }
+    .infusion-stat-input {
+      width: 2.85rem;
+      font-size: 0.625rem;
+      font-weight: bold;
+      font-family: ui-monospace, monospace;
+      color: #7c3aed;
+      border: 1px solid #c4b5fd;
+      border-radius: 0.375rem;
+      padding: 0.125rem 0.2rem;
+      text-align: center;
+      background: white;
+      flex-shrink: 0;
+    }
+    .infusion-stat-input:focus {
+      outline: none;
+      border-color: #7c3aed;
+      box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.2);
+    }
+    .infusion-stat-btn.is-holding {
+      background: #ede9fe;
+      border-color: #7c3aed;
+    }
+    .infusion-stat-effect {
+      font-size: 0.5625rem;
+      color: #64748b;
+      white-space: nowrap;
+    }
+    .infusion-stat-btns {
+      display: flex;
+      gap: 0.25rem;
+      flex-shrink: 0;
+    }
+    .infusion-stat-btn {
+      width: 1.375rem;
+      height: 1.375rem;
+      border-radius: 0.375rem;
+      border: 1px solid #cbd5e1;
+      background: white;
+      font-weight: bold;
+      font-size: 0.75rem;
+      line-height: 1;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .infusion-stat-btn:hover:not(:disabled) { background: #f1f5f9; }
+    .infusion-stat-btn:disabled { opacity: 0.35; cursor: default; }
+
+    .palette-header {
+      display: flex;
+      flex-direction: column;
+      gap: 0.375rem;
+    }
+    .palette-toolstrip {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.25rem;
+      padding: 0.25rem 0.375rem;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 0.625rem;
+      white-space: nowrap;
+    }
+    .palette-toolstrip-group {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      flex-shrink: 0;
+    }
+    .palette-toolstrip-divider {
+      width: 1px;
+      height: 0.875rem;
+      background: #cbd5e1;
+      flex-shrink: 0;
+    }
+    .palette-mini-btn {
+      width: 1.125rem;
+      height: 1.125rem;
+      border-radius: 0.25rem;
+      border: 1px solid #cbd5e1;
+      background: white;
+      color: #475569;
+      font-weight: bold;
+      font-size: 0.625rem;
+      line-height: 1;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .palette-mini-btn:hover:not(:disabled) { background: #f1f5f9; }
+    .palette-mini-btn:disabled { opacity: 0.35; cursor: default; }
 
     .magic-slot-btn {
-      flex: 1;
-      padding: 0.5rem 0;
+      flex: none;
+      width: 1.75rem;
+      height: 1.75rem;
+      padding: 0;
       background: #1e293b;
       color: white;
-      border-radius: 0.75rem;
+      border-radius: 0.5rem;
       font-weight: bold;
-      font-size: 0.875rem;
-      border: 2px solid #334155;
+      font-size: 0.6875rem;
+      line-height: 1;
+      border: 1.5px solid #334155;
       transition: all 0.15s;
       cursor: pointer;
     }
@@ -125,10 +402,10 @@
     .magic-slot-btn.is-active {
       background: #0284c7;
       border-color: #0ea5e9;
-      box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.35);
-      transform: translateY(-1px);
+      box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.35);
     }
-    .magic-slot-btn:active { transform: scale(0.97); }
+    .magic-slot-btn:active { transform: scale(0.95); }
+    .magic-slot-btn.is-active:active { transform: scale(0.95); }
 
     .sortable-ghost { opacity: 0.3; }
     .sortable-drag { cursor: grabbing !important; z-index: 50; transform: scale(1.05); }
@@ -140,7 +417,7 @@
     #msg-overlay { transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); transform: translateY(-20px) scale(0.9); opacity: 0; }
     .show-msg { opacity: 1 !important; transform: translateY(0) scale(1) !important; }
 
-    #gameCanvas, #createCanvas {
+    #gameCanvas, #createCanvas, #editorSandboxCanvas {
       image-rendering: pixelated;
       image-rendering: crisp-edges;
     }
@@ -187,6 +464,82 @@
       font-size: 12px; background: white; color: #334155;
     }
     .stat-field input[type="color"] { height: 32px; padding: 2px; cursor: pointer; }
+
+    /* テストプレイ HUD */
+    .player-hud {
+      position: absolute;
+      top: 0.75rem;
+      left: 0.75rem;
+      z-index: 10;
+      pointer-events: none;
+      min-width: 8.5rem;
+      padding: 0.375rem 0.5rem;
+      border-radius: 0.625rem;
+      background: rgba(15, 23, 42, 0.72);
+      border: 1px solid rgba(51, 65, 85, 0.9);
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.18);
+      backdrop-filter: blur(6px);
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+      font-size: 9px;
+      line-height: 1;
+      color: #e2e8f0;
+    }
+    .player-hud-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      margin-bottom: 0.125rem;
+    }
+    .player-hud-lv {
+      font-weight: 800;
+      color: #fbbf24;
+      font-size: 9px;
+    }
+    .player-hud-mana {
+      font-weight: 800;
+      color: #c4b5fd;
+      font-size: 9px;
+      font-variant-numeric: tabular-nums;
+    }
+    .player-hud-stat {
+      display: grid;
+      grid-template-columns: 1.35rem 1fr auto;
+      align-items: center;
+      gap: 0.25rem;
+    }
+    .player-hud-label {
+      font-weight: 800;
+      font-size: 8px;
+      letter-spacing: 0.02em;
+    }
+    .player-hud-label.hp { color: #f87171; }
+    .player-hud-label.mp { color: #38bdf8; }
+    .player-hud-label.exp { color: #34d399; }
+    .player-hud-track {
+      height: 4px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.95);
+      overflow: hidden;
+    }
+    .player-hud-fill {
+      height: 100%;
+      border-radius: 999px;
+      transition: width 0.1s linear;
+    }
+    .player-hud-fill.hp { background: #ef4444; }
+    .player-hud-fill.mp { background: #0ea5e9; }
+    .player-hud-fill.exp { background: #10b981; }
+    .player-hud-val {
+      font-weight: 700;
+      font-size: 8px;
+      color: #cbd5e1;
+      font-variant-numeric: tabular-nums;
+      min-width: 2.6rem;
+      text-align: right;
+    }
   </style>
 </head>
 <body class="flex flex-col h-screen">
@@ -213,8 +566,25 @@
 <div id="view-editor" class="flex-1 flex flex-row p-3 gap-3 overflow-hidden">
   
   <!-- 左パネル：パレット領域 (ドラッグ中はここに戻して捨てる) -->
-  <div id="left-panel" class="w-1/3 max-w-[280px] min-w-[110px] bg-white rounded-3xl shadow-sm p-3 md:p-4 flex flex-col shrink-0 border border-gray-100 overflow-hidden transition-colors duration-200">
-    <div class="text-sm font-bold text-sky-500 mb-2 text-center md:text-left">✨ 基礎魔法</div>
+  <div id="left-panel" class="w-1/3 max-w-[280px] min-w-[148px] bg-white rounded-3xl shadow-sm p-2.5 md:p-3 flex flex-col shrink-0 border border-gray-100 overflow-hidden transition-colors duration-200">
+    <div class="palette-header shrink-0 mb-1.5">
+      <div class="flex items-center justify-between gap-1 min-w-0">
+        <span class="text-xs font-bold text-sky-500 truncate whitespace-nowrap">✨ 基礎魔法</span>
+        <span class="text-[8px] text-slate-400 truncate whitespace-nowrap" title="ブロックをダブルクリックで魔力注入">2xクリックで注入</span>
+      </div>
+      <div class="palette-toolstrip">
+        <div class="palette-toolstrip-group" title="注入用の魔力（敵撃破・階層クリアで獲得）">
+          <span class="text-[10px] leading-none">🔮</span>
+          <span id="editor-mana-display" class="text-[10px] font-bold text-violet-700 tabular-nums leading-none">0</span>
+        </div>
+        <div class="palette-toolstrip-divider"></div>
+        <div class="palette-toolstrip-group" title="ブロックの表示サイズ">
+          <button type="button" id="btn-block-scale-dec" class="palette-mini-btn" aria-label="ブロックを小さく">−</button>
+          <span id="block-scale-display" class="text-[9px] font-bold text-sky-600 tabular-nums w-7 text-center leading-none">100%</span>
+          <button type="button" id="btn-block-scale-inc" class="palette-mini-btn" aria-label="ブロックを大きく">+</button>
+        </div>
+      </div>
+    </div>
     <div id="palette-blocks" class="flex-1 flex flex-wrap gap-2 content-start justify-center overflow-y-auto pb-2 custom-scrollbar">
       <!-- ジェネレート -->
       <div class="magic-block gen" data-type="gen" data-val="fire"><div class="icon">🔥</div><div class="text">炎</div></div>
@@ -230,6 +600,7 @@
       <div class="magic-block vec" data-type="vec" data-val="zigzag"><div class="icon">〰️</div><div class="text">ジグザグ</div></div>
       <div class="magic-block vec" data-type="vec" data-val="return"><div class="icon">🪃</div><div class="text">戻ってくる</div></div>
       <div class="magic-block vec" data-type="vec" data-val="orbit"><div class="icon">🔄</div><div class="text">回る</div></div>
+      <div class="magic-block vec" data-type="vec" data-val="bounce"><div class="icon">🏐</div><div class="text">跳ねる</div></div>
       <div class="magic-block vec" data-type="vec" data-val="homing"><div class="icon">🎯</div><div class="text">ホーミング</div></div>
 
       <div class="w-full h-1 bg-gray-100 rounded-full my-1 shrink-0"></div>
@@ -237,32 +608,59 @@
       <!-- トリガー (スロット付き追加) -->
       <div class="magic-block trig" data-type="trig" data-val="touch">
         <div class="icon">💥</div><div class="text">触れたら</div>
-        <div class="target-slot"></div> <!-- スロット -->
+        <div class="block-target-row">
+          <div class="block-target-picker" data-target-key="target">
+            <button type="button" class="block-target-btn is-unset" data-val="none">🎯 対象</button>
+          </div>
+        </div>
       </div>
       <div class="magic-block trig" data-type="trig" data-val="tap"><div class="icon">👆</div><div class="text">タップ待機</div></div>
-      <div class="magic-block trig" data-type="trig" data-val="time_half"><div class="icon">⌛</div><div class="text">0.5秒待機</div></div>
-      <div class="magic-block trig" data-type="trig" data-val="time"><div class="icon">⏱️</div><div class="text">1秒待機</div></div>
+      <div class="magic-block trig" data-type="trig" data-val="wait"><div class="icon">⏱️</div><div class="text">待機</div></div>
 
       <div class="w-full h-1 bg-gray-100 rounded-full my-1 shrink-0"></div>
 
       <!-- アクション (スロット付き追加) -->
       <div class="magic-block act" data-type="act" data-val="explode"><div class="icon">💥</div><div class="text">爆発</div></div>
-      <div class="magic-block act" data-type="act" data-val="pull"><div class="icon">🧲</div><div class="text">吸い寄せる</div></div>
+      <div class="magic-block act" data-type="act" data-val="pull">
+        <div class="icon">🧲</div><div class="text">吸引</div>
+        <div class="block-target-row block-target-row--dual">
+          <div class="block-target-picker" data-target-key="target">
+            <span class="block-target-label">対象</span>
+            <button type="button" class="block-target-btn is-unset" data-val="none">🎯</button>
+          </div>
+          <div class="block-target-picker" data-target-key="targetTo">
+            <span class="block-target-label">向け先</span>
+            <button type="button" class="block-target-btn" data-val="magic">✨魔法</button>
+          </div>
+        </div>
+      </div>
       <div class="magic-block act" data-type="act" data-val="split"><div class="icon">🔱</div><div class="text">分裂</div></div>
       <div class="magic-block act" data-type="act" data-val="grow"><div class="icon">🏔️</div><div class="text">巨大化</div></div>
       <div class="magic-block act" data-type="act" data-val="hard"><div class="icon">🛡️</div><div class="text">強固</div></div>
       
       <div class="magic-block act" data-type="act" data-val="stop">
         <div class="icon">🛑</div><div class="text">止める</div>
-        <div class="target-slot"></div>
+        <div class="block-target-row">
+          <div class="block-target-picker" data-target-key="target">
+            <button type="button" class="block-target-btn is-unset" data-val="none">🎯 対象</button>
+          </div>
+        </div>
       </div>
       <div class="magic-block act" data-type="act" data-val="slow">
         <div class="icon">🐢</div><div class="text">スロー</div>
-        <div class="target-slot"></div>
+        <div class="block-target-row">
+          <div class="block-target-picker" data-target-key="target">
+            <button type="button" class="block-target-btn is-unset" data-val="none">🎯 対象</button>
+          </div>
+        </div>
       </div>
       <div class="magic-block act" data-type="act" data-val="speedup">
         <div class="icon">🐇</div><div class="text">加速</div>
-        <div class="target-slot"></div>
+        <div class="block-target-row">
+          <div class="block-target-picker" data-target-key="target">
+            <button type="button" class="block-target-btn is-unset" data-val="none">🎯 対象</button>
+          </div>
+        </div>
       </div>
 
       <div class="w-full h-1 bg-gray-100 rounded-full my-1 shrink-0"></div>
@@ -270,44 +668,77 @@
       <!-- 制御構文 -->
       <div class="magic-block ctrl" data-type="ctrl" data-val="repeat">
         <div class="icon">🔁</div><div class="text">最初から</div>
-        <select class="mt-1 w-10/12 text-[10px] bg-white border border-emerald-300 text-emerald-700 rounded outline-none text-center font-bold">
+        <select class="block-repeat-select mt-1 w-10/12 bg-white border border-emerald-300 text-emerald-700 rounded outline-none text-center font-bold">
           <option value="1">1回</option><option value="3">3回</option><option value="5">5回</option>
         </select>
       </div>
     </div>
     
+    <!-- 魔力注入パネル（パレットをダブルクリックで開く） -->
+    <div id="infusion-panel" class="mt-1.5 shrink-0 rounded-xl p-2 flex flex-col gap-1 hidden">
+      <div class="infusion-panel-head">
+        <div class="min-w-0 flex-1">
+          <div id="infusion-block-title" class="infusion-block-title">—</div>
+          <div class="text-[8px] text-slate-500 mt-0.5 leading-snug">属性: 1魔力=数値±1 ／ その他: ±1%（戻すと返還）</div>
+        </div>
+        <div class="text-right shrink-0 pl-1">
+          <div class="text-[8px] font-bold text-violet-500 leading-none">魔力</div>
+          <div id="infusion-mana-display" class="text-xs font-bold text-violet-700 tabular-nums leading-tight">0</div>
+        </div>
+      </div>
+      <div id="infusion-stat-rows" class="flex flex-col max-h-40 overflow-y-auto custom-scrollbar"></div>
+    </div>
+
     <!-- ★ 対象ブロックパレット ★ -->
-    <div class="text-sm font-bold text-pink-500 mb-2 mt-3 text-center md:text-left">🎯 対象</div>
-    <div id="palette-targets" class="flex flex-wrap justify-center content-start gap-2 overflow-y-auto pb-1 custom-scrollbar shrink-0 max-h-32">
+    <div class="text-[10px] font-bold text-pink-500 mb-1 mt-1.5 shrink-0 text-center md:text-left">🎯 対象</div>
+    <p class="text-[9px] text-slate-400 mb-1 shrink-0 leading-snug">対象が必要なブロックは、ブロック内のボタンをクリックして選びます。</p>
+    <div id="palette-targets" class="hidden" aria-hidden="true">
       <div class="target-block" data-type="target" data-val="enemy">👾 敵</div>
       <div class="target-block" data-type="target" data-val="player">🧙 自分</div>
       <div class="target-block" data-type="target" data-val="magic">✨ 魔法</div>
       <div class="target-block" data-type="target" data-val="wall">🧱 壁</div>
+      <div class="target-block" data-type="target" data-val="object">🪨 オブジェクト</div>
     </div>
   </div>
   
-  <!-- 右パネル：ワークスペース領域 -->
-  <div class="flex-1 bg-white rounded-3xl shadow-sm p-4 flex flex-col overflow-hidden border border-gray-100">
-    <div class="flex justify-between items-center mb-2">
-      <span class="text-sm font-bold text-sky-500">📜 <span id="workspace-active-key">Zキーを編集中</span></span>
-      <span id="workspace-slots-info" class="text-[11px] font-bold text-slate-400">上限: 3スロット (次: Lv.5)</span>
+  <!-- 右パネル：ワークスペース + 試し撃ち -->
+  <div class="flex-1 bg-white rounded-3xl shadow-sm p-4 flex flex-col overflow-hidden border border-gray-100 min-h-0">
+    <div class="flex justify-between items-center mb-1 gap-2 shrink-0">
+      <div class="flex flex-col min-w-0 flex-1 gap-0.5">
+        <span class="text-sm font-bold text-sky-500 shrink-0">📜 プログラム</span>
+        <div id="active-slot-desc" class="text-[10px] text-slate-400 truncate" title="選択中キーの構成（自動保存）">Zキー: 未登録</div>
+      </div>
+      <div class="flex items-center gap-2 shrink-0">
+        <div id="magic-slot-picker" class="flex gap-1" title="編集するキーを選ぶ（自動保存）">
+          <button type="button" id="slot-select-z" class="magic-slot-btn is-active" data-slot="z">Z</button>
+          <button type="button" id="slot-select-x" class="magic-slot-btn" data-slot="x">X</button>
+          <button type="button" id="slot-select-c" class="magic-slot-btn" data-slot="c">C</button>
+        </div>
+        <span id="workspace-slots-info" class="text-[11px] font-bold text-slate-400 whitespace-nowrap hidden sm:inline">上限: 3</span>
+        <div class="flex items-center gap-1 bg-slate-100 rounded-lg px-1 py-0.5" title="テストプレイ用スロット上限">
+          <span class="text-[10px] font-bold text-slate-500 px-1">テスト</span>
+          <button type="button" id="btn-test-slots-dec" class="w-6 h-6 rounded-md bg-white border border-slate-200 text-slate-600 font-bold text-sm leading-none hover:bg-slate-50 active:scale-95">−</button>
+          <span id="test-slot-limit-display" class="w-6 text-center text-[11px] font-bold text-sky-600 tabular-nums">3</span>
+          <button type="button" id="btn-test-slots-inc" class="w-6 h-6 rounded-md bg-white border border-slate-200 text-slate-600 font-bold text-sm leading-none hover:bg-slate-50 active:scale-95">+</button>
+        </div>
+      </div>
     </div>
     
-    <div id="workspace" class="flex-1 bg-sky-50 rounded-2xl border-2 border-dashed border-sky-300 p-6 overflow-y-auto flex flex-col items-center custom-scrollbar">
+    <div id="workspace" class="flex-1 min-h-0 bg-sky-50 rounded-2xl border-2 border-dashed border-sky-300 p-4 md:p-6 overflow-y-auto flex flex-col items-center custom-scrollbar">
       <div class="program-slot"></div>
       <div class="program-slot"></div>
       <div class="program-slot"></div>
     </div>
 
-    <!-- ショートカットキー選択（選んでから組む → 自動保存） -->
-    <div class="mt-3 p-3 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col gap-2 shrink-0">
-      <div class="text-xs font-bold text-slate-500 text-center">👇 編集するキーを選んでから組む（自動保存）</div>
-      <div class="flex gap-2">
-        <button type="button" id="slot-select-z" class="magic-slot-btn is-active" data-slot="z">Z</button>
-        <button type="button" id="slot-select-x" class="magic-slot-btn" data-slot="x">X</button>
-        <button type="button" id="slot-select-c" class="magic-slot-btn" data-slot="c">C</button>
+    <!-- 壁なし試し撃ち -->
+    <div id="editor-sandbox-section" class="mt-2 shrink-0 flex flex-col gap-1">
+      <div class="flex items-center justify-between gap-2">
+        <span class="text-[11px] font-bold text-sky-600">🎯 試し撃ち（壁なし）— クリック or Z/X/C</span>
+        <button type="button" id="btn-sandbox-clear" class="text-[10px] font-bold px-2 py-1 rounded-lg bg-slate-100 text-slate-500 hover:bg-slate-200 border border-slate-200">クリア</button>
       </div>
-      <div id="active-slot-desc" class="text-[10px] text-center text-slate-400 truncate">Zキー: 未登録</div>
+      <div id="editor-sandbox-container" class="h-44 bg-slate-900 rounded-2xl overflow-hidden cursor-crosshair border border-slate-700">
+        <canvas id="editorSandboxCanvas" class="w-full h-full block"></canvas>
+      </div>
     </div>
   </div>
 </div>
@@ -418,8 +849,20 @@
 <!-- ===================== -->
 <!-- 設定ビュー -->
 <!-- ===================== -->
-<div id="view-settings" class="flex-1 flex flex-col p-3 gap-3 overflow-hidden hidden-view">
-  <div class="bg-white rounded-3xl shadow-sm border border-gray-100 flex flex-col flex-1 overflow-hidden">
+<div id="view-settings" class="flex-1 flex flex-col p-3 gap-3 overflow-y-auto custom-scrollbar hidden-view">
+  <div class="bg-white rounded-3xl shadow-sm border border-gray-100 shrink-0">
+    <div class="p-4 border-b border-gray-100">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h2 class="text-base font-bold text-sky-600">🎵 BGM / SE</h2>
+          <p class="text-[11px] text-slate-500 mt-1">音量・BGM選択はブラウザに保存されます。</p>
+        </div>
+        <div id="audio-settings-source-badge" class="text-[10px] font-bold px-2 py-1 rounded-full bg-slate-100 text-slate-500">読込中…</div>
+      </div>
+    </div>
+    <div id="audio-settings-editor" class="p-4 space-y-4"></div>
+  </div>
+  <div class="bg-white rounded-3xl shadow-sm border border-gray-100 flex flex-col shrink-0">
     <div class="p-4 border-b border-gray-100 shrink-0">
       <div class="flex flex-wrap items-center justify-between gap-2">
         <div>
@@ -443,34 +886,26 @@
 <div id="view-test" class="flex-1 relative hidden-view bg-emerald-100 overflow-hidden cursor-crosshair">
   <canvas id="gameCanvas" class="w-full h-full block"></canvas>
   
-  <!-- プレイヤーのHP/MP/EXP HUD -->
-  <div class="absolute top-4 left-4 z-10 bg-slate-800/80 backdrop-blur border border-slate-700 p-4 rounded-2xl w-60 shadow-lg pointer-events-none">
-    <div class="flex items-center justify-between mb-1">
-      <div class="flex items-center gap-1.5">
-        <span class="text-xs font-bold text-yellow-400">Lv. <span id="player-level">1</span></span>
-        <span class="text-[10px] text-slate-400">🧙 HP</span>
-      </div>
-      <span id="player-hp-text" class="text-[10px] font-bold text-white">100 / 100</span>
+  <!-- プレイヤーステータス HUD -->
+  <div id="player-hud" class="player-hud">
+    <div class="player-hud-head">
+      <span class="player-hud-lv">Lv.<span id="player-level">1</span></span>
+      <span class="player-hud-mana">🔮 <span id="player-mana-text">0</span></span>
     </div>
-    <div class="w-full bg-slate-900 rounded-full h-2.5 mb-2.5 overflow-hidden">
-      <div id="player-hp-bar" class="bg-red-500 h-full transition-all duration-100" style="width: 100%"></div>
+    <div class="player-hud-stat">
+      <span class="player-hud-label hp">HP</span>
+      <div class="player-hud-track"><div id="player-hp-bar" class="player-hud-fill hp" style="width: 100%"></div></div>
+      <span id="player-hp-text" class="player-hud-val">100</span>
     </div>
-    
-    <div class="flex items-center justify-between mb-1">
-      <span class="text-[10px] font-bold text-sky-400">✨ MP</span>
-      <span id="player-mp-text" class="text-[10px] font-bold text-white">100 / 100</span>
+    <div class="player-hud-stat">
+      <span class="player-hud-label mp">MP</span>
+      <div class="player-hud-track"><div id="player-mp-bar" class="player-hud-fill mp" style="width: 100%"></div></div>
+      <span id="player-mp-text" class="player-hud-val">100</span>
     </div>
-    <div class="w-full bg-slate-900 rounded-full h-2.5 mb-2.5 overflow-hidden">
-      <div id="player-mp-bar" class="bg-sky-500 h-full transition-all duration-100" style="width: 100%"></div>
-    </div>
-
-    <!-- 経験値バー -->
-    <div class="flex items-center justify-between mb-1">
-      <span class="text-[10px] font-bold text-emerald-400">📈 EXP</span>
-      <span id="player-exp-text" class="text-[10px] font-bold text-white">0 / 40</span>
-    </div>
-    <div class="w-full bg-slate-900 rounded-full h-1.5 overflow-hidden">
-      <div id="player-exp-bar" class="bg-emerald-500 h-full transition-all duration-100" style="width: 0%"></div>
+    <div class="player-hud-stat">
+      <span class="player-hud-label exp">EXP</span>
+      <div class="player-hud-track"><div id="player-exp-bar" class="player-hud-fill exp" style="width: 0%"></div></div>
+      <span id="player-exp-text" class="player-hud-val">0</span>
     </div>
   </div>
 
@@ -497,7 +932,11 @@
 
 </div>
 
+<div id="block-target-menu" class="hidden" role="menu"></div>
+
 <script src="/js/magic-stats.js"></script>
+<script src="/js/magic-infusion.js"></script>
+<script src="/js/magic-audio.js"></script>
 <script src="/js/sprout-assets.js"></script>
 <script src="/js/sprout-player-sprites.js"></script>
 <script src="/js/pop-art.js"></script>
@@ -530,6 +969,8 @@
     viewEditor.classList.remove('hidden-view');
     tabEditor.className = 'flex-1 py-3 bg-sky-400 text-white rounded-2xl font-bold shadow-md transform scale-105 transition-all text-lg border-2 border-sky-500';
     isPaused = true;
+    MagicAudio.pauseBgm();
+    requestAnimationFrame(() => resizeEditorSandbox());
   });
 
   tabCreate.addEventListener('click', () => {
@@ -537,6 +978,7 @@
     viewCreate.classList.remove('hidden-view');
     tabCreate.className = 'flex-1 py-3 bg-emerald-400 text-white rounded-2xl font-bold shadow-md transform scale-105 transition-all text-lg border-2 border-emerald-500';
     isPaused = true;
+    MagicAudio.pauseBgm();
     requestAnimationFrame(() => { resizeCreateCanvas(); drawCreateCanvas(); startCreateCanvasAnim(); refreshCreateToolThumbnails(); });
   });
 
@@ -545,6 +987,7 @@
     viewTest.classList.remove('hidden-view');
     tabTest.className = 'flex-1 py-3 bg-pink-400 text-white rounded-2xl font-bold shadow-md transform scale-105 transition-all text-lg border-2 border-pink-500';
     isPaused = true;
+    MagicAudio.playBgm('field');
     requestAnimationFrame(() => {
       try {
         resize();
@@ -560,9 +1003,124 @@
     viewSettings.classList.remove('hidden-view');
     tabSettings.className = 'flex-1 py-3 bg-violet-400 text-white rounded-2xl font-bold shadow-md transform scale-105 transition-all text-lg border-2 border-violet-500';
     isPaused = true;
+    MagicAudio.pauseBgm();
+    renderAudioSettingsEditor();
+    updateAudioSettingsSourceBadge();
     renderMagicStatsEditor();
     updateMagicStatsSourceBadge();
   });
+
+  // --- BGM / SE 設定 UI ---
+  function updateAudioSettingsSourceBadge() {
+    const badge = document.getElementById('audio-settings-source-badge');
+    if (!badge) return;
+    if (MagicAudio.hasStoredOverride()) {
+      badge.textContent = '💾 保存済み設定を使用中';
+      badge.className = 'text-[10px] font-bold px-2 py-1 rounded-full bg-sky-100 text-sky-600';
+    } else {
+      badge.textContent = '📄 初期値';
+      badge.className = 'text-[10px] font-bold px-2 py-1 rounded-full bg-slate-100 text-slate-500';
+    }
+  }
+
+  function renderAudioSettingsEditor() {
+    const container = document.getElementById('audio-settings-editor');
+    if (!container) return;
+    const s = MagicAudio.getSettings();
+    const bgmCatalog = MagicAudio.getBgmCatalog();
+    const seCatalog = MagicAudio.getSeCatalog();
+    const bgmOptions = Object.entries(bgmCatalog).map(([id, entry]) =>
+      `<option value="${id}"${s.selectedBgm === id ? ' selected' : ''}>${entry.label || id}</option>`
+    ).join('');
+    const seList = Object.entries(seCatalog).map(([id, entry]) =>
+      `<div class="flex items-center justify-between gap-2 text-sm"><span>${entry.label || id}</span><button type="button" class="audio-se-preview px-3 py-1 bg-sky-100 hover:bg-sky-200 text-sky-700 rounded-lg text-xs font-bold" data-se-id="${id}">▶ 試聴</button></div>`
+    ).join('');
+
+    container.innerHTML = `
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="space-y-3">
+          <label class="block text-xs font-bold text-slate-600">BGM 曲</label>
+          <select id="audio-bgm-select" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm">${bgmOptions}</select>
+          <button type="button" id="audio-bgm-preview" class="px-3 py-1.5 bg-sky-500 hover:bg-sky-600 text-white rounded-xl text-xs font-bold">▶ BGM 試聴</button>
+        </div>
+        <div class="space-y-3">
+          <label class="block text-xs font-bold text-slate-600">SE 一覧</label>
+          <div class="space-y-2">${seList || '<p class="text-xs text-slate-400">SE 未登録</p>'}</div>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-slate-100">
+        <div class="space-y-2">
+          <div class="flex items-center justify-between gap-2">
+            <label for="audio-bgm-volume" class="text-xs font-bold text-slate-600">BGM 音量</label>
+            <label class="flex items-center gap-1 text-[11px] text-slate-500"><input type="checkbox" id="audio-bgm-muted"${s.bgmMuted ? ' checked' : ''}> ミュート</label>
+          </div>
+          <input id="audio-bgm-volume" type="range" min="0" max="100" value="${Math.round(s.bgmVolume * 100)}" class="w-full">
+          <div class="text-[11px] text-slate-400 text-right"><span id="audio-bgm-volume-val">${Math.round(s.bgmVolume * 100)}</span>%</div>
+        </div>
+        <div class="space-y-2">
+          <div class="flex items-center justify-between gap-2">
+            <label for="audio-se-volume" class="text-xs font-bold text-slate-600">SE 音量</label>
+            <label class="flex items-center gap-1 text-[11px] text-slate-500"><input type="checkbox" id="audio-se-muted"${s.seMuted ? ' checked' : ''}> ミュート</label>
+          </div>
+          <input id="audio-se-volume" type="range" min="0" max="100" value="${Math.round(s.seVolume * 100)}" class="w-full">
+          <div class="text-[11px] text-slate-400 text-right"><span id="audio-se-volume-val">${Math.round(s.seVolume * 100)}</span>%</div>
+        </div>
+      </div>
+      <div class="flex flex-wrap gap-2 pt-1">
+        <button type="button" id="btn-reset-audio-settings" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-sm border border-slate-200 active:scale-95 transition-all">↩️ 音声設定を初期化</button>
+      </div>
+    `;
+
+    const bind = (id, fn) => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('change', fn);
+    };
+
+    bind('audio-bgm-select', (e) => {
+      MagicAudio.setSelectedBgm(e.target.value);
+      updateAudioSettingsSourceBadge();
+      if (!viewTest.classList.contains('hidden-view')) MagicAudio.playBgm();
+    });
+
+    document.getElementById('audio-bgm-preview')?.addEventListener('click', () => MagicAudio.previewBgm());
+    container.querySelectorAll('.audio-se-preview').forEach((btn) => {
+      btn.addEventListener('click', () => MagicAudio.previewSe(btn.dataset.seId));
+    });
+
+    const bgmVol = document.getElementById('audio-bgm-volume');
+    const bgmVolVal = document.getElementById('audio-bgm-volume-val');
+    bgmVol?.addEventListener('input', (e) => {
+      const v = Number(e.target.value) / 100;
+      MagicAudio.setBgmVolume(v);
+      if (bgmVolVal) bgmVolVal.textContent = e.target.value;
+      updateAudioSettingsSourceBadge();
+    });
+
+    const seVol = document.getElementById('audio-se-volume');
+    const seVolVal = document.getElementById('audio-se-volume-val');
+    seVol?.addEventListener('input', (e) => {
+      const v = Number(e.target.value) / 100;
+      MagicAudio.setSeVolume(v);
+      if (seVolVal) seVolVal.textContent = e.target.value;
+      updateAudioSettingsSourceBadge();
+    });
+
+    bind('audio-bgm-muted', (e) => {
+      MagicAudio.setBgmMuted(e.target.checked);
+      updateAudioSettingsSourceBadge();
+    });
+    bind('audio-se-muted', (e) => {
+      MagicAudio.setSeMuted(e.target.checked);
+      updateAudioSettingsSourceBadge();
+    });
+
+    document.getElementById('btn-reset-audio-settings')?.addEventListener('click', () => {
+      MagicAudio.resetSettings();
+      renderAudioSettingsEditor();
+      updateAudioSettingsSourceBadge();
+      showMessage('音声設定を初期値に戻しました');
+    });
+  }
 
   // --- 基礎魔法ステータス設定 UI ---
   const MAGIC_STAT_FIELDS = [
@@ -964,6 +1522,145 @@
   applyCreateTileNamesToUI();
   initCreateTileNameEditors();
 
+  // --- プログラムタブ：壁なし試し撃ち ---
+  const editorSandboxCanvas = document.getElementById('editorSandboxCanvas');
+  const editorSandboxCtx = editorSandboxCanvas ? editorSandboxCanvas.getContext('2d') : null;
+  if (editorSandboxCtx) PopArt.setupCrisp(editorSandboxCtx);
+
+  const editorSandbox = {
+    width: 400,
+    height: 176,
+    magics: [],
+    genFields: [],
+    particles: [],
+    player: {
+      x: 200,
+      y: 140,
+      radius: 22,
+      facing: 'right',
+      animState: 'idle',
+      animTimer: 0,
+      isMoving: false,
+      invincibleTimer: 0,
+    },
+  };
+  let sandboxTapFlag = false;
+  let sandboxAimX = null;
+  let sandboxAimY = null;
+
+  function resizeEditorSandbox() {
+    const container = document.getElementById('editor-sandbox-container');
+    if (!container || !editorSandboxCanvas) return;
+    editorSandbox.width = container.clientWidth || 400;
+    editorSandbox.height = container.clientHeight || 176;
+    editorSandboxCanvas.width = editorSandbox.width;
+    editorSandboxCanvas.height = editorSandbox.height;
+    editorSandbox.player.x = editorSandbox.width * 0.5;
+    editorSandbox.player.y = editorSandbox.height - 36;
+  }
+
+  function clearEditorSandbox() {
+    editorSandbox.magics = [];
+    editorSandbox.genFields = [];
+    editorSandbox.particles = [];
+  }
+
+  function fireSandboxMagic(blocks, angle) {
+    if (!blocks || !blocks.some(b => b.type === 'gen')) {
+      showMessage('エラー：試し撃ちには属性ブロックが必要です！');
+      return;
+    }
+    const p = editorSandbox.player;
+    p.facing = Math.abs(angle) < Math.PI / 4 ? 'right'
+      : Math.abs(angle) > Math.PI * 0.75 ? 'left'
+      : angle < 0 ? 'up' : 'down';
+    p.animState = 'attack';
+    p.animTimer = 18;
+    editorSandbox.magics.push(new Magic(p.x, p.y, blocks, { angle, inSandbox: true }));
+    for (let i = 0; i < 5; i++) {
+      editorSandbox.particles.push(new Particle(p.x + 12, p.y, '#fcd34d'));
+    }
+  }
+
+  function castSandboxSavedMagic(key) {
+    const blocks = savedMagics[key];
+    if (!blocks || !blocks.some(b => b.type === 'gen')) {
+      showMessage(`エラー：${key.toUpperCase()}キーには使える魔法がありません！`);
+      return;
+    }
+    const p = editorSandbox.player;
+    const tx = sandboxAimX ?? p.x;
+    const ty = sandboxAimY ?? (p.y - 100);
+    const angle = Math.atan2(ty - p.y, tx - p.x);
+    fireSandboxMagic(JSON.parse(JSON.stringify(blocks)), angle);
+  }
+
+  function castSandboxToward(targetX, targetY) {
+    const blocks = savedMagics[activeMagicSlot];
+    if (!blocks || !blocks.some(b => b.type === 'gen')) {
+      showMessage('エラー：選択中のキーに使える魔法がありません！');
+      return;
+    }
+    const p = editorSandbox.player;
+    const angle = Math.atan2(targetY - p.y, targetX - p.x);
+    fireSandboxMagic(JSON.parse(JSON.stringify(blocks)), angle);
+  }
+
+  function updateEditorSandbox() {
+    if (!editorSandboxCtx || viewEditor.classList.contains('hidden-view')) return;
+
+    editorSandbox.genFields = editorSandbox.genFields.filter(g => g.active);
+    editorSandbox.genFields.forEach(g => g.update());
+    editorSandbox.magics.filter(m => m.active).forEach(m => m.update());
+    editorSandbox.magics = editorSandbox.magics.filter(m => m.active);
+    editorSandbox.particles = editorSandbox.particles.filter(p => p.life > 0);
+    editorSandbox.particles.forEach(p => p.update());
+
+    if (editorSandbox.player.animTimer > 0) {
+      editorSandbox.player.animTimer--;
+      if (editorSandbox.player.animTimer <= 0) editorSandbox.player.animState = 'idle';
+    }
+  }
+
+  function drawEditorSandbox() {
+    if (!editorSandboxCtx || viewEditor.classList.contains('hidden-view')) return;
+    const ctx = editorSandboxCtx;
+    const w = editorSandbox.width;
+    const h = editorSandbox.height;
+    ctx.clearRect(0, 0, w, h);
+    PopArt.drawGround(ctx, w, h, frameCount, TILE_W, null);
+    editorSandbox.genFields.forEach(g => g.draw(ctx));
+    PopArt.drawPlayer(ctx, editorSandbox.player, frameCount);
+    editorSandbox.magics.forEach(m => m.draw(ctx));
+    editorSandbox.particles.forEach(p => p.draw(ctx));
+  }
+
+  if (editorSandboxCanvas) {
+    editorSandboxCanvas.addEventListener('mousemove', (e) => {
+      if (viewEditor.classList.contains('hidden-view')) return;
+      const rect = editorSandboxCanvas.getBoundingClientRect();
+      const sx = editorSandbox.width / rect.width;
+      const sy = editorSandbox.height / rect.height;
+      sandboxAimX = (e.clientX - rect.left) * sx;
+      sandboxAimY = (e.clientY - rect.top) * sy;
+    });
+    editorSandboxCanvas.addEventListener('mousedown', (e) => {
+      if (!viewEditor.classList.contains('hidden-view')) return;
+      sandboxTapFlag = true;
+      const rect = editorSandboxCanvas.getBoundingClientRect();
+      const sx = editorSandbox.width / rect.width;
+      const sy = editorSandbox.height / rect.height;
+      const x = (e.clientX - rect.left) * sx;
+      const y = (e.clientY - rect.top) * sy;
+      castSandboxToward(x, y);
+    });
+  }
+  document.getElementById('btn-sandbox-clear')?.addEventListener('click', clearEditorSandbox);
+  window.addEventListener('resize', () => {
+    if (!viewEditor.classList.contains('hidden-view')) resizeEditorSandbox();
+  });
+  resizeEditorSandbox();
+
   // 宝箱の報酬設定変更
   const rewardSelect = document.getElementById('chest-reward-select');
   rewardSelect.addEventListener('change', (e) => {
@@ -1175,16 +1872,28 @@
     const key = e.key.toLowerCase();
     keys[key] = true;
     
-    // Z/X/Cキーによる魔法のショートカット発射
     if (e.repeat) return;
-    if (!isPaused && (key === 'z' || key === 'x' || key === 'c')) {
-      castSavedMagic(key);
+    if (key === 'z' || key === 'x' || key === 'c') {
+      if (!viewEditor.classList.contains('hidden-view')) {
+        castSandboxSavedMagic(key);
+        return;
+      }
+      if (!isPaused) castSavedMagic(key);
     }
   });
   window.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
 
   // --- Z/X/Cショートカット魔法保存用データ ---
   const MAGIC_SLOTS_STORAGE_KEY = 'pop-magic-slots-v1';
+  const TEST_SLOT_LIMIT_KEY = 'pop-magic-test-slot-limit-v1';
+  const BLOCK_SCALE_STORAGE_KEY = 'pop-magic-block-scale-v1';
+  const TEST_SLOT_MIN = 3;
+  const TEST_SLOT_MAX = 50;
+  const BLOCK_SCALE_MIN = 0.7;
+  const BLOCK_SCALE_MAX = 1.5;
+  const BLOCK_SCALE_STEP = 0.1;
+  let testPlaySlotLimit = TEST_SLOT_MIN;
+  let blockScale = 1;
   const savedMagics = {
     z: null,
     x: null,
@@ -1194,18 +1903,20 @@
   let autoSaveTimer = null;
 
   // --- インベントリ管理（魔法ブロック消費制） ---
+  const BASIC_MAGIC_STOCK = 9;
   const inventory = {
     total: {
-      fire: 1, lightning: 0, water: 0, wood: 0, earth: 0,
-      forward: 1, homing: 0, zigzag: 0, orbit: 0, return: 0,
-      touch: 0, tap: 0, time_half: 0, time: 0,
-      explode: 0, pull: 0, split: 0, grow: 0, hard: 0, stop: 0, slow: 0, speedup: 0,
-      repeat: 0
+      fire: BASIC_MAGIC_STOCK, lightning: BASIC_MAGIC_STOCK, water: BASIC_MAGIC_STOCK, wood: BASIC_MAGIC_STOCK, earth: BASIC_MAGIC_STOCK,
+      forward: BASIC_MAGIC_STOCK, homing: BASIC_MAGIC_STOCK, zigzag: BASIC_MAGIC_STOCK, orbit: BASIC_MAGIC_STOCK, return: BASIC_MAGIC_STOCK, bounce: BASIC_MAGIC_STOCK,
+      touch: BASIC_MAGIC_STOCK, tap: BASIC_MAGIC_STOCK, wait: BASIC_MAGIC_STOCK,
+      explode: BASIC_MAGIC_STOCK, pull: BASIC_MAGIC_STOCK, split: BASIC_MAGIC_STOCK, grow: BASIC_MAGIC_STOCK, hard: BASIC_MAGIC_STOCK,
+      stop: BASIC_MAGIC_STOCK, slow: BASIC_MAGIC_STOCK, speedup: BASIC_MAGIC_STOCK,
+      repeat: BASIC_MAGIC_STOCK
     },
     available: {
       fire: 0, lightning: 0, water: 0, wood: 0, earth: 0,
-      forward: 0, homing: 0, zigzag: 0, orbit: 0, return: 0,
-      touch: 0, tap: 0, time_half: 0, time: 0,
+      forward: 0, homing: 0, zigzag: 0, orbit: 0, return: 0, bounce: 0,
+      touch: 0, tap: 0, wait: 0,
       explode: 0, pull: 0, split: 0, grow: 0, hard: 0, stop: 0, slow: 0, speedup: 0,
       repeat: 0
     }
@@ -1269,7 +1980,13 @@
 
   function unlockAllBasicMagic() {
     for (let key in inventory.total) {
-      inventory.total[key] = 1;
+      inventory.total[key] = BASIC_MAGIC_STOCK;
+    }
+  }
+
+  function grantBasicMagicStock(type) {
+    if (inventory.total[type] !== undefined) {
+      inventory.total[type] = BASIC_MAGIC_STOCK;
     }
   }
 
@@ -1289,6 +2006,43 @@
     }
   });
 
+  // --- マップオブジェクト質量（吸引強度が質量を超えると移動可能） ---
+  const WORLD_OBJECT_MASS = {
+    player: 4,
+    enemy: 1,
+    ibara: 2,
+    rock: 5,
+    earth: 5,
+    woodBlock: 1,
+    woodBlockGrown: 2,
+    tree: 4,
+    bush: 2,
+    log: 3,
+    stump: 3,
+    mushroom: 1,
+    grassTuft: 0.5,
+    chest: 8,
+  };
+
+  function getWorldObjectMass(obj, kind) {
+    if (obj == null) return Infinity;
+    if (kind === 'player') return WORLD_OBJECT_MASS.player;
+    if (kind === 'enemy') return WORLD_OBJECT_MASS.enemy;
+    if (kind === 'magic') return Math.max(0.5, obj.mass ?? 1);
+    if (obj.cfg && typeof obj.cfg.mass === 'number') return obj.cfg.mass;
+    if (typeof obj.mass === 'number') return obj.mass;
+    if (obj.grown) return WORLD_OBJECT_MASS.woodBlockGrown;
+    if (obj.burnKind === 'woodBlock') return WORLD_OBJECT_MASS.woodBlock;
+    const key = obj.burnKind || obj.type;
+    if (key && WORLD_OBJECT_MASS[key] != null) return WORLD_OBJECT_MASS[key];
+    return 2;
+  }
+
+  function formatPullTargetLabel(target) {
+    const labels = { enemy: '敵', player: '自分', magic: '魔法', wall: '壁', object: 'オブジェクト' };
+    return labels[target] || target || '?';
+  }
+
   // --- 茨ブロックと宝箱の定義 ---
   class IbaraBlock {
     constructor(x, y, width, height) {
@@ -1297,12 +2051,12 @@
       this.width = width;
       this.height = height;
       this.active = true;
-      this.isBurning = false;
-      this.burnTimer = BURN_DURATION_FRAMES;
+      this.burnKind = 'ibara';
+      resetBurnState(this);
     }
     update() {
       if (!this.active) return;
-      updateBurningNatural(this);
+      updateBurningBlock(this);
     }
     draw(ctx) {
       if (!this.active) return;
@@ -1317,6 +2071,7 @@
       this.width = width;
       this.height = height;
       this.active = true;
+      this.mass = WORLD_OBJECT_MASS.rock;
     }
     update() {}
     draw(ctx) {
@@ -1335,13 +2090,13 @@
       this.width = tileSize;
       this.height = tileSize;
       this.active = true;
-      this.isBurning = false;
-      this.burnTimer = BURN_DURATION_FRAMES;
+      this.burnKind = this.type;
+      resetBurnState(this);
     }
     update() {
       if (!this.active) return;
       if (!NATURAL_PROP_TYPES.has(this.type)) return;
-      updateBurningNatural(this);
+      updateBurningBlock(this);
     }
     draw(ctx) {
       if (!this.active) return;
@@ -1358,39 +2113,415 @@
   }
   window.addEventListener('magicstats:updated', syncGenConfigRef);
 
+  function getMagicVecId(magic) {
+    if (!magic) return null;
+    if (magic.vec && magic.vec !== 'none') return magic.vec;
+    return MagicInfusion.getEffectiveVecFromBlocks(magic.blocks || []);
+  }
+
+  function infusedProjectileSpeed(gen, isWaterShard, magicOrVec) {
+    const vecId = typeof magicOrVec === 'string' ? magicOrVec : getMagicVecId(magicOrVec);
+    return MagicInfusion.getInfusedProjectileSpeed(gen, isWaterShard, vecId);
+  }
+
+  function infusedFieldLifetimeFrames(type) {
+    return MagicInfusion.getInfusedFieldLifetimeFrames(type);
+  }
+
+  // --- 魔力注入 UI ---
+  let selectedInfusionBlockId = null;
+  const TEST_MANA_AMOUNT = 100;
+
+  function ensureStarterMana() {
+    MagicInfusion.setMana(TEST_MANA_AMOUNT);
+  }
+
+  function updateManaHUD() {
+    const mana = MagicInfusion.getMana();
+    const testText = document.getElementById('player-mana-text');
+    const editorText = document.getElementById('editor-mana-display');
+    const infusionText = document.getElementById('infusion-mana-display');
+    if (testText) testText.textContent = String(mana);
+    if (editorText) editorText.textContent = String(mana);
+    if (infusionText) infusionText.textContent = String(mana);
+  }
+
+  function updateInfusionBlockMarkers() {
+    document.querySelectorAll('#palette-blocks .magic-block').forEach((el) => {
+      const id = el.dataset.val;
+      el.classList.toggle('has-infusion', MagicInfusion.getBlockTotalLevel(id) > 0);
+      el.classList.toggle('infusion-selected', id === selectedInfusionBlockId);
+    });
+  }
+
+  function updateInfusionStatRowDisplay(blockId, statId) {
+    const rows = document.getElementById('infusion-stat-rows');
+    const def = MagicInfusion.getBlockDef(blockId);
+    const st = def?.stats.find((s) => s.id === statId);
+    if (!rows || !st) return;
+
+    const level = MagicInfusion.getLevel(blockId, statId);
+    const input = rows.querySelector(`.infusion-stat-input[data-stat="${statId}"]`);
+    const effect = rows.querySelector(`.infusion-stat-effect[data-stat="${statId}"]`);
+    const inc = rows.querySelector(`.infusion-inc[data-stat="${statId}"]`);
+    const dec = rows.querySelector(`.infusion-dec[data-stat="${statId}"]`);
+
+    if (input && document.activeElement !== input) input.value = level;
+    if (effect) {
+      effect.textContent = typeof st.fmt === 'function' && st.fmt.length >= 2
+        ? st.fmt(level, blockId)
+        : st.fmt(level);
+    }
+
+    const mana = MagicInfusion.getMana();
+    const costUp = MagicInfusion.getAdjustDeltaCost(blockId, statId, 1);
+    const costDown = MagicInfusion.getAdjustDeltaCost(blockId, statId, -1);
+    if (inc) {
+      inc.disabled = level >= MagicInfusion.LEVEL_MAX || (costUp > 0 && costUp > mana);
+    }
+    if (dec) {
+      dec.disabled = level <= MagicInfusion.LEVEL_MIN || (costDown > 0 && costDown > mana);
+    }
+    updateManaHUD();
+  }
+
+  function refreshInfusionPanelControls(blockId) {
+    const def = MagicInfusion.getBlockDef(blockId);
+    if (!def) return;
+    def.stats.forEach((st) => updateInfusionStatRowDisplay(blockId, st.id));
+    updateInfusionBlockMarkers();
+  }
+
+  function applyInfusionStep(blockId, statId, delta) {
+    const res = MagicInfusion.adjustStat(blockId, statId, delta);
+    if (!res.ok) {
+      if (res.reason === 'nomana') showMessage(`魔力が足りません（必要: ${res.cost}）`);
+      return false;
+    }
+    return true;
+  }
+
+  function commitInfusionInput(blockId, statId, raw) {
+    const parsed = parseInt(String(raw).trim(), 10);
+    if (Number.isNaN(parsed)) {
+      updateInfusionStatRowDisplay(blockId, statId);
+      return;
+    }
+    const res = MagicInfusion.setStatLevel(blockId, statId, parsed);
+    if (!res.ok) {
+      if (res.reason === 'nomana') showMessage(`魔力が足りません（必要: ${res.cost}）`);
+    }
+    refreshInfusionPanelControls(blockId);
+  }
+
+  const infusionHold = {
+    timer: null,
+    tickTimer: null,
+    didRepeat: false,
+    btn: null,
+    blockId: null,
+    statId: null,
+    delta: 0,
+  };
+
+  function clearInfusionHold() {
+    clearTimeout(infusionHold.timer);
+    clearTimeout(infusionHold.tickTimer);
+    if (infusionHold.btn) infusionHold.btn.classList.remove('is-holding');
+    infusionHold.timer = null;
+    infusionHold.tickTimer = null;
+    infusionHold.didRepeat = false;
+    infusionHold.btn = null;
+    infusionHold.blockId = null;
+    infusionHold.statId = null;
+    infusionHold.delta = 0;
+  }
+
+  function runInfusionHoldStep() {
+    if (!infusionHold.blockId || !infusionHold.statId) return false;
+    infusionHold.didRepeat = true;
+    const ok = applyInfusionStep(infusionHold.blockId, infusionHold.statId, infusionHold.delta);
+    updateInfusionStatRowDisplay(infusionHold.blockId, infusionHold.statId);
+    updateInfusionBlockMarkers();
+    return ok;
+  }
+
+  function scheduleInfusionHoldTick(intervalMs) {
+    infusionHold.tickTimer = setTimeout(() => {
+      const ok = runInfusionHoldStep();
+      if (!ok) {
+        clearInfusionHold();
+        return;
+      }
+      scheduleInfusionHoldTick(Math.max(25, intervalMs - 4));
+    }, intervalMs);
+  }
+
+  function startInfusionHold(btn) {
+    if (!selectedInfusionBlockId || btn.disabled) return;
+    clearInfusionHold();
+    infusionHold.btn = btn;
+    infusionHold.blockId = selectedInfusionBlockId;
+    infusionHold.statId = btn.dataset.stat;
+    infusionHold.delta = btn.classList.contains('infusion-inc') ? 1 : -1;
+    btn.classList.add('is-holding');
+
+    infusionHold.timer = setTimeout(() => {
+      runInfusionHoldStep();
+      scheduleInfusionHoldTick(70);
+    }, 320);
+  }
+
+  function bindInfusionRowInteractions() {
+    const rows = document.getElementById('infusion-stat-rows');
+    if (!rows || rows.dataset.infusionBound) return;
+    rows.dataset.infusionBound = '1';
+
+    rows.addEventListener('pointerdown', (e) => {
+      const btn = e.target.closest('.infusion-stat-btn');
+      if (!btn || btn.disabled) return;
+      e.preventDefault();
+      btn.setPointerCapture(e.pointerId);
+      startInfusionHold(btn);
+    });
+
+    rows.addEventListener('pointerup', () => {
+      if (!infusionHold.blockId) return;
+      if (!infusionHold.didRepeat && infusionHold.btn && !infusionHold.btn.disabled) {
+        applyInfusionStep(infusionHold.blockId, infusionHold.statId, infusionHold.delta);
+        refreshInfusionPanelControls(infusionHold.blockId);
+      } else if (infusionHold.didRepeat) {
+        refreshInfusionPanelControls(infusionHold.blockId);
+      }
+      clearInfusionHold();
+    });
+
+    rows.addEventListener('pointercancel', () => {
+      if (infusionHold.didRepeat && infusionHold.blockId) {
+        refreshInfusionPanelControls(infusionHold.blockId);
+      }
+      clearInfusionHold();
+    });
+
+    rows.addEventListener('change', (e) => {
+      const input = e.target.closest('.infusion-stat-input');
+      if (!input || !selectedInfusionBlockId) return;
+      commitInfusionInput(selectedInfusionBlockId, input.dataset.stat, input.value);
+    });
+
+    rows.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter') return;
+      const input = e.target.closest('.infusion-stat-input');
+      if (!input || !selectedInfusionBlockId) return;
+      e.preventDefault();
+      commitInfusionInput(selectedInfusionBlockId, input.dataset.stat, input.value);
+      input.blur();
+    });
+  }
+
+  function renderInfusionPanel(blockId) {
+    const panel = document.getElementById('infusion-panel');
+    const title = document.getElementById('infusion-block-title');
+    const rows = document.getElementById('infusion-stat-rows');
+    if (!panel || !title || !rows) return;
+
+    const def = MagicInfusion.getBlockDef(blockId);
+    if (!def) {
+      panel.classList.add('hidden');
+      selectedInfusionBlockId = null;
+      updateInfusionBlockMarkers();
+      return;
+    }
+
+    selectedInfusionBlockId = blockId;
+    panel.classList.remove('hidden');
+    title.textContent = `${def.icon} ${def.label} — 魔力注入`;
+    rows.innerHTML = '';
+
+    def.stats.forEach((st) => {
+      const level = MagicInfusion.getLevel(blockId, st.id);
+      const row = document.createElement('div');
+      row.className = 'infusion-stat-row';
+      const costUp = MagicInfusion.getAdjustDeltaCost(blockId, st.id, 1);
+      const costDown = MagicInfusion.getAdjustDeltaCost(blockId, st.id, -1);
+      const upTitle = costUp > 0 ? `+1（${costUp}必要）· 長押しで連続` : costUp < 0 ? `初期値へ（${-costUp}返還）` : '初期値';
+      const downTitle = costDown > 0 ? `-1（${costDown}必要）· 長押しで連続` : costDown < 0 ? `初期値へ（${-costDown}返還）` : '初期値';
+      const effectText = typeof st.fmt === 'function' && st.fmt.length >= 2 ? st.fmt(level, blockId) : st.fmt(level);
+      row.innerHTML = `
+        <span class="infusion-stat-label">${st.label}</span>
+        <div class="infusion-stat-controls">
+          <div class="infusion-stat-meta">
+            <input type="number" class="infusion-stat-input" data-stat="${st.id}"
+              value="${level}" min="${MagicInfusion.LEVEL_MIN}" max="${MagicInfusion.LEVEL_MAX}" step="1"
+              title="レベルを直接入力（Enterで確定）" />
+            <span class="infusion-stat-effect" data-stat="${st.id}">${effectText}</span>
+          </div>
+          <div class="infusion-stat-btns">
+            <button type="button" class="infusion-stat-btn infusion-dec" data-stat="${st.id}" title="${downTitle}">−</button>
+            <button type="button" class="infusion-stat-btn infusion-inc" data-stat="${st.id}" title="${upTitle}">+</button>
+          </div>
+        </div>
+      `;
+      rows.appendChild(row);
+    });
+
+    refreshInfusionPanelControls(blockId);
+  }
+
+  function initInfusionUI() {
+    ensureStarterMana();
+    updateManaHUD();
+    updateInfusionBlockMarkers();
+    bindInfusionRowInteractions();
+
+    document.querySelectorAll('#palette-blocks .magic-block').forEach((el) => {
+      el.addEventListener('dblclick', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        renderInfusionPanel(el.dataset.val);
+      });
+    });
+
+    window.addEventListener('magicinfusion:updated', () => {
+      updateManaHUD();
+      updateInfusionBlockMarkers();
+      if (selectedInfusionBlockId) refreshInfusionPanelControls(selectedInfusionBlockId);
+    });
+  }
+
+  function grantManaWithFx(amount, label) {
+    const gained = MagicInfusion.addMana(amount);
+    if (gained > 0) {
+      showMessage(`${label} — 魔力 +${gained}`);
+      updateManaHUD();
+    }
+    return gained;
+  }
+
   const WATER_BOUNCE_DAMP = 0.8;
   const TILE_W = 32;
   const TILE_H = 32;
-  const BURN_DURATION_FRAMES = 180; // 3秒
   const NATURAL_PROP_TYPES = new Set(['tree', 'bush', 'log', 'stump', 'mushroom', 'grassTuft']);
-  const PULL_MASS_LIMIT = 3; // 初期：土・岩(質量5)は吸収不可
+  const BURNABLE_HP = {
+    ibara: 3,
+    tree: 6,
+    bush: 4,
+    log: 5,
+    stump: 4,
+    mushroom: 2,
+    grassTuft: 2,
+    woodBlock: 4,
+  };
   const MAGIC_OVERLOAD_LIMIT = 45;
   let magicSpawnCount = 0;
 
-  function igniteNaturalBlock(block) {
-    block.isBurning = true;
-    block.burnTimer = BURN_DURATION_FRAMES;
+  function getBurnableMaxHp(block) {
+    const kind = block.burnKind || block.type || 'ibara';
+    return BURNABLE_HP[kind] ?? 3;
   }
 
-  function updateBurningNatural(block) {
-    if (!block.active || !block.isBurning) return;
-    block.burnTimer--;
+  function resetBurnState(block) {
+    block.isBurning = false;
+    block.burnTimer = 0;
+    block.burnTickTimer = 0;
+    block.burnMaxHp = getBurnableMaxHp(block);
+    block.burnHp = block.burnMaxHp;
+    block.isCharcoal = false;
+  }
+
+  function ensureBurnHp(block) {
+    if (block.burnMaxHp === undefined) {
+      block.burnMaxHp = getBurnableMaxHp(block);
+      block.burnHp = block.burnMaxHp;
+    }
+  }
+
+  function isBurnableBlock(block) {
+    return !!(block.burnKind || NATURAL_PROP_TYPES.has(block.type));
+  }
+
+  function getFireBurnStats() {
+    return MagicInfusion.getInfusedCombat('fire');
+  }
+
+  function destroyBurnedBlock(block) {
+    if (!block.active) return;
     const cx = block.x + block.width / 2;
     const cy = block.y + block.height / 2;
-    if (block.burnTimer <= 0) {
-      block.active = false;
-      block.isBurning = false;
-      for (let i = 0; i < 12; i++) {
-        particles.push(new Particle(cx, cy, '#78350f'));
-      }
-      return;
+    block.active = false;
+    block.isBurning = false;
+    block.burnTimer = 0;
+    block.burnTickTimer = 0;
+    for (let i = 0; i < 12; i++) {
+      particles.push(new Particle(cx, cy, '#78350f'));
     }
+  }
+
+  function extinguishBurn(block) {
+    block.isBurning = false;
+    block.burnTimer = 0;
+    block.burnTickTimer = 0;
+  }
+
+  function refreshBurnOnBlock(block) {
+    const st = getFireBurnStats();
+    if (!st.hasDot) return;
+    ensureBurnHp(block);
+    block.isBurning = true;
+    block.burnTimer = MagicStats.secToFrames(st.dotDurationSec);
+    if (!block.burnTickTimer) {
+      block.burnTickTimer = MagicStats.secToFrames(st.dotIntervalSec) || 60;
+    }
+  }
+
+  function applyFireBurnToBlock(block, { directHit = false } = {}) {
+    if (!block.active || !isBurnableBlock(block)) return false;
+    const st = getFireBurnStats();
+    ensureBurnHp(block);
+    if (directHit && st.hitDamage > 0) {
+      block.burnHp -= st.hitDamage;
+      if (block.burnHp <= 0) {
+        destroyBurnedBlock(block);
+        return true;
+      }
+    }
+    if (st.hasDot) {
+      block.isBurning = true;
+      block.burnTimer = MagicStats.secToFrames(st.dotDurationSec);
+      block.burnTickTimer = MagicStats.secToFrames(st.dotIntervalSec) || 60;
+    }
+    return false;
+  }
+
+  function updateBurningBlock(block) {
+    if (!block.active || !block.isBurning) return;
+    const st = getFireBurnStats();
+    ensureBurnHp(block);
+    block.burnTimer--;
+    block.burnTickTimer--;
+
     if (Math.random() < 0.35) {
       particles.push(new Particle(
         block.x + Math.random() * block.width,
         block.y + Math.random() * block.height,
         '#f97316'
       ));
+    }
+
+    if (block.burnTickTimer <= 0) {
+      block.burnHp -= st.dotDamage;
+      block.burnTickTimer = MagicStats.secToFrames(st.dotIntervalSec) || 60;
+      if (block.burnHp <= 0) {
+        destroyBurnedBlock(block);
+        return;
+      }
+    }
+
+    if (block.burnTimer <= 0) {
+      block.isBurning = false;
+      block.burnTimer = 0;
+      block.burnTickTimer = 0;
+      if (block.burnHp < block.burnMaxHp) block.isCharcoal = true;
     }
   }
 
@@ -1404,19 +2535,6 @@
   function getEffectiveGen(blocks) {
     const gens = blocks.filter(b => b.type === 'gen');
     return gens.length ? gens[gens.length - 1].val : null;
-  }
-
-  function spawnImpactField(x, y, type, scale = 1) {
-    if (!type || !GEN_CONFIG[type]) return;
-    spawnGenField(x, y, type, scale);
-    const cfg = GEN_CONFIG[type];
-    for (let i = 0; i < 10; i++) {
-      particles.push(new Particle(
-        x + (Math.random() - 0.5) * 24,
-        y + (Math.random() - 0.5) * 24,
-        cfg.glow || cfg.color
-      ));
-    }
   }
 
   function drawGenVisual(ctx, type, radius, opts = {}) {
@@ -1474,9 +2592,26 @@
     };
   }
 
-  function spawnGenField(x, y, type, scale = 1, lifetime = null) {
-    const age = lifetime !== null ? lifetime : MagicStats.getFieldLifetimeFrames(type);
-    genFields.push(new GenField(x, y, type, scale, age));
+  function spawnGenField(x, y, type, scale = 1, lifetime = null, inSandbox = false) {
+    const age = lifetime !== null ? lifetime : infusedFieldLifetimeFrames(type);
+    const field = new GenField(x, y, type, scale, age, inSandbox);
+    if (inSandbox) editorSandbox.genFields.push(field);
+    else genFields.push(field);
+  }
+
+  function spawnImpactField(x, y, type, scale = 1, sourceMagic = null) {
+    if (!type || !GEN_CONFIG[type]) return;
+    const inSandbox = !!(sourceMagic && sourceMagic.inSandbox);
+    spawnGenField(x, y, type, scale, null, inSandbox);
+    const parts = inSandbox ? editorSandbox.particles : particles;
+    const cfg = GEN_CONFIG[type];
+    for (let i = 0; i < 10; i++) {
+      parts.push(new Particle(
+        x + (Math.random() - 0.5) * 24,
+        y + (Math.random() - 0.5) * 24,
+        cfg.glow || cfg.color
+      ));
+    }
   }
 
   function triggerMagicOverload() {
@@ -1489,7 +2624,8 @@
     for (let i = 0; i < 20; i++) particles.push(new Particle(player.x, player.y, '#f97316'));
   }
 
-  function registerMagicSpawn(count = 1) {
+  function registerMagicSpawn(count = 1, inSandbox = false) {
+    if (inSandbox) return true;
     if (magicSpawnCount + count > MAGIC_OVERLOAD_LIMIT || magics.length + count > MAGIC_OVERLOAD_LIMIT) {
       triggerMagicOverload();
       return false;
@@ -1501,16 +2637,14 @@
   class WoodBlock {
     constructor(x, y, width = TILE_W, height = TILE_H, grown = false) {
       this.x = x; this.y = y; this.width = width; this.height = height;
-      this.active = true; this.isBurning = false; this.burnTimer = 120;
-      this.grown = grown; this.isCharcoal = false;
+      this.active = true;
+      this.burnKind = 'woodBlock';
+      this.grown = grown;
+      resetBurnState(this);
     }
     update() {
       if (!this.active) return;
-      if (this.isBurning) {
-        this.burnTimer--;
-        if (this.burnTimer <= 0) { this.isCharcoal = true; this.isBurning = false; }
-        if (Math.random() < 0.3) particles.push(new Particle(this.x + Math.random() * this.width, this.y + Math.random() * this.height, '#f97316'));
-      }
+      updateBurningBlock(this);
     }
     draw(ctx) {
       if (!this.active) return;
@@ -1573,15 +2707,24 @@
   }
 
   class GenField {
-    constructor(x, y, type, scale = 1, maxAge = null) {
-      if (maxAge === null) maxAge = MagicStats.getFieldLifetimeFrames(type);
+    constructor(x, y, type, scale = 1, maxAge = null, inSandbox = false) {
+      if (maxAge === null) maxAge = infusedFieldLifetimeFrames(type);
       this.x = x; this.y = y; this.type = type; this.scale = scale;
       this.maxAge = maxAge; this.age = 0; this.active = true;
+      this.inSandbox = inSandbox;
       this.cfg = GEN_CONFIG[type] || GEN_CONFIG.fire;
       this.radius = TILE_W * 0.75 * scale;
       this.spawnEffectDone = false;
       this.boosted = false;
       this.woodSynergyDone = false;
+    }
+
+    fieldParticles() {
+      return this.inSandbox ? editorSandbox.particles : particles;
+    }
+
+    siblingFields() {
+      return this.inSandbox ? editorSandbox.genFields : genFields;
     }
 
     onSpawn() {
@@ -1592,39 +2735,47 @@
     }
 
     igniteAtPoint() {
-      getBurnableBlocks().forEach(b => {
-        if (b.active && collideCircleRect(this.x, this.y, this.radius + 8, b)) {
-          igniteNaturalBlock(b);
-        }
-      });
+      if (!this.inSandbox) {
+        getBurnableBlocks().forEach(b => {
+          if (b.active && collideCircleRect(this.x, this.y, this.radius + 8, b)) {
+            refreshBurnOnBlock(b);
+          }
+        });
+      }
+      const parts = this.fieldParticles();
       for (let i = 0; i < 14; i++) {
-        particles.push(new Particle(this.x, this.y, '#f97316'));
+        parts.push(new Particle(this.x, this.y, '#f97316'));
       }
     }
 
     lightningBurst(radius) {
       const r = this.boosted ? radius * 2.2 : radius;
-      enemies.forEach(e => {
-        if (e.active && Math.hypot(e.x - this.x, e.y - this.y) < r) {
-          const aoe = MagicStats.getCombat('lightning').aoeDamage;
-          applyDamage(e, aoe, e.x, e.y - e.radius, 'enemy');
-          if (e.hp <= 0) e.die();
-          else for (let i = 0; i < 6; i++) particles.push(new Particle(e.x, e.y, '#fde047'));
-        }
-      });
-      machines.forEach(m => {
-        if (Math.hypot(m.x + 25 - this.x, m.y + 20 - this.y) < r + 30) m.activate();
-      });
-      for (let i = 0; i < 16; i++) particles.push(new Particle(this.x, this.y, '#fde047'));
+      if (!this.inSandbox) {
+        enemies.forEach(e => {
+          if (e.active && Math.hypot(e.x - this.x, e.y - this.y) < r) {
+            const aoe = MagicInfusion.getInfusedCombat('lightning').aoeDamage;
+            applyDamage(e, aoe, e.x, e.y - e.radius, 'enemy');
+            if (e.hp <= 0) e.die();
+            else for (let i = 0; i < 6; i++) particles.push(new Particle(e.x, e.y, '#fde047'));
+          }
+        });
+        machines.forEach(m => {
+          if (Math.hypot(m.x + 25 - this.x, m.y + 20 - this.y) < r + 30) m.activate();
+        });
+      }
+      const parts = this.fieldParticles();
+      for (let i = 0; i < 16; i++) parts.push(new Particle(this.x, this.y, '#fde047'));
     }
 
     placeWood() {
+      if (this.inSandbox) return;
       const g = snapGrid(this.x, this.y);
       if (woodBlocks.some(b => b.active && b.x === g.x && b.y === g.y)) return;
       woodBlocks.push(new WoodBlock(g.x, g.y));
     }
 
     placeEarth() {
+      if (this.inSandbox) return;
       const g = snapGrid(this.x, this.y);
       if (earthBlocks.some(b => b.active && b.x === g.x && b.y === g.y)) return;
       if (rockBlocks.some(b => b.active && b.x === g.x && b.y === g.y)) return;
@@ -1633,13 +2784,14 @@
     }
 
     affectEnvironment() {
+      if (this.inSandbox) return;
       const r = this.radius;
       if (this.type === 'fire') {
         getBurnableBlocks().forEach(b => {
           if (!b.active) return;
           const cx = b.x + b.width / 2, cy = b.y + b.height / 2;
           if (Math.hypot(cx - this.x, cy - this.y) < r + 8) {
-            igniteNaturalBlock(b);
+            refreshBurnOnBlock(b);
           }
         });
       } else if (this.type === 'water') {
@@ -1647,23 +2799,20 @@
           if (g !== this && g.active && g.type === 'fire' && Math.hypot(g.x - this.x, g.y - this.y) < r + g.radius) g.active = false;
         });
         getBurnableBlocks().forEach(b => {
-          if (b.isBurning) {
-            b.isBurning = false;
-            b.burnTimer = 0;
-          }
+          if (b.isBurning) extinguishBurn(b);
         });
       } else if (this.type === 'wood') {
         enemies.forEach(e => {
           if (e.active && Math.hypot(e.x - this.x, e.y - this.y) < r) {
             e.applyEffect('stop');
-            e.bindTimer = Math.max(e.bindTimer || 0, MagicStats.secToFrames(MagicStats.getCombat('wood').bindDurationSec));
+            e.bindTimer = Math.max(e.bindTimer || 0, MagicStats.secToFrames(MagicInfusion.getInfusedCombat('wood').bindDurationSec));
           }
         });
       }
     }
 
     checkSynergies() {
-      genFields.forEach(other => {
+      this.siblingFields().forEach(other => {
         if (other === this || !other.active || !this.active) return;
         const dist = Math.hypot(other.x - this.x, other.y - this.y);
         if (dist > this.radius + other.radius) return;
@@ -1680,6 +2829,8 @@
           this.lightningBurst(this.radius * 2);
         }
 
+        if (this.inSandbox) return;
+
         if (this.type === 'water' && other.type === 'wood' && !this.woodSynergyDone) {
           this.woodSynergyDone = true;
           const g = snapGrid(other.x, other.y);
@@ -1694,7 +2845,9 @@
         }
         if (this.type === 'fire' && other.type === 'wood') {
           woodBlocks.forEach(b => {
-            if (Math.hypot(b.x + b.width / 2 - this.x, b.y + b.height / 2 - this.y) < this.radius + 30) b.isBurning = true;
+            if (b.active && Math.hypot(b.x + b.width / 2 - this.x, b.y + b.height / 2 - this.y) < this.radius + 30) {
+              refreshBurnOnBlock(b);
+            }
           });
         }
       });
@@ -1725,9 +2878,10 @@
     }
   }
 
-  function createMassExplosion(x, y, type, baseRadius = 100, extraMass = null) {
+  function createMassExplosion(x, y, type, baseRadius = 100, extraMass = null, inSandbox = false, powerMult = 1) {
+    const parts = inSandbox ? editorSandbox.particles : particles;
     let totalMass = extraMass !== null ? extraMass : 0;
-    if (extraMass === null) {
+    if (extraMass === null && !inSandbox) {
       genFields.forEach(g => {
         if (g.active && Math.hypot(g.x - x, g.y - y) < baseRadius) totalMass += g.cfg.mass;
       });
@@ -1743,11 +2897,15 @@
           if (Math.hypot(cx - x, cy - y) < baseRadius) totalMass += GEN_CONFIG.wood.mass;
         }
       });
+    } else if (extraMass === null && inSandbox) {
+      editorSandbox.genFields.forEach(g => {
+        if (g.active && Math.hypot(g.x - x, g.y - y) < baseRadius) totalMass += g.cfg.mass;
+      });
     }
     const radius = baseRadius * (1 + totalMass * 0.18);
     const color = GEN_CONFIG[type]?.color || '#fff';
-    for (let i = 0; i < 15 + totalMass * 3; i++) particles.push(new Particle(x, y, color));
-    particles.push({
+    for (let i = 0; i < 15 + totalMass * 3; i++) parts.push(new Particle(x, y, color));
+    parts.push({
       x, y, life: 1.0, color,
       update: function() { this.life -= 0.04; },
       draw: function(ctx) {
@@ -1757,9 +2915,10 @@
         ctx.globalAlpha = 1;
       }
     });
+    if (inSandbox) return;
     enemies.forEach(e => {
       if (e.active && Math.hypot(e.x - x, e.y - y) < radius) {
-        applyDamage(e, 2 + totalMass, e.x, e.y - e.radius, 'enemy');
+        applyDamage(e, (2 + totalMass) * powerMult, e.x, e.y - e.radius, 'enemy');
         if (e.hp <= 0) e.die();
       }
     });
@@ -1812,13 +2971,154 @@
     }
   });
 
-  // パレット (対象ブロック - 消費なし)
-  new Sortable(document.getElementById('palette-targets'), {
-    group: { name: 'targets', pull: 'clone', put: ['targets'] }, animation: 150, sort: false,
-    onStart: function() { leftPanel.classList.add('bg-red-50', 'border-red-200'); },
-    onEnd: function() { leftPanel.classList.remove('bg-red-50', 'border-red-200'); },
-    onAdd: function (evt) { evt.item.parentNode.removeChild(evt.item); }
-  });
+  // パレット (対象ブロック - 非表示・後方互換用)
+  const paletteTargets = document.getElementById('palette-targets');
+  if (paletteTargets) {
+    new Sortable(paletteTargets, {
+      group: { name: 'targets', pull: 'clone', put: ['targets'] }, animation: 150, sort: false,
+      onAdd: function (evt) { evt.item.parentNode.removeChild(evt.item); }
+    });
+  }
+
+  const TARGET_CATALOG = {
+    enemy: { icon: '👾', label: '敵' },
+    player: { icon: '🧙', label: '自分' },
+    magic: { icon: '✨', label: '魔法' },
+    object: { icon: '🪨', label: 'オブジェクト' },
+    wall: { icon: '🧱', label: '壁' },
+  };
+
+  function getTargetOptionsForPicker(blockEl, pickerEl) {
+    const val = blockEl?.dataset?.val;
+    const key = pickerEl?.dataset?.targetKey;
+    if (val === 'touch') return ['enemy', 'player', 'magic', 'wall'];
+    if (val === 'pull' && key === 'target') return ['enemy', 'player', 'magic', 'object'];
+    if (val === 'pull' && key === 'targetTo') return ['magic', 'player', 'enemy', 'object'];
+    if (['stop', 'slow', 'speedup'].includes(val)) return ['enemy', 'player', 'magic'];
+    return [];
+  }
+
+  function formatTargetChoice(val) {
+    if (!val || val === 'none') return null;
+    const t = TARGET_CATALOG[val];
+    return t ? `${t.icon}${t.label}` : val;
+  }
+
+  function setTargetBtnValue(btn, val) {
+    if (!btn) return;
+    const v = val || 'none';
+    btn.dataset.val = v;
+    const text = formatTargetChoice(v);
+    if (!text) {
+      btn.textContent = '🎯 選択';
+      btn.classList.add('is-unset');
+    } else {
+      btn.textContent = text;
+      btn.classList.remove('is-unset');
+    }
+  }
+
+  let activeTargetPickBtn = null;
+
+  function closeTargetMenu() {
+    const menu = document.getElementById('block-target-menu');
+    if (menu) menu.classList.add('hidden');
+    activeTargetPickBtn = null;
+  }
+
+  function openTargetMenu(btn, options) {
+    const menu = document.getElementById('block-target-menu');
+    if (!menu || !options.length) return;
+    activeTargetPickBtn = btn;
+    menu.innerHTML = options.map((val) => {
+      const t = TARGET_CATALOG[val];
+      return `<button type="button" class="block-target-menu-item" data-val="${val}">${t.icon} ${t.label}</button>`;
+    }).join('');
+    const rect = btn.getBoundingClientRect();
+    menu.style.left = `${Math.min(rect.left, window.innerWidth - 130)}px`;
+    menu.style.top = `${rect.bottom + 4}px`;
+    menu.classList.remove('hidden');
+  }
+
+  function queryTargetPickerButtons(root) {
+    const el = root || document;
+    if (el.classList?.contains('magic-block')) {
+      return el.querySelectorAll('.block-target-btn');
+    }
+    return el.querySelectorAll('.magic-block .block-target-btn');
+  }
+
+  function pickerRequiresSelection(blockVal, key) {
+    if (blockVal === 'pull') return key === 'target';
+    if (blockVal === 'touch') return key === 'target';
+    if (['stop', 'slow', 'speedup'].includes(blockVal)) return key === 'target';
+    return false;
+  }
+
+  function workspaceHasTargetErrors() {
+    let isError = false;
+    document.querySelectorAll('#workspace .program-slot > .magic-block').forEach((b) => {
+      b.querySelectorAll('.block-target-picker').forEach((picker) => {
+        const btn = picker.querySelector('.block-target-btn');
+        const key = picker.dataset.targetKey;
+        const val = btn?.dataset?.val || 'none';
+        if (pickerRequiresSelection(b.dataset.val, key) && val === 'none') isError = true;
+      });
+      const slot = b.querySelector('.target-slot');
+      if (slot && slot.children.length === 0 && !b.querySelector('.block-target-picker')) {
+        isError = true;
+      }
+    });
+    return isError;
+  }
+
+  function handleTargetPickerClick(btn, e) {
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+    const blockEl = btn.closest('.magic-block');
+    const pickerEl = btn.closest('.block-target-picker');
+    const options = getTargetOptionsForPicker(blockEl, pickerEl);
+    openTargetMenu(btn, options);
+  }
+
+  let blockTargetMenuBound = false;
+  function bindBlockTargetMenuGlobal() {
+    if (blockTargetMenuBound) return;
+    blockTargetMenuBound = true;
+    document.addEventListener('click', (e) => {
+      const menu = document.getElementById('block-target-menu');
+      const item = e.target.closest('.block-target-menu-item');
+      if (item && menu && !menu.classList.contains('hidden') && activeTargetPickBtn) {
+        setTargetBtnValue(activeTargetPickBtn, item.dataset.val);
+        closeTargetMenu();
+        scheduleAutoSave();
+        e.stopPropagation();
+        return;
+      }
+      if (!e.target.closest('#block-target-menu') && !e.target.closest('.block-target-btn')) {
+        closeTargetMenu();
+      }
+    });
+  }
+
+  function resetTargetPickerBindings(root) {
+    queryTargetPickerButtons(root).forEach((btn) => {
+      delete btn.dataset.pickerBound;
+    });
+  }
+
+  function initBlockTargetPickers(root) {
+    bindBlockTargetMenuGlobal();
+    queryTargetPickerButtons(root).forEach((btn) => {
+      if (btn.dataset.pickerBound) return;
+      btn.dataset.pickerBound = '1';
+      btn.addEventListener('mousedown', (e) => e.stopPropagation());
+      btn.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: true });
+      btn.addEventListener('click', (e) => handleTargetPickerClick(btn, e));
+    });
+  }
 
   // ★ プログラミングスロットの初期化 ★
   function initProgramSlots() {
@@ -1832,6 +3132,8 @@
           },
           animation: 150,
           ghostClass: 'sortable-ghost',
+          filter: '.block-target-btn, .block-target-label, select',
+          preventOnFilter: false,
           onStart: function() { leftPanel.classList.add('bg-red-50', 'border-red-200'); },
           onEnd: function() {
             leftPanel.classList.remove('bg-red-50', 'border-red-200');
@@ -1845,7 +3147,8 @@
                 if (child !== evt.item) slot.removeChild(child);
               });
             }
-            initSlots(evt.item);
+            resetTargetPickerBindings(evt.item);
+            initBlockTargetPickers(evt.item);
             syncInventory();
             scheduleAutoSave();
           },
@@ -1860,43 +3163,33 @@
   }
   initProgramSlots();
 
-  // ★ スロットをドラッグ＆ドロップ可能にする関数 ★
   function initSlots(element) {
-    const slots = element.querySelectorAll('.target-slot');
-    slots.forEach(slot => {
-      // パレット内のスロットは初期化しない
-      if (slot.closest('#palette-blocks')) return;
-      if (!slot.dataset.sortableInitialized) {
-        new Sortable(slot, {
-          group: { name: 'targets', put: ['targets'] }, // 対象ブロックのみ受け入れる
-          animation: 150,
-          onStart: function() { leftPanel.classList.add('bg-red-50', 'border-red-200'); },
-          onEnd: function() {
-            leftPanel.classList.remove('bg-red-50', 'border-red-200');
-            scheduleAutoSave();
-          },
-          onAdd: function (evt) {
-            // 新しいブロックが入ったら、元々入っていた古いブロックを削除する
-            if (slot.children.length > 1) {
-              Array.from(slot.children).forEach(child => {
-                 if (child !== evt.item) slot.removeChild(child);
-              });
-            }
-            scheduleAutoSave();
-          },
-          onRemove: function() { scheduleAutoSave(); }
-        });
-        slot.dataset.sortableInitialized = 'true';
-      }
-    });
+    if (element) initBlockTargetPickers(element);
   }
-  // ロード時にワークスペース内の既存スロットを初期化
-  initSlots(document.getElementById('workspace'));
+
+  initBlockTargetPickers(document.getElementById('workspace'));
+  initBlockTargetPickers(document.getElementById('palette-blocks'));
   document.getElementById('workspace')?.addEventListener('change', (e) => {
     if (e.target.tagName === 'SELECT') scheduleAutoSave();
   });
   ['z', 'x', 'c'].forEach((key) => {
     document.getElementById(`slot-select-${key}`)?.addEventListener('click', () => selectMagicSlot(key));
+  });
+  document.getElementById('btn-test-slots-inc')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    setTestPlaySlotLimit(testPlaySlotLimit + 1);
+  });
+  document.getElementById('btn-test-slots-dec')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    setTestPlaySlotLimit(testPlaySlotLimit - 1);
+  });
+  document.getElementById('btn-block-scale-inc')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    setBlockScale(blockScale + BLOCK_SCALE_STEP);
+  });
+  document.getElementById('btn-block-scale-dec')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    setBlockScale(blockScale - BLOCK_SCALE_STEP);
   });
 
 
@@ -1971,6 +3264,71 @@
     showDamage(x, y, dmg, kind);
     return dmg;
   }
+
+  function isPlayerInGenField(g) {
+    if (!g.active) return false;
+    return Math.hypot(player.x - g.x, player.y - g.y) < g.radius + player.radius * 0.55;
+  }
+
+  function triggerPlayerGameOver(message) {
+    showMessage(message);
+    isPaused = true;
+    setTimeout(() => {
+      init();
+      isPaused = false;
+    }, 2500);
+  }
+
+  function updatePlayerFireFieldHazard() {
+    if (isPaused) return;
+
+    const fireSt = MagicInfusion.getInfusedCombat('fire');
+    let inFireField = false;
+
+    for (const g of genFields) {
+      if (!isPlayerInGenField(g)) continue;
+      if (g.type === 'water') {
+        player.burnTimer = 0;
+        player.burnTickTimer = 0;
+      } else if (g.type === 'fire') {
+        inFireField = true;
+      }
+    }
+
+    if (inFireField && fireSt.hasDot) {
+      player.burnTimer = Math.max(player.burnTimer || 0, MagicStats.secToFrames(fireSt.dotDurationSec));
+      if (!player.burnTickTimer || player.burnTickTimer <= 0) {
+        player.burnTickTimer = MagicStats.secToFrames(fireSt.dotIntervalSec) || 60;
+      }
+    }
+
+    if (!player.burnTimer || player.burnTimer <= 0) {
+      player.burnTimer = 0;
+      player.burnTickTimer = 0;
+      return;
+    }
+
+    player.burnTimer--;
+    player.burnTickTimer--;
+
+    if (Math.random() < 0.22) {
+      particles.push(new Particle(
+        player.x + (Math.random() - 0.5) * player.radius * 1.6,
+        player.y + (Math.random() - 0.5) * player.radius * 1.6,
+        '#fb923c'
+      ));
+    }
+
+    if (player.burnTickTimer > 0) return;
+
+    player.burnTickTimer = MagicStats.secToFrames(fireSt.dotIntervalSec) || 60;
+    if (player.invincibleTimer > 0) return;
+
+    applyDamage(player, fireSt.dotDamage, player.x, player.y - player.radius, 'dot');
+    updatePlayerHUD();
+    for (let i = 0; i < 4; i++) particles.push(new Particle(player.x, player.y, '#f97316'));
+    if (player.hp <= 0) triggerPlayerGameOver('ゲームオーバー！炎の残留で焼かれました。');
+  }
   let enemies = [];
   let frameCount = 0;
   let gameLoopStarted = false;
@@ -2001,36 +3359,122 @@
       player.mp = player.maxMp;
       
       showMessage(`レベルアップ！Lv. ${player.level} になりました！`);
-      
-      // スロット解放チェック (5レベルごと)
-      if (player.level % 5 === 0) {
-        setTimeout(() => {
-          showMessage(`おめでとう！魔法スロットが1つ解放されました！`);
-        }, 1500);
-      }
+      grantManaWithFx(3 + Math.floor(Math.random() * 5), 'レベルアップ');
       
       updateWorkspaceSlots();
     }
     updatePlayerHUD();
   }
 
-  // プレイヤーのレベルに応じてワークスペースのスロットを更新する
+  function loadTestPlaySlotLimit() {
+    try {
+      const raw = localStorage.getItem(TEST_SLOT_LIMIT_KEY);
+      const v = parseInt(raw, 10);
+      if (Number.isFinite(v)) {
+        testPlaySlotLimit = Math.min(TEST_SLOT_MAX, Math.max(TEST_SLOT_MIN, v));
+      }
+    } catch (_) {
+      /* ignore */
+    }
+  }
+
+  function persistTestPlaySlotLimit() {
+    try {
+      localStorage.setItem(TEST_SLOT_LIMIT_KEY, String(testPlaySlotLimit));
+    } catch (_) {
+      /* ignore */
+    }
+  }
+
+  function getMaxWorkspaceSlots() {
+    return testPlaySlotLimit;
+  }
+
+  function updateTestSlotLimitUI() {
+    const display = document.getElementById('test-slot-limit-display');
+    const decBtn = document.getElementById('btn-test-slots-dec');
+    const incBtn = document.getElementById('btn-test-slots-inc');
+    if (display) display.textContent = String(testPlaySlotLimit);
+    if (decBtn) decBtn.disabled = testPlaySlotLimit <= TEST_SLOT_MIN;
+    if (incBtn) incBtn.disabled = testPlaySlotLimit >= TEST_SLOT_MAX;
+  }
+
+  function setTestPlaySlotLimit(next) {
+    testPlaySlotLimit = Math.min(TEST_SLOT_MAX, Math.max(TEST_SLOT_MIN, next));
+    persistTestPlaySlotLimit();
+    updateTestSlotLimitUI();
+    updateWorkspaceSlots();
+  }
+
+  function loadBlockScale() {
+    try {
+      const raw = localStorage.getItem(BLOCK_SCALE_STORAGE_KEY);
+      const v = parseFloat(raw);
+      if (Number.isFinite(v)) {
+        blockScale = Math.min(BLOCK_SCALE_MAX, Math.max(BLOCK_SCALE_MIN, v));
+      }
+    } catch (_) {
+      /* ignore */
+    }
+    applyBlockScale(blockScale);
+  }
+
+  function persistBlockScale() {
+    try {
+      localStorage.setItem(BLOCK_SCALE_STORAGE_KEY, String(blockScale));
+    } catch (_) {
+      /* ignore */
+    }
+  }
+
+  function applyBlockScale(scale) {
+    blockScale = Math.min(BLOCK_SCALE_MAX, Math.max(BLOCK_SCALE_MIN, scale));
+    blockScale = Math.round(blockScale * 10) / 10;
+    if (viewEditor) viewEditor.style.setProperty('--block-scale', String(blockScale));
+    updateBlockScaleUI();
+  }
+
+  function updateBlockScaleUI() {
+    const display = document.getElementById('block-scale-display');
+    const decBtn = document.getElementById('btn-block-scale-dec');
+    const incBtn = document.getElementById('btn-block-scale-inc');
+    if (display) display.textContent = `${Math.round(blockScale * 100)}%`;
+    if (decBtn) decBtn.disabled = blockScale <= BLOCK_SCALE_MIN + 0.001;
+    if (incBtn) incBtn.disabled = blockScale >= BLOCK_SCALE_MAX - 0.001;
+  }
+
+  function setBlockScale(next) {
+    applyBlockScale(next);
+    persistBlockScale();
+  }
+
+  function trimEmptyWorkspaceSlots(maxSlots) {
+    const workspace = document.getElementById('workspace');
+    if (!workspace) return;
+    let slots = workspace.querySelectorAll('.program-slot');
+    while (slots.length > maxSlots) {
+      const last = slots[slots.length - 1];
+      if (last.querySelector('.magic-block')) break;
+      last.remove();
+      slots = workspace.querySelectorAll('.program-slot');
+    }
+  }
+
+  // テストプレイ用スロット上限でワークスペースを更新する
   function updateWorkspaceSlots() {
     const workspace = document.getElementById('workspace');
     if (!workspace) return;
     
-    const maxSlots = 3 + Math.floor(player.level / 5);
-    const slots = workspace.querySelectorAll('.program-slot');
+    const maxSlots = getMaxWorkspaceSlots();
+    let slots = workspace.querySelectorAll('.program-slot');
     const currentSlotCount = slots.length;
     
-    // UI側のスロット上限数表示を更新
     const infoSpan = document.getElementById('workspace-slots-info');
     if (infoSpan) {
-      const nextUnlock = (Math.floor(player.level / 5) + 1) * 5;
-      infoSpan.innerText = `上限: ${maxSlots}スロット (次: Lv.${nextUnlock})`;
+      infoSpan.innerText = `上限: ${maxSlots}スロット`;
     }
+    updateTestSlotLimitUI();
     
-    // 不足しているスロットを末尾に追加
     if (currentSlotCount < maxSlots) {
       const needed = maxSlots - currentSlotCount;
       for (let i = 0; i < needed; i++) {
@@ -2038,9 +3482,13 @@
         newSlot.className = 'program-slot';
         workspace.appendChild(newSlot);
       }
-      
-      // 追加した新しいスロットに対してSortableを初期化
       initProgramSlots();
+    } else if (currentSlotCount > maxSlots) {
+      trimEmptyWorkspaceSlots(maxSlots);
+      const remaining = workspace.querySelectorAll('.program-slot').length;
+      if (remaining > maxSlots) {
+        showMessage('ブロックが入っているスロットがあるため、これ以上減らせません');
+      }
     }
     scheduleAutoSave();
   }
@@ -2084,8 +3532,7 @@
   }
 
   function getWorkspaceSlotCount(blockCount) {
-    const maxSlots = 3 + Math.floor(player.level / 5);
-    return Math.max(maxSlots, blockCount, 3);
+    return Math.max(getMaxWorkspaceSlots(), blockCount, TEST_SLOT_MIN);
   }
 
   function cloneMagicBlockFromPalette(type, val) {
@@ -2097,30 +3544,37 @@
     clone.style.display = 'flex';
     const badge = clone.querySelector('.badge');
     if (badge) badge.remove();
+    resetTargetPickerBindings(clone);
     return clone;
   }
 
-  function applyBlockTarget(el, target) {
-    if (!target || target === 'none') return;
-    const slot = el.querySelector('.target-slot');
-    if (slot) {
-      const tTemplate = document.querySelector(
-        `#palette-targets .target-block[data-val="${target}"]`
-      );
-      if (tTemplate) {
-        slot.innerHTML = '';
-        slot.appendChild(tTemplate.cloneNode(true));
+  function applyBlockTarget(el, blockOrTarget) {
+    const block = typeof blockOrTarget === 'object' ? blockOrTarget : { target: blockOrTarget };
+    el.querySelectorAll('.block-target-picker').forEach((picker) => {
+      const btn = picker.querySelector('.block-target-btn');
+      const key = picker.dataset.targetKey;
+      if (key === 'target') setTargetBtnValue(btn, block.target);
+      else if (key === 'targetTo') setTargetBtnValue(btn, block.targetTo || 'magic');
+    });
+    // 旧ドラッグ式スロット互換
+    if (block.target && block.target !== 'none') {
+      const slot = el.querySelector('.target-slot');
+      if (slot) {
+        const tTemplate = document.querySelector(`#palette-targets .target-block[data-val="${block.target}"]`);
+        if (tTemplate) {
+          slot.innerHTML = '';
+          slot.appendChild(tTemplate.cloneNode(true));
+        }
       }
-      return;
     }
     const select = el.querySelector('select');
-    if (select) select.value = target;
+    if (select && block.target) select.value = block.target;
   }
 
   function createBlockElement(block) {
     const el = cloneMagicBlockFromPalette(block.type, block.val);
     if (!el) return null;
-    applyBlockTarget(el, block.target);
+    applyBlockTarget(el, block);
     return el;
   }
 
@@ -2145,7 +3599,7 @@
       delete s.dataset.sortableInitialized;
     });
     initProgramSlots();
-    initSlots(workspace);
+    initBlockTargetPickers(workspace);
     syncInventory();
     updateMagicSlotSelectorUI();
   }
@@ -2155,13 +3609,27 @@
     const blocks = [];
     blocksEl.forEach((b) => {
       let target = 'none';
+      let targetTo = 'none';
+      b.querySelectorAll('.block-target-picker').forEach((picker) => {
+        const btn = picker.querySelector('.block-target-btn');
+        const key = picker.dataset.targetKey;
+        const val = btn?.dataset?.val || 'none';
+        if (key === 'target') target = val;
+        else if (key === 'targetTo') targetTo = val;
+      });
       const slot = b.querySelector('.target-slot');
-      if (slot && slot.children.length > 0) {
+      if (slot && slot.children.length > 0 && target === 'none') {
         target = slot.children[0].dataset.val;
       }
-      const selectEl = b.querySelector('select');
-      if (selectEl) target = selectEl.value;
-      blocks.push({ type: b.dataset.type, val: b.dataset.val, target });
+      const selectEl = b.querySelector('select.block-repeat-select, select');
+      if (selectEl && selectEl.classList.contains('block-repeat-select')) {
+        target = selectEl.value;
+      } else if (selectEl && !b.querySelector('.block-target-picker')) {
+        target = selectEl.value;
+      }
+      const entry = { type: b.dataset.type, val: b.dataset.val, target };
+      if (b.dataset.val === 'pull' && targetTo !== 'none') entry.targetTo = targetTo;
+      blocks.push(entry);
     });
     return blocks;
   }
@@ -2195,11 +3663,9 @@
       const btn = document.getElementById(`slot-select-${k}`);
       if (btn) btn.classList.toggle('is-active', k === activeMagicSlot);
     });
-    const header = document.getElementById('workspace-active-key');
-    const desc = document.getElementById('active-slot-desc');
+    const header = document.getElementById('active-slot-desc');
     const label = activeMagicSlot.toUpperCase();
-    if (header) header.textContent = `${label}キーを編集中`;
-    if (desc) desc.textContent = `${label}キー: ${getMagicSummaryText(savedMagics[activeMagicSlot])}`;
+    if (header) header.textContent = `${label}キー: ${getMagicSummaryText(savedMagics[activeMagicSlot])}`;
   }
 
   // プレイヤーHUD更新関数
@@ -2212,13 +3678,14 @@
     const expBar = document.getElementById('player-exp-bar');
     const lvSpan = document.getElementById('player-level');
     
-    if (hpText) hpText.innerText = `${Math.ceil(player.hp)} / ${player.maxHp}`;
+    if (hpText) hpText.textContent = `${Math.ceil(player.hp)}/${player.maxHp}`;
     if (hpBar) hpBar.style.width = `${Math.max(0, (player.hp / player.maxHp) * 100)}%`;
-    if (mpText) mpText.innerText = `${Math.ceil(player.mp)} / ${player.maxMp}`;
+    if (mpText) mpText.textContent = `${Math.ceil(player.mp)}/${player.maxMp}`;
     if (mpBar) mpBar.style.width = `${Math.max(0, (player.mp / player.maxMp) * 100)}%`;
-    if (expText) expText.innerText = `${Math.ceil(player.exp)} / ${player.maxExp}`;
+    if (expText) expText.textContent = `${Math.ceil(player.exp)}/${player.maxExp}`;
     if (expBar) expBar.style.width = `${Math.max(0, (player.exp / player.maxExp) * 100)}%`;
     if (lvSpan) lvSpan.innerText = player.level;
+    updateManaHUD();
   }
 
   // ★ プレイヤーオブジェクト (移動機能・状態異常・当たり判定を追加) ★
@@ -2236,6 +3703,8 @@
     mp: 100, maxMp: 100,
     level: 1, exp: 0, maxExp: 40,
     invincibleTimer: 0,
+    burnTimer: 0,
+    burnTickTimer: 0,
     effectType: null, effectTimer: 0,
     animState: 'idle',
     animTimer: 0,
@@ -2346,18 +3815,15 @@
               }
 
               if (this.hp <= 0) {
-                showMessage("ゲームオーバー！プレイヤーが倒れました。");
-                isPaused = true;
-                setTimeout(() => {
-                  init();
-                  isPaused = false;
-                }, 2500);
+                triggerPlayerGameOver('ゲームオーバー！プレイヤーが倒れました。');
               }
               break;
             }
           }
         }
       }
+
+      updatePlayerFireFieldHazard();
 
       // MP自動回復
       if (this.mp < this.maxMp) {
@@ -2419,9 +3885,9 @@
         }
 
         if (this.burnTickTimer <= 0) {
-          const dot = MagicStats.getCombat('fire').dotDamage;
+          const dot = MagicInfusion.getInfusedCombat('fire').dotDamage;
           applyDamage(this, dot, this.x, this.y - this.radius, 'dot');
-          this.burnTickTimer = MagicStats.secToFrames(MagicStats.getCombat('fire').dotIntervalSec) || 60;
+          this.burnTickTimer = MagicStats.secToFrames(MagicInfusion.getInfusedCombat('fire').dotIntervalSec) || 60;
           
           // ドットダメージの小さな飛び火
           for (let i = 0; i < 3; i++) {
@@ -2452,6 +3918,8 @@
       
       // 経験値獲得処理
       gainExp(20);
+      const manaGain = MagicInfusion.rollEnemyDrop();
+      if (manaGain > 0) updateManaHUD();
 
       setTimeout(() => {
         this.active = true;
@@ -2468,6 +3936,7 @@
       this.x = x; this.y = y;
       this.blocks = blocks;
       this.step = 0;
+      this.inSandbox = !!state.inSandbox;
       
       this.gen = state.gen || null;
       this.vec = state.vec || 'none';
@@ -2495,16 +3964,23 @@
       this.isWaterShard = state.isWaterShard || false;
       this.spawnGrace = state.spawnGrace !== undefined ? state.spawnGrace : 0;
       this.wallBounced = state.wallBounced || false;
+      this.activePull = state.activePull || null;
 
       const effectiveGen = state.gen || getEffectiveGen(blocks);
       if (effectiveGen) this.setGen(effectiveGen);
       if (state.vec && state.vec !== 'none') this.vec = state.vec;
       if (!state.gen) this.processGenVecBlocks();
       if (state.speed === undefined && this.gen) {
-        this.speed = MagicStats.getProjectileSpeed(this.gen, this.isWaterShard);
+        this.speed = infusedProjectileSpeed(this.gen, this.isWaterShard, this);
       }
       this.ensureInitialMovement();
     }
+
+    magicList() { return this.inSandbox ? editorSandbox.magics : magics; }
+    particleList() { return this.inSandbox ? editorSandbox.particles : particles; }
+    boundPlayer() { return this.inSandbox ? editorSandbox.player : player; }
+    playWidth() { return this.inSandbox ? editorSandbox.width : width; }
+    playHeight() { return this.inSandbox ? editorSandbox.height : height; }
 
     ensureInitialMovement() {
       if (this.vx !== 0 || this.vy !== 0) return;
@@ -2515,7 +3991,7 @@
       }
       if (!this.blocks.some(b => b.type === 'vec')) {
         this.vec = 'forward';
-        const moveSpeed = MagicStats.getProjectileSpeed(this.gen || 'fire', this.isWaterShard);
+        const moveSpeed = infusedProjectileSpeed(this.gen || 'fire', this.isWaterShard, this);
         this.vx = Math.cos(this.angle) * moveSpeed;
         this.vy = Math.sin(this.angle) * moveSpeed;
       }
@@ -2524,15 +4000,16 @@
     setGen(val) {
       this.gen = val;
       const cfg = GEN_CONFIG[val];
+      const combat = MagicInfusion.getInfusedCombat(val);
       if (cfg) {
         this.color = cfg.color;
-        this.mass = cfg.mass;
+        this.mass = combat.mass;
       }
     }
 
     applyVec(val) {
       this.vec = val;
-      const moveSpeed = MagicStats.getProjectileSpeed(this.gen || 'fire', this.isWaterShard);
+      const moveSpeed = infusedProjectileSpeed(this.gen || 'fire', this.isWaterShard, this);
       if (val === 'forward' || val === 'zigzag') {
         let currentSpeed = Math.hypot(this.vx, this.vy);
         if (currentSpeed === 0) {
@@ -2543,6 +4020,15 @@
           this.vy = (this.vy / currentSpeed) * moveSpeed;
         }
         this.baseY = this.y;
+      } else if (val === 'bounce') {
+        let currentSpeed = Math.hypot(this.vx, this.vy);
+        if (currentSpeed === 0) {
+          this.vx = Math.cos(this.angle) * moveSpeed;
+          this.vy = Math.sin(this.angle) * moveSpeed;
+        } else {
+          this.vx = (this.vx / currentSpeed) * moveSpeed;
+          this.vy = (this.vy / currentSpeed) * moveSpeed;
+        }
       } else if (val === 'homing' || val === 'return') {
         if (this.vx === 0 && this.vy === 0) {
           this.vx = Math.cos(this.angle) * moveSpeed * 0.5;
@@ -2568,9 +4054,9 @@
     refreshGen() {
       const g = getEffectiveGen(this.blocks);
       if (!g || g === this.gen) return;
-      const prevSpeed = MagicStats.getProjectileSpeed(this.gen || g, this.isWaterShard);
+      const prevSpeed = infusedProjectileSpeed(this.gen || g, this.isWaterShard, this);
       this.setGen(g);
-      const newSpeed = MagicStats.getProjectileSpeed(g, this.isWaterShard);
+      const newSpeed = infusedProjectileSpeed(g, this.isWaterShard, this);
       this.speed = newSpeed;
       const cur = Math.hypot(this.vx, this.vy);
       if (cur > 0 && prevSpeed > 0) {
@@ -2585,8 +4071,10 @@
       this.trigAge++; this.age++; this.lifeTime++;
 
       if (this.age >= this.maxAge) {
+        if (this.inSandbox && this.gen) spawnImpactField(this.x, this.y, this.gen, this.scale, this);
         this.active = false;
-        for(let i=0; i<8; i++) particles.push(new Particle(this.x, this.y, this.color || '#cbd5e1'));
+        const parts = this.particleList();
+        for (let i = 0; i < 8; i++) parts.push(new Particle(this.x, this.y, this.color || '#cbd5e1'));
         return;
       }
 
@@ -2607,27 +4095,27 @@
         } 
         else if (block.type === 'trig') {
           let hit = false;
-          if (block.val === 'time_half') {
-             if (this.trigAge >= 30) hit = true; 
-          } else if (block.val === 'time') {
-             if (this.trigAge >= 60) hit = true; 
+          if (block.val === 'wait' || block.val === 'time_half' || block.val === 'time') {
+             if (this.trigAge >= MagicInfusion.getInfusedTrigWaitFrames(block.val)) hit = true;
           } else if (block.val === 'tap') {
              if (window.currentTapFlag) hit = true;
           } 
           // ★ 新設：対象に触れたら待機解除 ★
           else if (block.val === 'touch') {
              let t = block.target;
+             const bp = this.boundPlayer();
+             const touchR = (this.radius * this.scale) * MagicInfusion.getInfusedTrigRadiusMult('touch');
              if (t === 'enemy') {
+               if (this.inSandbox) break;
                let target = getNearestEnemy(this.x, this.y);
-               if (target && Math.hypot(target.x - this.x, target.y - this.y) < (this.radius * this.scale) + target.radius) hit = true;
+               if (target && Math.hypot(target.x - this.x, target.y - this.y) < touchR + target.radius) hit = true;
              } else if (t === 'wall') {
-               if (this.x < 0 || this.x > width || this.y < 0 || this.y > height) hit = true;
+               if (!this.inSandbox && (this.x < 0 || this.x > this.playWidth() || this.y < 0 || this.y > this.playHeight())) hit = true;
              } else if (t === 'player') {
-               if (Math.hypot(player.x - this.x, player.y - this.y) < (this.radius * this.scale) + player.radius) hit = true;
+               if (Math.hypot(bp.x - this.x, bp.y - this.y) < touchR + bp.radius) hit = true;
              } else if (t === 'magic') {
-               // 他の魔法弾と衝突したか判定
-               for(let m of magics) {
-                 if (m !== this && m.active && Math.hypot(m.x - this.x, m.y - this.y) < (this.radius * this.scale) + (m.radius * m.scale)) {
+               for (let m of this.magicList()) {
+                 if (m !== this && m.active && Math.hypot(m.x - this.x, m.y - this.y) < touchR + (m.radius * m.scale)) {
                    hit = true; break;
                  }
                }
@@ -2636,14 +4124,16 @@
           
           if (hit) { this.step++; this.trigAge = 0; } 
           else { break; } 
-        } 
+        }
         else if (block.type === 'act') {
-          this.executeAction(block.val, block.target);
+          this.executeAction(block.val, block.target, block.targetTo);
           this.step++;
         }
         else if (block.type === 'ctrl') {
           if (block.val === 'repeat') {
-            if (this.repeatLeft === -1) this.repeatLeft = parseInt(block.target);
+            if (this.repeatLeft === -1) {
+              this.repeatLeft = parseInt(block.target, 10) + MagicInfusion.getInfusedCtrlRepeatBonus();
+            }
             if (this.repeatLeft > 0) {
               this.repeatLeft--; this.step = 0; break; 
             } else { this.step++; }
@@ -2651,41 +4141,60 @@
         }
       }
 
-      if (this.x < -200 || this.x > width + 200 || this.y < -200 || this.y > height + 200) this.active = false;
+      const pw = this.playWidth();
+      const ph = this.playHeight();
+      if (this.x < -200 || this.x > pw + 200 || this.y < -200 || this.y > ph + 200) this.active = false;
+
+      this.processActivePull();
     }
 
     move() {
+      const bp = this.boundPlayer();
       if (this.vec === 'forward') {
         this.x += this.vx; this.y += this.vy;
       } else if (this.vec === 'zigzag') {
+        const amp = 50 * this.scale * MagicInfusion.getInfusedVecMult('zigzag', 'ampMult', 1);
         this.x += this.vx;
-        this.y = this.baseY + Math.sin(this.lifeTime * 0.15) * 50 * this.scale;
+        this.y = this.baseY + Math.sin(this.lifeTime * 0.15) * amp;
         this.baseY += this.vy; 
       } else if (this.vec === 'orbit') {
-        this.orbitAngle += 0.08;
-        this.x = player.x + Math.cos(this.orbitAngle) * 80 * this.scale;
-        this.y = player.y + Math.sin(this.orbitAngle) * 80 * this.scale;
+        const orbitR = 80 * this.scale * MagicInfusion.getInfusedVecMult('orbit', 'radiusMult', 1);
+        const orbitSpd = 0.08 * MagicInfusion.getInfusedVecMult('orbit', 'speedMult', 1);
+        this.orbitAngle += orbitSpd;
+        this.x = bp.x + Math.cos(this.orbitAngle) * orbitR;
+        this.y = bp.y + Math.sin(this.orbitAngle) * orbitR;
       } else if (this.vec === 'homing') {
+        if (this.inSandbox) {
+          if (this.vx === 0 && this.vy === 0) this.vx = this.speed;
+          this.x += this.vx; this.y += this.vy;
+        } else {
         let target = getNearestEnemy(this.x, this.y);
         if (target) {
           let dx = target.x - this.x, dy = target.y - this.y;
           let dist = Math.hypot(dx, dy);
+          const turn = 0.1 * MagicInfusion.getInfusedVecMult('homing', 'turnMult', 1);
           if (dist > 0) {
-            this.vx = (this.vx * 0.9) + ((dx / dist) * this.speed * 0.1);
-            this.vy = (this.vy * 0.9) + ((dy / dist) * this.speed * 0.1);
+            this.vx = (this.vx * 0.9) + ((dx / dist) * this.speed * turn);
+            this.vy = (this.vy * 0.9) + ((dy / dist) * this.speed * turn);
           }
         } else {
           if (this.vx === 0 && this.vy === 0) this.vx = this.speed;
         }
         this.x += this.vx; this.y += this.vy;
+        }
       } else if (this.vec === 'return') {
-        let dx = player.x - this.x, dy = player.y - this.y;
+        let dx = bp.x - this.x, dy = bp.y - this.y;
         let dist = Math.hypot(dx, dy);
+        const retGain = 0.15 * MagicInfusion.getInfusedVecMult('return', 'speedMult', 1);
         if (dist > 0) {
-          this.vx = (this.vx * 0.9) + ((dx / dist) * this.speed * 0.15);
-          this.vy = (this.vy * 0.9) + ((dy / dist) * this.speed * 0.15);
+          this.vx = (this.vx * 0.9) + ((dx / dist) * this.speed * retGain);
+          this.vy = (this.vy * 0.9) + ((dy / dist) * this.speed * retGain);
         }
         this.x += this.vx; this.y += this.vy;
+      } else if (this.vec === 'bounce') {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.bounceCollisions();
       } else if (this.vx !== 0 || this.vy !== 0) {
         this.x += this.vx; this.y += this.vy;
       }
@@ -2694,15 +4203,16 @@
     waterVanish() {
       if (!this.active) return;
       this.active = false;
+      const parts = this.particleList();
       for (let i = 0; i < 10; i++) {
-        particles.push(new Particle(this.x, this.y, GEN_CONFIG.water.glow));
+        parts.push(new Particle(this.x, this.y, GEN_CONFIG.water.glow));
       }
     }
 
     waterSplitOnImpact() {
       if (this.gen !== 'water' || this.hasSplit || !this.active) return;
       this.hasSplit = true;
-      const speed = MagicStats.getProjectileSpeed('water', true);
+      const speed = infusedProjectileSpeed('water', true, 'forward');
       const shardBlocks = [
         { type: 'gen', val: 'water', target: 'none' },
         { type: 'vec', val: 'forward', target: 'none' }
@@ -2711,24 +4221,29 @@
         gen: 'water', vec: 'forward', scale: this.scale * 0.85,
         color: GEN_CONFIG.water.color, speed: speed,
         vx, vy, angle: Math.atan2(vy, vx),
-        hasSplit: true, isWaterShard: true, durability: 1, spawnGrace: 5, wallBounced: false
+        hasSplit: true, isWaterShard: true, durability: 1, spawnGrace: 5, wallBounced: false,
+        inSandbox: this.inSandbox
       });
-      if (!registerMagicSpawn(2)) { this.active = false; return; }
+      if (!registerMagicSpawn(2, this.inSandbox)) { this.active = false; return; }
       const off = this.radius * 2;
-      magics.push(mk(-speed, 0, -off), mk(speed, 0, off));
-      spawnImpactField(this.x, this.y, 'water', this.scale);
+      this.magicList().push(mk(-speed, 0, -off), mk(speed, 0, off));
+      spawnImpactField(this.x, this.y, 'water', this.scale, this);
       this.active = false;
     }
 
     waterBounceSplash() {
+      const parts = this.particleList();
       for (let i = 0; i < 6; i++) {
-        particles.push(new Particle(this.x, this.y, GEN_CONFIG.water.glow));
+        parts.push(new Particle(this.x, this.y, GEN_CONFIG.water.glow));
       }
     }
 
     waterBounceWalls() {
+      if (this.inSandbox) return false;
       const r = this.radius * this.scale;
-      const hitWall = this.x < r || this.x > width - r || this.y < r || this.y > height - r;
+      const pw = this.playWidth();
+      const ph = this.playHeight();
+      const hitWall = this.x < r || this.x > pw - r || this.y < r || this.y > ph - r;
       if (!hitWall) return false;
 
       if (this.wallBounced) {
@@ -2737,12 +4252,40 @@
       }
 
       if (this.x < r) { this.x = r; this.vx = Math.abs(this.vx) * WATER_BOUNCE_DAMP; }
-      if (this.x > width - r) { this.x = width - r; this.vx = -Math.abs(this.vx) * WATER_BOUNCE_DAMP; }
+      if (this.x > pw - r) { this.x = pw - r; this.vx = -Math.abs(this.vx) * WATER_BOUNCE_DAMP; }
       if (this.y < r) { this.y = r; this.vy = Math.abs(this.vy) * WATER_BOUNCE_DAMP; }
-      if (this.y > height - r) { this.y = height - r; this.vy = -Math.abs(this.vy) * WATER_BOUNCE_DAMP; }
+      if (this.y > ph - r) { this.y = ph - r; this.vy = -Math.abs(this.vy) * WATER_BOUNCE_DAMP; }
       this.wallBounced = true;
       this.waterBounceSplash();
       return true;
+    }
+
+    bounceCollisions() {
+      const r = this.radius * this.scale;
+      const damp = 0.82 * MagicInfusion.getInfusedVecMult('bounce', 'bounceMult', 1);
+      const pw = this.playWidth();
+      const ph = this.playHeight();
+      if (this.x < r) { this.x = r; this.vx = Math.abs(this.vx) * damp; }
+      if (this.x > pw - r) { this.x = pw - r; this.vx = -Math.abs(this.vx) * damp; }
+      if (this.y < r) { this.y = r; this.vy = Math.abs(this.vy) * damp; }
+      if (this.y > ph - r) { this.y = ph - r; this.vy = -Math.abs(this.vy) * damp; }
+      if (this.inSandbox) return;
+      for (const block of getSolidBlocks()) {
+        if (!block.active) continue;
+        const closestX = Math.max(block.x, Math.min(this.x, block.x + block.width));
+        const closestY = Math.max(block.y, Math.min(this.y, block.y + block.height));
+        const dx = this.x - closestX;
+        const dy = this.y - closestY;
+        const dist = Math.hypot(dx, dy);
+        if (dist >= r) continue;
+        if (Math.abs(dx) > Math.abs(dy)) {
+          this.vx = -this.vx * damp;
+          this.x += dx > 0 ? (r - dist) : -(r - dist);
+        } else {
+          this.vy = -this.vy * damp;
+          this.y += dy > 0 ? (r - dist) : -(r - dist);
+        }
+      }
     }
 
     handleWaterHit(onPrimaryHit) {
@@ -2755,24 +4298,22 @@
 
     applyGenElementHit(block, isIbara) {
       if (this.gen === 'fire') {
-        const canBurn = isIbara || NATURAL_PROP_TYPES.has(block.type) || block.burnTimer !== undefined;
-        if (canBurn) {
-          igniteNaturalBlock(block);
-          for (let i = 0; i < 10; i++) {
-            particles.push(new Particle(
-              block.x + Math.random() * block.width,
-              block.y + Math.random() * block.height,
-              '#f97316'
-            ));
+        if (isBurnableBlock(block)) {
+          const destroyed = applyFireBurnToBlock(block, { directHit: true });
+          if (!destroyed) {
+            for (let i = 0; i < 10; i++) {
+              particles.push(new Particle(
+                block.x + Math.random() * block.width,
+                block.y + Math.random() * block.height,
+                '#f97316'
+              ));
+            }
           }
         }
       } else if (this.gen === 'lightning') {
         // 雷は弾体ヒットでは燃やさない
       } else if (this.gen === 'water') {
-        if (block.isBurning) {
-          block.isBurning = false;
-          block.burnTimer = 0;
-        }
+        if (block.isBurning) extinguishBurn(block);
       } else if (this.gen === 'wood' && isIbara) {
         const g = snapGrid(block.x, block.y);
         if (!woodBlocks.some(b => b.active && b.x === g.x && b.y === g.y)) {
@@ -2785,6 +4326,10 @@
 
     checkCollisions() {
       if (!this.gen || !this.active) return;
+      if (this.inSandbox) {
+        if (this.gen === 'water' && this.isWaterShard && this.spawnGrace > 0) this.spawnGrace--;
+        return;
+      }
 
       // 水の欠片：壁で1回だけ跳ね返る / 敵に触れたら消える
       if (this.gen === 'water' && this.isWaterShard) {
@@ -2807,19 +4352,19 @@
           let dist = Math.hypot(e.x - this.x, e.y - this.y);
           if (dist < (this.radius * this.scale) + e.radius) {
             
-            const combat = MagicStats.getCombat(this.gen);
+            const combat = MagicInfusion.getInfusedCombat(this.gen);
             const damage = combat.hitDamage;
-            MagicStats.applyElementHitEffects(e, this.gen);
+            MagicInfusion.applyInfusedElementHitEffects(e, this.gen);
 
             applyDamage(e, damage, e.x, e.y - e.radius, 'enemy');
             this.hitEnemies.add(e);
             if (this.gen === 'water') {
               if (e.hp <= 0) e.die();
               if (this.isWaterShard) { this.waterVanish(); return; }
-              this.handleWaterHit(() => spawnImpactField(e.x, e.y, 'water', this.scale));
+              this.handleWaterHit(() => spawnImpactField(e.x, e.y, 'water', this.scale, this));
               return;
             }
-            spawnImpactField(e.x, e.y, this.gen, this.scale);
+            spawnImpactField(e.x, e.y, this.gen, this.scale, this);
             this.durability--;
             
             for(let i=0; i<8; i++) particles.push(new Particle(this.x, this.y, this.color || '#cbd5e1'));
@@ -2844,21 +4389,18 @@
           let dist = Math.hypot(this.x - closestX, this.y - closestY);
           if (dist < (this.radius * this.scale)) {
             if (this.gen === 'water') {
-              if (block.isBurning) {
-                block.isBurning = false;
-                block.burnTimer = 0;
-              }
+              if (block.isBurning) extinguishBurn(block);
               if (this.isWaterShard) {
                 if (this.spawnGrace <= 0) this.waterVanish();
                 return;
               }
-              this.handleWaterHit(() => spawnImpactField(closestX, closestY, 'water', this.scale));
+              this.handleWaterHit(() => spawnImpactField(closestX, closestY, 'water', this.scale, this));
               return;
             }
             if (!this.hitSurfaces.has(block)) {
               this.hitSurfaces.add(block);
               this.applyGenElementHit(block, !block.type || block.type === 'bush');
-              spawnImpactField(closestX, closestY, this.gen, this.scale);
+              spawnImpactField(closestX, closestY, this.gen, this.scale, this);
             }
             this.durability--;
             for(let i=0; i<8; i++) particles.push(new Particle(this.x, this.y, this.color || '#cbd5e1'));
@@ -2875,13 +4417,13 @@
               if (this.spawnGrace <= 0) this.waterVanish();
               return;
             }
-            this.handleWaterHit(() => spawnImpactField(block.x + block.width / 2, block.y + block.height / 2, 'water', this.scale));
+            this.handleWaterHit(() => spawnImpactField(block.x + block.width / 2, block.y + block.height / 2, 'water', this.scale, this));
             return;
           }
           if (!this.hitSurfaces.has(block)) {
             this.hitSurfaces.add(block);
             this.applyGenElementHit(block, false);
-            spawnImpactField(block.x + block.width / 2, block.y + block.height / 2, this.gen, this.scale);
+            spawnImpactField(block.x + block.width / 2, block.y + block.height / 2, this.gen, this.scale, this);
           }
           this.durability--;
           if (this.durability <= 0) { this.active = false; return; }
@@ -2901,7 +4443,7 @@
                   if (this.spawnGrace <= 0) this.waterVanish();
                   return;
                 }
-                this.handleWaterHit(() => spawnImpactField(closestX, closestY, 'water', this.scale));
+                this.handleWaterHit(() => spawnImpactField(closestX, closestY, 'water', this.scale, this));
                 return;
               }
               this.durability--;
@@ -2940,32 +4482,49 @@
       }
     }
 
-    executeAction(act, target) {
+    executeAction(act, target, targetTo) {
       if (act === 'explode') {
-        createMassExplosion(this.x, this.y, this.gen, 100 * this.scale);
+        const expInf = MagicInfusion.getInfusedAct('explode');
+        createMassExplosion(
+          this.x, this.y, this.gen,
+          100 * this.scale * (expInf.radiusMult || 1),
+          null, this.inSandbox, expInf.powerMult || 1
+        );
         this.active = false;
       } else if (act === 'split') {
         let remainingBlocks = this.blocks.slice(this.step + 1);
         let speed = Math.hypot(this.vx, this.vy) || this.speed;
+        const splitInf = MagicInfusion.getInfusedAct('split');
+        speed *= splitInf.speedMult || 1;
         let angle = Math.atan2(this.vy, this.vx);
         if (this.vx === 0 && this.vy === 0) angle = this.angle;
+        const spread = 0.5 * (splitInf.spreadMult || 1);
 
-        if (!registerMagicSpawn(2)) { this.active = false; return; }
-        let m1 = new Magic(this.x, this.y, remainingBlocks, { gen: this.gen, vec: 'forward', scale: this.scale, color: this.color, vx: Math.cos(angle - 0.5) * speed, vy: Math.sin(angle - 0.5) * speed, age: this.age, repeatLeft: this.repeatLeft, durability: this.durability, hitWall: this.hitWall, angle: angle - 0.5, hasSplit: this.hasSplit });
-        let m2 = new Magic(this.x, this.y, remainingBlocks, { gen: this.gen, vec: 'forward', scale: this.scale, color: this.color, vx: Math.cos(angle + 0.5) * speed, vy: Math.sin(angle + 0.5) * speed, age: this.age, repeatLeft: this.repeatLeft, durability: this.durability, hitWall: this.hitWall, angle: angle + 0.5, hasSplit: this.hasSplit });
-        magics.push(m1, m2);
+        if (!registerMagicSpawn(2, this.inSandbox)) { this.active = false; return; }
+        const splitState = {
+          gen: this.gen, vec: 'forward', scale: this.scale, color: this.color,
+          age: this.age, repeatLeft: this.repeatLeft, durability: this.durability,
+          hitWall: this.hitWall, hasSplit: this.hasSplit, inSandbox: this.inSandbox
+        };
+        let m1 = new Magic(this.x, this.y, remainingBlocks, { ...splitState, vx: Math.cos(angle - spread) * speed, vy: Math.sin(angle - spread) * speed, angle: angle - spread });
+        let m2 = new Magic(this.x, this.y, remainingBlocks, { ...splitState, vx: Math.cos(angle + spread) * speed, vy: Math.sin(angle + spread) * speed, angle: angle + spread });
+        this.magicList().push(m1, m2);
         this.active = false;
         this.step = this.blocks.length; 
       } else if (act === 'grow') {
-        this.scale *= 1.5;
-        genFields.forEach(g => {
+        const growInf = MagicInfusion.getInfusedAct('grow');
+        this.scale *= 1.5 * (growInf.scaleMult || 1);
+        const fieldBoost = growInf.fieldBoostMult || 1;
+        const fields = this.inSandbox ? editorSandbox.genFields : genFields;
+        fields.forEach(g => {
           if (g.active && Math.hypot(g.x - this.x, g.y - this.y) < 55 * this.scale) {
-            g.maxAge += 60;
-            g.radius *= 1.2;
+            g.maxAge += Math.round(60 * fieldBoost);
+            g.radius *= 1.2 * fieldBoost;
           }
         });
       } else if (act === 'hard') {
-        this.durability += 1; // 耐久力を増やして貫通させる
+        const hardInf = MagicInfusion.getInfusedAct('hard');
+        this.durability += 1 + (hardInf.durabilityAdd || 0);
         
       // ★ 対象指定のアクション ★
       } else if (act === 'stop') {
@@ -2978,46 +4537,183 @@
         if (target === 'magic') { this.vx *= 1.5; this.vy *= 1.5; this.speed *= 1.5; } 
         else { this.applyStatusBurst('speedup', target); }
       } else if (act === 'pull') {
-        let pullRadius = 180 * this.scale;
-        const pullLimit = PULL_MASS_LIMIT + Math.floor(player.level / 5);
-        particles.push({
-          x: this.x, y: this.y, life: 1.0, color: '#a855f7',
+        this.startPullEffect(target, targetTo || 'magic');
+      }
+    }
+
+    startPullEffect(sourceType, destType) {
+      if (!sourceType || sourceType === 'none') return;
+      const pullInf = MagicInfusion.getInfusedAct('pull');
+      const frames = MagicInfusion.getInfusedPullDurationFrames();
+      this.activePull = {
+        sourceType,
+        destType: destType || 'magic',
+        remainingFrames: frames,
+        totalFrames: frames,
+        pullInf,
+      };
+    }
+
+    processActivePull() {
+      if (!this.activePull || this.activePull.remainingFrames <= 0) return;
+      const showVisual = this.activePull.remainingFrames === this.activePull.totalFrames;
+      this.runPullTick(this.activePull, showVisual);
+      this.activePull.remainingFrames--;
+      if (this.activePull.remainingFrames <= 0) this.activePull = null;
+    }
+
+    runPullTick(pullState, showVisual = false) {
+      if (!pullState) return;
+      const { sourceType, destType, pullInf } = pullState;
+      const pullRadius = 180 * this.scale * (pullInf.radiusMult || 1);
+      const attractStrength = pullInf.attractStrength ?? 2;
+      const pullHoldFrames = pullState.remainingFrames;
+      const anchor = this.resolvePullAnchor(destType || 'magic');
+      const parts = this.particleList();
+
+      if (showVisual) {
+        parts.push({
+          x: anchor.x, y: anchor.y, life: 1.0, color: '#a855f7',
           update: function() { this.life -= 0.1; },
           draw: function(ctx) {
-            if(this.life<=0) return;
+            if (this.life <= 0) return;
             ctx.globalAlpha = this.life; ctx.strokeStyle = this.color; ctx.lineWidth = 2;
-            ctx.beginPath(); ctx.arc(this.x, this.y, this.life*pullRadius, 0, Math.PI*2); ctx.stroke();
+            ctx.beginPath(); ctx.arc(this.x, this.y, this.life * pullRadius, 0, Math.PI * 2); ctx.stroke();
             ctx.globalAlpha = 1.0;
           }
         });
-        enemies.forEach(e => {
-          if (e.active) {
-            let dx = this.x - e.x; let dy = this.y - e.y;
-            if (Math.hypot(dx, dy) < pullRadius) {
-              e.applyEffect('pulled');
-              e.x += dx * 0.3; e.y += dy * 0.3;
-            }
+      }
+
+      const inRange = (ox, oy) => Math.hypot(this.x - ox, this.y - oy) < pullRadius;
+      const pullToward = (ox, oy, mass, speedFactor, onMove) => {
+        if (!inRange(ox, oy)) return;
+        const t = this.pullMoveFactor(mass, attractStrength);
+        if (t <= 0) return;
+        const dx = anchor.x - ox;
+        const dy = anchor.y - oy;
+        const lerp = speedFactor * t * 0.12;
+        onMove(ox + dx * lerp, oy + dy * lerp);
+      };
+
+      const markPulled = (entity) => {
+        if (!entity || entity.effectType === 'stop') return;
+        entity.applyEffect('pulled');
+        entity.effectTimer = Math.max(entity.effectTimer || 0, pullHoldFrames);
+      };
+
+      const shiftBlock = (block, cx, cy, speedFactor) => {
+        pullToward(cx, cy, getWorldObjectMass(block), speedFactor, (nx, ny) => {
+          block.x += nx - cx;
+          block.y += ny - cy;
+          if (block.gridX !== undefined) {
+            block.gridX = Math.floor(block.x / TILE_W);
+            block.gridY = Math.floor(block.y / TILE_H);
           }
         });
-        genFields.forEach(g => {
-          if (!g.active || g.cfg.mass > pullLimit) return;
-          const dx = this.x - g.x, dy = this.y - g.y;
-          if (Math.hypot(dx, dy) < pullRadius) { g.x += dx * 0.2; g.y += dy * 0.2; }
+      };
+
+      if (sourceType === 'enemy') {
+        if (this.inSandbox) return;
+        enemies.forEach((e) => {
+          if (!e.active) return;
+          pullToward(e.x, e.y, getWorldObjectMass(e, 'enemy'), 0.3, (nx, ny) => {
+            markPulled(e);
+            e.x = nx;
+            e.y = ny;
+          });
         });
-        earthBlocks.forEach(b => {
-          if (!b.active || b.mass > pullLimit) return;
-          const cx = b.x + b.width / 2, cy = b.y + b.height / 2;
-          const dx = this.x - cx, dy = this.y - cy;
-          if (Math.hypot(dx, dy) < pullRadius) { b.x += dx * 0.08; b.y += dy * 0.08; }
+      } else if (sourceType === 'player') {
+        const p = this.boundPlayer();
+        pullToward(p.x, p.y, getWorldObjectMass(p, 'player'), 0.15, (nx, ny) => {
+          p.x = nx;
+          p.y = ny;
+        });
+      } else if (sourceType === 'magic') {
+        this.magicList().forEach((m) => {
+          if (!m.active || m === this) return;
+          pullToward(m.x, m.y, getWorldObjectMass(m, 'magic'), 0.25, (nx, ny) => {
+            m.x = nx;
+            m.y = ny;
+          });
+        });
+      } else if (sourceType === 'object') {
+        const fields = this.inSandbox ? editorSandbox.genFields : genFields;
+        fields.forEach((g) => {
+          if (!g.active) return;
+          pullToward(g.x, g.y, getWorldObjectMass(g), 0.2, (nx, ny) => {
+            g.x = nx;
+            g.y = ny;
+          });
+        });
+        if (this.inSandbox) return;
+        earthBlocks.forEach((b) => {
+          if (!b.active) return;
+          shiftBlock(b, b.x + b.width / 2, b.y + b.height / 2, 0.08);
+        });
+        woodBlocks.forEach((b) => {
+          if (!b.active || b.isCharcoal) return;
+          shiftBlock(b, b.x + b.width / 2, b.y + b.height / 2, 0.12);
+        });
+        rockBlocks.forEach((b) => {
+          if (!b.active) return;
+          shiftBlock(b, b.x + b.width / 2, b.y + b.height / 2, 0.06);
+        });
+        ibaraBlocks.forEach((b) => {
+          if (!b.active) return;
+          shiftBlock(b, b.x + b.width / 2, b.y + b.height / 2, 0.1);
+        });
+        propBlocks.forEach((b) => {
+          if (!b.active) return;
+          shiftBlock(b, b.x + b.width / 2, b.y + b.height / 2, 0.1);
         });
       }
     }
 
+    resolvePullAnchor(destType) {
+      if (destType === 'magic') return { x: this.x, y: this.y };
+      if (destType === 'player') {
+        const p = this.boundPlayer();
+        return { x: p.x, y: p.y };
+      }
+      if (destType === 'enemy') {
+        if (!this.inSandbox) {
+          const e = getNearestEnemy(this.x, this.y);
+          if (e) return { x: e.x, y: e.y };
+        }
+        return { x: this.x, y: this.y };
+      }
+      if (destType === 'object') {
+        let best = null;
+        let bestD = Infinity;
+        const tryPoint = (ox, oy) => {
+          const d = Math.hypot(ox - this.x, oy - this.y);
+          if (d < bestD) { bestD = d; best = { x: ox, y: oy }; }
+        };
+        const fields = this.inSandbox ? editorSandbox.genFields : genFields;
+        fields.forEach((g) => { if (g.active) tryPoint(g.x, g.y); });
+        if (!this.inSandbox) {
+          earthBlocks.forEach((b) => { if (b.active) tryPoint(b.x + b.width / 2, b.y + b.height / 2); });
+          rockBlocks.forEach((b) => { if (b.active) tryPoint(b.x + b.width / 2, b.y + b.height / 2); });
+          woodBlocks.forEach((b) => { if (b.active && !b.isCharcoal) tryPoint(b.x + b.width / 2, b.y + b.height / 2); });
+          propBlocks.forEach((b) => { if (b.active) tryPoint(b.x + b.width / 2, b.y + b.height / 2); });
+        }
+        return best || { x: this.x, y: this.y };
+      }
+      return { x: this.x, y: this.y };
+    }
+
+    pullMoveFactor(mass, attractStrength) {
+      if (attractStrength <= mass) return 0;
+      return (attractStrength - mass) / attractStrength;
+    }
+
     applyStatusBurst(type, targetType) {
-      let radius = 130 * this.scale;
+      const statusInf = MagicInfusion.getInfusedAct(type);
+      let radius = 130 * this.scale * (statusInf.radiusMult || 1);
+      const durMult = statusInf.durationMult || 1;
       let color = type === 'stop' ? '#cbd5e1' : type === 'slow' ? '#7dd3fc' : '#fde047';
-      
-      particles.push({
+      const parts = this.particleList();
+      parts.push({
         x: this.x, y: this.y, life: 1.0, color: color,
         update: function() { this.life -= 0.05; },
         draw: function(ctx) {
@@ -3028,12 +4724,20 @@
         }
       });
 
+      if (this.inSandbox) return;
+
       if (targetType === 'enemy') {
         enemies.forEach(e => {
-          if (e.active && Math.hypot(e.x - this.x, e.y - this.y) < radius) e.applyEffect(type);
+          if (e.active && Math.hypot(e.x - this.x, e.y - this.y) < radius) {
+            e.applyEffect(type);
+            if (durMult !== 1) e.effectTimer = Math.round((e.effectTimer || 180) * durMult);
+          }
         });
       } else if (targetType === 'player') {
-        if (Math.hypot(player.x - this.x, player.y - this.y) < radius) player.applyEffect(type);
+        if (Math.hypot(player.x - this.x, player.y - this.y) < radius) {
+          player.applyEffect(type);
+          if (durMult !== 1) player.effectTimer = Math.round((player.effectTimer || 180) * durMult);
+        }
       }
     }
 
@@ -3210,10 +4914,11 @@
 
   function nextLevel() {
     isPaused = true;
+    grantManaWithFx(6 + Math.floor(Math.random() * 10), '階層クリア');
     
     if (isCustomPlay) {
       const reward = createMapData.chest.reward;
-      inventory.total[reward] = 1; // 報酬をインベントリへ追加
+      grantBasicMagicStock(reward);
       
       const rText = getMagicSummaryText([{ type: 'gen', val: reward }]).replace(/[a-zA-Z]/g, '');
       showMessage(`カスタムマップクリア！『${rText}』を獲得した！`);
@@ -3230,8 +4935,8 @@
     }
     
     if (currentLevel === 1) {
-      inventory.total.split = 1;
-      inventory.total.water = 1;
+      grantBasicMagicStock('split');
+      grantBasicMagicStock('water');
       showMessage("第1階層クリア！『分裂』と『水』の魔法を獲得した！");
       currentLevel = 2;
       setTimeout(() => {
@@ -3239,8 +4944,8 @@
         isPaused = false;
       }, 2500);
     } else if (currentLevel === 2) {
-      inventory.total.homing = 1;
-      inventory.total.wood = 1;
+      grantBasicMagicStock('homing');
+      grantBasicMagicStock('wood');
       showMessage("第2階層クリア！『ホーミング』と『木』の魔法を獲得した！");
       currentLevel = 3;
       setTimeout(() => {
@@ -3248,8 +4953,8 @@
         isPaused = false;
       }, 2500);
     } else if (currentLevel === 3) {
-      inventory.total.lightning = 1;
-      inventory.total.earth = 1;
+      grantBasicMagicStock('lightning');
+      grantBasicMagicStock('earth');
       gameCleared = true;
       showMessage("ダンジョンクリア！『雷』と『土』の魔法を獲得した！");
     }
@@ -3270,17 +4975,23 @@
     player.exp = 0;
     player.maxExp = 40;
     player.invincibleTimer = 0;
+    player.burnTimer = 0;
+    player.burnTickTimer = 0;
     player.animState = 'idle';
     player.animTimer = 0;
     player.facing = 'down';
     
     // ワークスペースを選択中キーの魔法で復元
     loadSavedMagicsFromStorage();
+    loadTestPlaySlotLimit();
+    loadBlockScale();
     ensureDefaultSavedMagics();
     loadWorkspaceForSlot(activeMagicSlot);
     updateWorkspaceSlots();
     updatePlayerHUD();
     updateSavedMagicsHUD();
+
+    initInfusionUI();
 
     // インベントリの初期状態設定（基礎魔法すべて解放）
     unlockAllBasicMagic();
@@ -3294,8 +5005,14 @@
 
   function gameLoop() {
     try {
-      window.currentTapFlag = globalTapFlag;
-      globalTapFlag = false; 
+      const inEditor = !viewEditor.classList.contains('hidden-view');
+      if (inEditor) {
+        window.currentTapFlag = sandboxTapFlag;
+        sandboxTapFlag = false;
+      } else {
+        window.currentTapFlag = globalTapFlag;
+        globalTapFlag = false;
+      }
 
       if (!isPaused) {
         frameCount++;
@@ -3350,6 +5067,9 @@
       magics.forEach(m => m.draw(ctx));
       particles.forEach(p => p.draw(ctx));
       damageNumbers.forEach(d => d.draw(ctx));
+
+      updateEditorSandbox();
+      drawEditorSandbox();
     } catch (err) {
       console.error('gameLoop error:', err);
     }
@@ -3360,38 +5080,20 @@
   // 魔法発射の共通ロジック
   function castMagicToward(targetX, targetY) {
     if (isPaused) return;
-    const blocksEl = document.querySelectorAll('.program-slot > .magic-block');
-    let blocks = [];
-    let isError = false;
+    const blocks = parseWorkspaceBlocksRaw();
+    let isError = workspaceHasTargetErrors();
     
-    blocksEl.forEach(b => {
-      let target = 'none';
-      let slot = b.querySelector('.target-slot');
-      
-      if(slot) {
-        if(slot.children.length > 0) {
-          target = slot.children[0].dataset.val;
-        } else {
-          isError = true;
-        }
-      }
-      
-      let selectEl = b.querySelector('select');
-      if(selectEl) target = selectEl.value;
-
-      blocks.push({ type: b.dataset.type, val: b.dataset.val, target: target });
-    });
-
     // 複数ジェネレートがある場合は最後の属性のみ有効
     const genBlocks = blocks.filter(b => b.type === 'gen');
+    let normalizedBlocks = blocks;
     if (genBlocks.length > 1) {
       const effectiveGen = genBlocks[genBlocks.length - 1].val;
-      blocks = blocks.filter(b => b.type !== 'gen');
-      blocks.unshift({ type: 'gen', val: effectiveGen, target: 'none' });
+      normalizedBlocks = blocks.filter(b => b.type !== 'gen');
+      normalizedBlocks.unshift({ type: 'gen', val: effectiveGen, target: 'none' });
     }
 
-    if (blocks.length === 0) { showMessage("エラー：魔法がセットされていません！"); return; }
-    if (!blocks.some(b => b.type === 'gen')) {
+    if (normalizedBlocks.length === 0) { showMessage("エラー：魔法がセットされていません！"); return; }
+    if (!normalizedBlocks.some(b => b.type === 'gen')) {
       showMessage("エラー：「ジェネレート(属性)」がないと魔法が出ません！");
       for(let i=0; i<8; i++) particles.push(new Particle(player.x+20, player.y, '#9ca3af'));
       return;
@@ -3419,7 +5121,8 @@
     if (!registerMagicSpawn(1)) return;
     player.animState = 'attack';
     player.animTimer = 18;
-    magics.push(new Magic(player.x, player.y, blocks, { angle: angle }));
+    MagicAudio.playSe('cast');
+    magics.push(new Magic(player.x, player.y, normalizedBlocks, { angle: angle }));
     for(let i=0; i<5; i++) particles.push(new Particle(player.x+20, player.y, '#fcd34d'));
   }
 
@@ -3440,15 +5143,29 @@
         else if (b.val === 'zigzag') { icon = "〰️"; name = "ジグザグ"; }
         else if (b.val === 'return') { icon = "🪃"; name = "戻る"; }
         else if (b.val === 'orbit') { icon = "🔄"; name = "回る"; }
+        else if (b.val === 'bounce') { icon = "🏐"; name = "跳ねる"; }
         else if (b.val === 'homing') { icon = "🎯"; name = "ホーミング"; }
       } else if (b.type === 'trig') {
-        if (b.val === 'touch') { icon = "💥"; name = `接触(${b.target})`; }
+        if (b.val === 'touch') {
+          icon = "💥";
+          name = `接触(${formatPullTargetLabel(b.target) !== '?' ? formatPullTargetLabel(b.target) : b.target})`;
+        }
         else if (b.val === 'tap') { icon = "👆"; name = "タップ"; }
-        else if (b.val === 'time_half') { icon = "⌛"; name = "0.5秒"; }
-        else if (b.val === 'time') { icon = "⏱️"; name = "1秒"; }
+        else if (b.val === 'wait' || b.val === 'time_half' || b.val === 'time') {
+          const sec = MagicInfusion.getInfusedWaitSec(b.val);
+          const secText = Number.isInteger(sec) ? String(sec) : sec.toFixed(1).replace(/\.0$/, '');
+          icon = "⏱️"; name = `待機${secText}秒`;
+        }
       } else if (b.type === 'act') {
         if (b.val === 'explode') { icon = "💥"; name = "爆発"; }
-        else if (b.val === 'pull') { icon = "🧲"; name = "吸引"; }
+        else if (b.val === 'pull') {
+          icon = "🧲";
+          const from = b.target && b.target !== 'none' ? formatPullTargetLabel(b.target) : '?';
+          const to = b.targetTo && b.targetTo !== 'none' ? formatPullTargetLabel(b.targetTo) : '魔法';
+          const pullSec = MagicInfusion.getInfusedPullDurationSec();
+          const pullSecText = Number.isInteger(pullSec) ? String(pullSec) : pullSec.toFixed(1).replace(/\.0$/, '');
+          name = `吸引 ${from}→${to} ${pullSecText}秒`;
+        }
         else if (b.val === 'split') { icon = "🔱"; name = "分裂"; }
         else if (b.val === 'grow') { icon = "🏔️"; name = "巨大化"; }
         else if (b.val === 'hard') { icon = "🛡️"; name = "貫通"; }
@@ -3476,12 +5193,7 @@
   // 現在のワークスペースの魔法をパースして取得（バリデーション付き）
   function getWorkspaceBlocks() {
     const blocks = parseWorkspaceBlocksRaw();
-    let isError = false;
-
-    document.querySelectorAll('#workspace .program-slot > .magic-block').forEach((b) => {
-      const slot = b.querySelector('.target-slot');
-      if (slot && slot.children.length === 0) isError = true;
-    });
+    const isError = workspaceHasTargetErrors();
 
     if (blocks.length === 0) {
       showMessage("エラー：ワークスペースが空です！");
@@ -3523,6 +5235,7 @@
     // blocksはディープコピーして使用する
     const magicBlocks = JSON.parse(JSON.stringify(blocks));
     if (!registerMagicSpawn(1)) return;
+    MagicAudio.playSe('cast');
     magics.push(new Magic(player.x, player.y, magicBlocks, { angle: angle }));
     for(let i=0; i<5; i++) particles.push(new Particle(player.x+20, player.y, '#fcd34d'));
   }
@@ -3537,9 +5250,13 @@
   }
 
   async function bootstrap() {
-    const result = await MagicStats.loadMagicStats();
+    await Promise.all([
+      MagicStats.loadMagicStats(),
+      MagicAudio.loadConfig(),
+    ]);
     syncGenConfigRef();
     updateMagicStatsSourceBadge();
+    updateAudioSettingsSourceBadge();
     MagicStats.startAutoReload(3000);
     init();
     startCreateThumbRefresh();
