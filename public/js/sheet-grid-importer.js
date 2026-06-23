@@ -129,6 +129,13 @@
         }
         refreshThumbs();
         refreshPreview();
+        const adopted = CSA.getCells().filter((c) => c.enabled).length;
+        showStatus(
+          next
+            ? `採用しました（${adopted}個）。全部終わったら左下「🗺️ マップ編集に戻る」`
+            : `採用を解除しました（${adopted}個）`,
+          'ok'
+        );
       });
 
       row.addEventListener('click', (e) => {
@@ -215,8 +222,8 @@
     const g = CSA.getGrid();
     const count = g.cols * g.rows;
     heading.textContent = count
-      ? `マス一覧（${count}マス）— 名前を付けて「＋ 採用」`
-      : 'マス一覧 — 名前を付けて「採用」';
+      ? `▼ マス一覧（${count}マス）— 下にスクロールして「＋ 採用」`
+      : '▼ マス一覧 — 名前を付けて「＋ 採用」';
   }
 
   function applyGridSettings() {
@@ -242,6 +249,9 @@
     );
     $('sgi-preview')?.classList.add('sgi-preview-flash');
     setTimeout(() => $('sgi-preview')?.classList.remove('sgi-preview-flash'), 450);
+    requestAnimationFrame(() => {
+      $('sgi-cell-list-heading')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
   }
 
   function setActive(next) {
@@ -280,6 +290,11 @@
       }
     } else {
       showStatus('');
+      const CSA = global.CustomSheetAssets;
+      const adopted = CSA?.CATALOG?.length || 0;
+      if (adopted > 0 && typeof global.showMessage === 'function') {
+        global.showMessage(`📋 取込シートに ${adopted} 個のタイルがあります。左の一覧から選んでマップをクリック！`);
+      }
     }
   }
 
