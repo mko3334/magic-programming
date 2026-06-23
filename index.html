@@ -3868,7 +3868,7 @@
   new Sortable(document.getElementById('palette-blocks'), {
     group: { name: 'blocks', pull: 'clone', put: ['program-slot'] }, animation: 150, sort: false,
     delay: 200,
-    delayOnTouchOnly: false,
+    delayOnTouchOnly: true,
     onStart: function() { leftPanel.classList.add('bg-red-50', 'border-red-200'); },
     onEnd: function() { leftPanel.classList.remove('bg-red-50', 'border-red-200'); },
     onAdd: function (evt) { 
@@ -4037,8 +4037,6 @@
             put: ['blocks', 'program-slot'] // ブロックと他のスロットからの移動を許可
           },
           animation: 150,
-          delay: 200,
-          delayOnTouchOnly: false,
           ghostClass: 'sortable-ghost',
           filter: '.block-target-btn, .block-target-label, select',
           preventOnFilter: false,
