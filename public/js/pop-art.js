@@ -325,6 +325,9 @@
 
   function setupCrisp(ctx) {
     ctx.imageSmoothingEnabled = false;
+    ctx.webkitImageSmoothingEnabled = false;
+    ctx.mozImageSmoothingEnabled = false;
+    ctx.msImageSmoothingEnabled = false;
   }
 
   function getPal(effectType, burning) {

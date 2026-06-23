@@ -9,6 +9,7 @@
   const SHEET_DB_STORE = 'blobs';
   const ID_PREFIX = 'gs_';
   const SET_PREFIX = 'gset_';
+  const DISPLAY_TILE_SIZE = 32;
 
   const EMPTY_GRID = {
     offsetX: 0,
@@ -31,6 +32,8 @@
 
   /** 黒透過処理済みタイルのキャッシュ（毎フレーム getImageData しない） */
   const cellCache = new Map();
+  /** 表示サイズ（32px）へ段階縮小したキャッシュ */
+  const displayCache = new Map();
   let sheetObjectUrl = null;
 
   function revokeSheetObjectUrl() {
@@ -116,6 +119,65 @@
 
   function invalidateCellCache() {
     cellCache.clear();
+    displayCache.clear();
+  }
+
+  function crispDownscale(source, srcW, srcH, dstW, dstH) {
+    let current = source;
+    let cw = srcW;
+    let ch = srcH;
+    while (cw > dstW * 2 || ch > dstH * 2) {
+      const nw = Math.max(dstW, Math.floor(cw / 2));
+      const nh = Math.max(dstH, Math.floor(ch / 2));
+      const tmp = document.createElement('canvas');
+      tmp.width = nw;
+      tmp.height = nh;
+      const tctx = tmp.getContext('2d');
+      global.PopArt?.setupCrisp?.(tctx);
+      tctx.drawImage(current, 0, 0, cw, ch, 0, 0, nw, nh);
+      current = tmp;
+      cw = nw;
+      ch = nh;
+    }
+    if (cw === dstW && ch === dstH) return current;
+    const out = document.createElement('canvas');
+    out.width = dstW;
+    out.height = dstH;
+    const octx = out.getContext('2d');
+    global.PopArt?.setupCrisp?.(octx);
+    octx.drawImage(current, 0, 0, cw, ch, 0, 0, dstW, dstH);
+    return out;
+  }
+
+  function getSourceCellCanvas(spec) {
+    if (spec.keyBlack) {
+      return getCachedCellCanvas(spec.x, spec.y, spec.w, spec.h);
+    }
+    const tmp = document.createElement('canvas');
+    tmp.width = spec.w;
+    tmp.height = spec.h;
+    const tctx = tmp.getContext('2d');
+    global.PopArt?.setupCrisp?.(tctx);
+    tctx.drawImage(sheet, spec.x, spec.y, spec.w, spec.h, 0, 0, spec.w, spec.h);
+    return tmp;
+  }
+
+  function displayCacheKey(spec, dstW, dstH) {
+    return `${spec.x}|${spec.y}|${spec.w}|${spec.h}|${spec.keyBlack ? 1 : 0}|${dstW}|${dstH}`;
+  }
+
+  function getCachedDisplayCanvas(spec, dstW, dstH) {
+    const tw = Math.max(1, Math.round(dstW));
+    const th = Math.max(1, Math.round(dstH));
+    if (spec.w === tw && spec.h === th) {
+      return getSourceCellCanvas(spec);
+    }
+    const key = displayCacheKey(spec, tw, th);
+    if (displayCache.has(key)) return displayCache.get(key);
+    const src = getSourceCellCanvas(spec);
+    const scaled = crispDownscale(src, spec.w, spec.h, tw, th);
+    displayCache.set(key, scaled);
+    return scaled;
   }
 
   function getCachedCellCanvas(x, y, w, h) {
@@ -143,11 +205,12 @@
   }
 
   function prewarmCellCache() {
-    if (!sheet || !sheet.complete || !grid.keyBlack) return;
+    if (!sheet || !sheet.complete) return;
     invalidateCellCache();
-    cells.forEach((cell) => {
-      const rect = squareSourceRect(cell, getCellCrop(cell));
-      getCachedCellCanvas(rect.x, rect.y, rect.w, rect.h);
+    cells.filter((c) => c.enabled).forEach((cell) => {
+      const spec = specOfCell(cell);
+      if (!spec) return;
+      getCachedDisplayCanvas(spec, DISPLAY_TILE_SIZE, DISPLAY_TILE_SIZE);
     });
   }
 
@@ -638,13 +701,17 @@
   function blitCell(ctx, spec, dx, dy, dw, dh) {
     if (!sheet || !sheet.complete) return false;
 
-    if (!spec.keyBlack) {
-      ctx.drawImage(sheet, spec.x, spec.y, spec.w, spec.h, dx, dy, dw, dh);
+    global.PopArt?.setupCrisp?.(ctx);
+    const tw = Math.max(1, Math.round(dw));
+    const th = Math.max(1, Math.round(dh));
+
+    if (spec.w === tw && spec.h === th && !spec.keyBlack) {
+      ctx.drawImage(sheet, spec.x, spec.y, spec.w, spec.h, dx, dy, tw, th);
       return true;
     }
 
-    const cached = getCachedCellCanvas(spec.x, spec.y, spec.w, spec.h);
-    ctx.drawImage(cached, dx, dy, dw, dh);
+    const cached = getCachedDisplayCanvas(spec, tw, th);
+    ctx.drawImage(cached, dx, dy, tw, th);
     return true;
   }
 
