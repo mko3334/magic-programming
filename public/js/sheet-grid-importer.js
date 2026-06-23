@@ -184,16 +184,52 @@
     });
   }
 
+  function showStatus(message, tone = 'info') {
+    const el = $('sgi-status');
+    if (!el) return;
+    el.textContent = message;
+    el.className = 'text-[10px] font-bold min-h-[1.25rem] ' + (
+      tone === 'warn' ? 'text-amber-600' : tone === 'ok' ? 'text-emerald-600' : 'text-slate-500'
+    );
+  }
+
+  function commitPanelInputs() {
+    const panel = $('create-sheet-import-panel');
+    const activeEl = document.activeElement;
+    if (panel && activeEl && panel.contains(activeEl) && typeof activeEl.blur === 'function') {
+      activeEl.blur();
+    }
+  }
+
+  function ensureCellsFromGrid() {
+    const CSA = global.CustomSheetAssets;
+    if (!CSA || CSA.getCells().length) return;
+    CSA.updateGrid(readGridInputs());
+  }
+
   function applyGridSettings() {
     const CSA = global.CustomSheetAssets;
     if (!CSA) return;
+    commitPanelInputs();
     CSA.updateGrid(readGridInputs());
+    syncGridInputs();
     renderCellList();
     refreshPreview();
     refreshThumbs();
     if (typeof global.registerCustomSheetCreateTools === 'function') {
       global.registerCustomSheetCreateTools(true);
     }
+    const g = CSA.getGrid();
+    const count = g.cols * g.rows;
+    const hasSheet = CSA.hasSheetImage?.() ?? CSA.isReady?.();
+    showStatus(
+      hasSheet
+        ? `グリッドを更新しました（${g.cols}×${g.rows}＝${count}マス）`
+        : `グリッドを更新しました（${g.cols}×${g.rows}＝${count}マス）。PNGを選択するとプレビューに画像が表示されます`,
+      'ok'
+    );
+    $('sgi-preview')?.classList.add('sgi-preview-flash');
+    setTimeout(() => $('sgi-preview')?.classList.remove('sgi-preview-flash'), 450);
   }
 
   function setActive(next) {
@@ -221,9 +257,16 @@
 
     if (active) {
       syncGridInputs();
+      ensureCellsFromGrid();
       renderCellList();
       refreshPreview();
       refreshThumbs();
+      const CSA = global.CustomSheetAssets;
+      if (CSA && !CSA.getCells().length) {
+        showStatus('列・行を設定して「グリッド更新」を押すとマス一覧が表示されます', 'info');
+      }
+    } else {
+      showStatus('');
     }
   }
 
@@ -234,11 +277,21 @@
     $('btn-toggle-sheet-import')?.addEventListener('click', () => setActive(!active));
 
     ['sgi-offset-x', 'sgi-offset-y', 'sgi-cell-size', 'sgi-gap', 'sgi-cols', 'sgi-rows'].forEach((id) => {
-      $(id)?.addEventListener('change', applyGridSettings);
+      const el = $(id);
+      if (!el) return;
+      el.addEventListener('change', applyGridSettings);
+      el.addEventListener('input', () => {
+        if (active) refreshPreview();
+      });
     });
     $('sgi-key-black')?.addEventListener('change', applyGridSettings);
 
     $('sgi-auto-fit')?.addEventListener('click', () => {
+      commitPanelInputs();
+      if (!CSA.hasSheetImage?.()) {
+        showStatus('先にPNG画像を選択してください', 'warn');
+        return;
+      }
       CSA.autoFitGridFromImage();
       syncGridInputs();
       CSA.generateCellsFromGrid();
@@ -246,6 +299,8 @@
       renderCellList();
       refreshPreview();
       refreshThumbs();
+      const g = CSA.getGrid();
+      showStatus(`自動フィットしました（${g.cols}×${g.rows}）`, 'ok');
     });
 
     $('sgi-regenerate-grid')?.addEventListener('click', () => {
@@ -259,9 +314,12 @@
       reader.onload = () => {
         CSA.setSheetDataUrl(reader.result).then(() => {
           syncGridInputs();
+          if (!CSA.getCells().length) CSA.generateCellsFromGrid();
           renderCellList();
           refreshPreview();
           refreshThumbs();
+          const g = CSA.getGrid();
+          showStatus(`画像を読み込みました（${g.cols}×${g.rows}）。位置を調整して「グリッド更新」`, 'ok');
           if (typeof global.registerCustomSheetCreateTools === 'function') {
             global.registerCustomSheetCreateTools(true);
           }
@@ -276,9 +334,16 @@
       refreshPreview();
     });
 
-    CSA.loadFromStorage().then(() => {
+    CSA.loadFromStorage().then((loaded) => {
       if (typeof global.registerCustomSheetCreateTools === 'function') {
         global.registerCustomSheetCreateTools(true);
+      }
+      if (active && loaded) {
+        syncGridInputs();
+        ensureCellsFromGrid();
+        renderCellList();
+        refreshPreview();
+        refreshThumbs();
       }
     });
 

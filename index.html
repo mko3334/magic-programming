@@ -773,6 +773,11 @@
       background: #0f172a;
       border-radius: 1rem;
       border: 2px solid #334155;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    #sgi-preview.sgi-preview-flash {
+      border-color: #22d3ee;
+      box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.35);
     }
     .sgi-grid-fields {
       display: grid;
@@ -1227,6 +1232,7 @@
           <button id="sgi-auto-fit" type="button" class="flex-1 py-1.5 text-[10px] font-bold rounded-lg bg-slate-100 border border-slate-200">自動フィット</button>
           <button id="sgi-regenerate-grid" type="button" class="flex-1 py-1.5 text-[10px] font-bold rounded-lg bg-cyan-50 border border-cyan-200 text-cyan-700">グリッド更新</button>
         </div>
+        <div id="sgi-status" class="text-[10px] font-bold text-slate-500 min-h-[1.25rem]" aria-live="polite"></div>
         <canvas id="sgi-preview" width="480" height="360"></canvas>
       </div>
       <div class="flex-1 flex flex-col min-h-0">

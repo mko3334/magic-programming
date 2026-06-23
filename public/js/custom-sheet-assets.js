@@ -258,19 +258,13 @@
     return blitCell(ctx, spec, dx, dy, side, side);
   }
 
-  function drawGridPreview(ctx, canvasW, canvasH, highlightCol, highlightRow) {
-    if (!sheet || !sheet.complete) return false;
-    ctx.fillStyle = '#1e293b';
-    ctx.fillRect(0, 0, canvasW, canvasH);
+  function gridContentSize() {
+    const w = grid.offsetX + grid.cols * grid.cellSize + Math.max(0, grid.cols - 1) * grid.gap;
+    const h = grid.offsetY + grid.rows * grid.cellSize + Math.max(0, grid.rows - 1) * grid.gap;
+    return { w: Math.max(w, grid.cellSize), h: Math.max(h, grid.cellSize) };
+  }
 
-    const scale = Math.min(canvasW / sheet.naturalWidth, canvasH / sheet.naturalHeight);
-    const dw = sheet.naturalWidth * scale;
-    const dh = sheet.naturalHeight * scale;
-    const ox = (canvasW - dw) / 2;
-    const oy = (canvasH - dh) / 2;
-
-    ctx.drawImage(sheet, ox, oy, dw, dh);
-
+  function drawGridOverlay(ctx, scale, ox, oy, highlightCol, highlightRow) {
     for (let row = 0; row < grid.rows; row++) {
       for (let col = 0; col < grid.cols; col++) {
         const rect = cellRect(col, row);
@@ -285,7 +279,7 @@
           ? '#f97316'
           : enabled ? '#22c55e' : '#64748b';
         ctx.lineWidth = (col === highlightCol && row === highlightRow) ? 3 : 1.5;
-        ctx.strokeRect(sx, sy, sw, sh);
+        ctx.strokeRect(sx + 0.5, sy + 0.5, sw - 1, sh - 1);
 
         if (enabled && cell) {
           ctx.fillStyle = 'rgba(34,197,94,0.15)';
@@ -293,7 +287,42 @@
         }
       }
     }
-    return true;
+  }
+
+  function drawGridPreview(ctx, canvasW, canvasH, highlightCol, highlightRow) {
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(0, 0, canvasW, canvasH);
+
+    const hasSheet = !!(sheet && sheet.complete && sheet.naturalWidth);
+    const content = hasSheet
+      ? { w: sheet.naturalWidth, h: sheet.naturalHeight }
+      : gridContentSize();
+    const scale = Math.min(canvasW / content.w, canvasH / content.h) * (hasSheet ? 1 : 0.92);
+    const dw = content.w * scale;
+    const dh = content.h * scale;
+    const ox = (canvasW - dw) / 2;
+    const oy = (canvasH - dh) / 2;
+
+    if (hasSheet) {
+      ctx.drawImage(sheet, ox, oy, dw, dh);
+    } else {
+      ctx.fillStyle = '#334155';
+      ctx.fillRect(ox, oy, dw, dh);
+      ctx.strokeStyle = '#475569';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(ox + 0.5, oy + 0.5, dw - 1, dh - 1);
+    }
+
+    drawGridOverlay(ctx, scale, ox, oy, highlightCol, highlightRow);
+
+    if (!hasSheet) {
+      ctx.fillStyle = '#cbd5e1';
+      ctx.font = 'bold 11px Nunito, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('PNGを選択するとシート画像が表示されます', canvasW / 2, Math.min(canvasH - 12, oy + dh + 18));
+    }
+
+    return hasSheet;
   }
 
   loadFromStorage();
@@ -310,6 +339,8 @@
     setConfig,
     getGrid: () => ({ ...grid }),
     getCells: () => cells.map((c) => ({ ...c })),
+    hasSheetImage: () => !!(sheet && sheet.complete && sheet.naturalWidth),
+    getSheetImage: () => (sheet && sheet.complete ? sheet : null),
     updateGrid,
     updateCell,
     generateCellsFromGrid,
