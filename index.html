@@ -797,6 +797,9 @@
         <input type="text" class="create-tool-name" data-tool="rock" value="岩" spellcheck="false" aria-label="岩の名前">
       </div>
 
+      <div class="text-[10px] font-bold text-amber-600 uppercase tracking-wide mt-2">📖 不思議な絵本のタイル</div>
+      <div id="picturebook-tools" class="flex flex-col gap-2"></div>
+
       <div class="text-[10px] font-bold text-emerald-600 uppercase tracking-wide mt-1">🎮 ゲーム</div>
       <div id="tool-player" data-tool="player" class="create-tool-item py-2.5 px-3 bg-emerald-50 border-2 border-emerald-400 text-emerald-700 rounded-2xl font-bold text-sm text-left flex items-center gap-2 transition-all">
         <canvas class="create-tool-thumb" data-thumb="player" width="32" height="32" aria-hidden="true"></canvas>
@@ -939,6 +942,7 @@
 <script src="/js/magic-audio.js"></script>
 <script src="/js/sprout-assets.js"></script>
 <script src="/js/sprout-player-sprites.js"></script>
+<script src="/js/picturebook-assets.js"></script>
 <script src="/js/pop-art.js"></script>
 <script>
   // --- タブ切り替えロジック ---
@@ -1258,6 +1262,7 @@
   let isCustomPlay = false; // カスタムマップでプレイ中かのフラグ
   let activeTool = 'player';
   const CREATE_PROP_TYPES = ['tree', 'bush', 'log', 'stump', 'mushroom', 'grassTuft', 'rock'];
+  const CREATE_TERRAIN_TOOLS = ['grass', 'path', 'water'];
   const CREATE_TILE_NAMES_KEY = 'pop-magic-create-tile-names-v1';
   const DEFAULT_CREATE_TILE_NAMES = {
     grass: '草地',
@@ -1274,7 +1279,27 @@
     enemy: '敵スポーン',
     chest: '宝箱 (ゴール)',
   };
+
+  function registerPicturebookCreateTools() {
+    const PB = window.PictureBookAssets;
+    if (!PB) return;
+    PB.CATALOG.forEach((entry) => {
+      DEFAULT_CREATE_TILE_NAMES[entry.id] = entry.label;
+      if (entry.kind === 'terrain') CREATE_TERRAIN_TOOLS.push(entry.id);
+      else CREATE_PROP_TYPES.push(entry.id);
+    });
+  }
+  registerPicturebookCreateTools();
+
   let createTileNames = { ...DEFAULT_CREATE_TILE_NAMES };
+
+  function isCreateTerrainTool(tool) {
+    return CREATE_TERRAIN_TOOLS.includes(tool);
+  }
+
+  function isCreatePropTool(tool) {
+    return CREATE_PROP_TYPES.includes(tool);
+  }
 
   function loadCreateTileNames() {
     try {
@@ -1342,7 +1367,29 @@
   function getCreateTileName(id) {
     return createTileNames[id] || DEFAULT_CREATE_TILE_NAMES[id] || id;
   }
-  const CREATE_TERRAIN_TOOLS = ['grass', 'path', 'water'];
+
+  function initPicturebookCreateTools() {
+    const container = document.getElementById('picturebook-tools');
+    const PB = window.PictureBookAssets;
+    if (!container || !PB) return;
+
+    PB.CATALOG.forEach((entry) => {
+      const el = document.createElement('div');
+      el.id = `tool-${entry.id}`;
+      el.dataset.tool = entry.id;
+      el.className = CREATE_TOOL_CLASS.sm.idle;
+      el.innerHTML = `
+        <canvas class="create-tool-thumb" data-thumb="${entry.id}" width="32" height="32" aria-hidden="true"></canvas>
+        <input type="text" class="create-tool-name" data-tool="${entry.id}" value="${entry.label}" spellcheck="false" aria-label="${entry.label}の名前">
+      `;
+      el.addEventListener('click', (e) => {
+        if (e.target.closest('.create-tool-name')) return;
+        selectTool(entry.id);
+      });
+      container.appendChild(el);
+      tools[entry.id] = el;
+    });
+  }
 
   const createMapData = {
     terrain: {},
@@ -1459,7 +1506,8 @@
     refreshCreateToolThumbnails();
     const saReady = !window.SproutAssets || window.SproutAssets.isReady();
     const spsReady = !window.SproutPlayerSprites || window.SproutPlayerSprites.isReady();
-    if (!(saReady && spsReady) && attempts < 40) {
+    const pbReady = !window.PictureBookAssets || window.PictureBookAssets.isReady();
+    if (!(saReady && spsReady && pbReady) && attempts < 40) {
       setTimeout(() => tryRefreshCreateThumbs(attempts + 1), 150);
     }
   }
@@ -1520,6 +1568,7 @@
 
   loadCreateTileNames();
   applyCreateTileNamesToUI();
+  initPicturebookCreateTools();
   initCreateTileNameEditors();
 
   // --- プログラムタブ：壁なし試し撃ち ---
@@ -1782,7 +1831,7 @@
       return false;
     }
 
-    if (CREATE_TERRAIN_TOOLS.includes(activeTool)) {
+    if (isCreateTerrainTool(activeTool)) {
       if (paintMode) lastPaintCell = cellKey;
       const current = createMapData.terrain[cellKey] || 'grass';
       if (current === activeTool) {
@@ -1793,7 +1842,7 @@
       return true;
     }
 
-    if (CREATE_PROP_TYPES.includes(activeTool)) {
+    if (isCreatePropTool(activeTool)) {
       if (paintMode) lastPaintCell = cellKey;
       const existing = findCreateProp(gridX, gridY);
       if (existing !== -1 && createMapData.props[existing].type === activeTool) {
@@ -2095,7 +2144,7 @@
     }
     update() {
       if (!this.active) return;
-      if (!NATURAL_PROP_TYPES.has(this.type)) return;
+      if (!isNaturalBurnProp(this.type)) return;
       updateBurningBlock(this);
     }
     draw(ctx) {
@@ -2402,6 +2451,11 @@
   const TILE_W = 32;
   const TILE_H = 32;
   const NATURAL_PROP_TYPES = new Set(['tree', 'bush', 'log', 'stump', 'mushroom', 'grassTuft']);
+
+  function isNaturalBurnProp(type) {
+    const PB = window.PictureBookAssets;
+    return NATURAL_PROP_TYPES.has(type) || !!(PB && PB.BURN_IDS && PB.BURN_IDS.has(type));
+  }
   const BURNABLE_HP = {
     ibara: 3,
     tree: 6,
@@ -2437,7 +2491,7 @@
   }
 
   function isBurnableBlock(block) {
-    return !!(block.burnKind || NATURAL_PROP_TYPES.has(block.type));
+    return !!(block.burnKind || isNaturalBurnProp(block.type));
   }
 
   function getFireBurnStats() {
@@ -2528,7 +2582,7 @@
   function getNaturalBlocks() {
     return [
       ...ibaraBlocks.filter(b => b.active),
-      ...propBlocks.filter(b => b.active && NATURAL_PROP_TYPES.has(b.type)),
+      ...propBlocks.filter(b => b.active && isNaturalBurnProp(b.type)),
     ];
   }
 
