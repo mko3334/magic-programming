@@ -358,6 +358,8 @@
       sets = [];
     }
 
+    rebuildCatalog();
+
     return idbGetBlob(SHEET_BLOB_KEY).then((blob) => {
       if (blob) {
         return loadSheetImageFromBlob(blob).then(() => {
@@ -391,6 +393,9 @@
         rebuildCatalog();
         return false;
       });
+    }).catch(() => {
+      rebuildCatalog();
+      return false;
     });
   }
 

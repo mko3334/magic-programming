@@ -2162,9 +2162,8 @@
       createMapData.tileSize = next;
       persistCreateMap();
     }
-    drawCreateCanvas();
+    if (typeof drawCreateCanvas === 'function') drawCreateCanvas();
   }
-  global.syncCreateGridSize = syncCreateGridSize;
   let createW = 800;
   let createH = 600;
 
@@ -2254,6 +2253,7 @@
       drawCreateCanvas();
     }, 300);
   }
+  window.syncCreateGridSize = syncCreateGridSize;
 
   // --- クリエイトビューのイベントリスナー ---
   let createThumbTimer = null; /* legacy: no longer polled every frame */
@@ -2273,7 +2273,7 @@
     const spsReady = !window.SproutPlayerSprites || window.SproutPlayerSprites.isReady();
     const pbReady = !window.PictureBookAssets || window.PictureBookAssets.isReady();
     const csa = window.CustomSheetAssets;
-    const csaReady = !csa || csa.isReady() || !localStorage.getItem('pop-magic-custom-sheet-image-v1');
+    const csaReady = !csa || csa.isReady() || !csa.hasAdoptedTiles?.();
     if (!(saReady && spsReady && pbReady && csaReady) && attempts < 40) {
       setTimeout(() => tryRefreshCreateThumbs(attempts + 1), 150);
     }
