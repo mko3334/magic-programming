@@ -1073,7 +1073,7 @@
     <div class="palette-header shrink-0 mb-1.5">
       <div class="flex items-center justify-between gap-1 min-w-0">
         <span class="text-xs font-bold text-sky-500 truncate whitespace-nowrap">✨ 基礎魔法</span>
-        <span class="text-[8px] text-slate-400 truncate whitespace-nowrap" title="ブロックをダブルクリックで魔力注入">2xクリックで注入</span>
+        <span class="text-[8px] text-slate-400 truncate whitespace-nowrap" title="パレットまたはプログラム内ブロックをダブルクリックで魔力注入">2xクリックで注入</span>
       </div>
       <div class="palette-toolstrip">
         <div class="palette-toolstrip-group" title="注入用の魔力（敵撃破・階層クリアで獲得）">
@@ -3015,10 +3015,29 @@
   }
 
   function updateInfusionBlockMarkers() {
-    document.querySelectorAll('#palette-blocks .magic-block').forEach((el) => {
+    document.querySelectorAll('#palette-blocks .magic-block, #workspace .magic-block').forEach((el) => {
       const id = el.dataset.val;
       el.classList.toggle('has-infusion', MagicInfusion.getBlockTotalLevel(id) > 0);
       el.classList.toggle('infusion-selected', id === selectedInfusionBlockId);
+    });
+  }
+
+  function shouldIgnoreInfusionOpen(target) {
+    return !!target.closest('.block-target-btn, .block-target-label, .block-repeat-select, select, .infusion-stat-btn, .infusion-stat-input');
+  }
+
+  function bindInfusionBlockOpen(root) {
+    if (!root || root.dataset.infusionOpenBound) return;
+    root.dataset.infusionOpenBound = '1';
+    root.addEventListener('dblclick', (e) => {
+      const block = e.target.closest('.magic-block');
+      if (!block || !root.contains(block)) return;
+      if (shouldIgnoreInfusionOpen(e.target)) return;
+      const blockId = block.dataset.val;
+      if (!blockId || !MagicInfusion.getBlockDef(blockId)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      renderInfusionPanel(blockId);
     });
   }
 
@@ -3241,14 +3260,8 @@
     updateManaHUD();
     updateInfusionBlockMarkers();
     bindInfusionRowInteractions();
-
-    document.querySelectorAll('#palette-blocks .magic-block').forEach((el) => {
-      el.addEventListener('dblclick', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        renderInfusionPanel(el.dataset.val);
-      });
-    });
+    bindInfusionBlockOpen(document.getElementById('palette-blocks'));
+    bindInfusionBlockOpen(document.getElementById('workspace'));
 
     window.addEventListener('magicinfusion:updated', () => {
       updateManaHUD();
@@ -3854,6 +3867,8 @@
   // パレット (基礎魔法 - 消費制)
   new Sortable(document.getElementById('palette-blocks'), {
     group: { name: 'blocks', pull: 'clone', put: ['program-slot'] }, animation: 150, sort: false,
+    delay: 200,
+    delayOnTouchOnly: false,
     onStart: function() { leftPanel.classList.add('bg-red-50', 'border-red-200'); },
     onEnd: function() { leftPanel.classList.remove('bg-red-50', 'border-red-200'); },
     onAdd: function (evt) { 
@@ -4022,6 +4037,8 @@
             put: ['blocks', 'program-slot'] // ブロックと他のスロットからの移動を許可
           },
           animation: 150,
+          delay: 200,
+          delayOnTouchOnly: false,
           ghostClass: 'sortable-ghost',
           filter: '.block-target-btn, .block-target-label, select',
           preventOnFilter: false,
@@ -4494,6 +4511,7 @@
     initBlockTargetPickers(workspace);
     syncInventory();
     updateMagicSlotSelectorUI();
+    updateInfusionBlockMarkers();
   }
 
   function parseWorkspaceBlocksRaw() {
