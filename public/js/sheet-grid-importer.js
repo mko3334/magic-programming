@@ -261,7 +261,7 @@
         const adopted = CSA.getCells().filter((c) => c.enabled).length;
         showStatus(
           next
-            ? `採用しました（${adopted}個）。全部終わったら左下「🗺️ マップ編集に戻る」`
+            ? `採用しました（${adopted}個）。上の「🗺️ 配置」タブまたは緑ボタンでマップへ`
             : `採用を解除しました（${adopted}個）`,
           'ok'
         );
@@ -382,7 +382,7 @@
     if (typeof global.registerCustomSheetCreateTools === 'function') {
       global.registerCustomSheetCreateTools(true);
     }
-    showStatus(`セット「${set.label}」を作成しました。採用してマップ編集へ`, 'ok');
+    showStatus(`セット「${set.label}」を作成しました。「🗺️ 配置」タブでマップに置けます`, 'ok');
     requestAnimationFrame(() => {
       $('sgi-set-list')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     });
@@ -416,55 +416,36 @@
     });
   }
 
+  function onEnterImport() {
+    active = true;
+    syncGridInputs();
+    ensureCellsFromGrid();
+    renderCellList();
+    updateCellListHeading();
+    refreshPreview();
+    refreshThumbs();
+    const CSA = global.CustomSheetAssets;
+    if (CSA && !CSA.getCells().length) {
+      showStatus('列・行を設定して「グリッド更新」を押すとマス一覧が表示されます', 'info');
+    }
+  }
+
+  function onLeaveImport() {
+    active = false;
+    showStatus('');
+  }
+
   function setActive(next) {
-    active = !!next;
-    const mapPanel = $('create-map-panel');
-    const adjustPanel = $('create-tile-adjust-panel');
-    const importPanel = $('create-sheet-import-panel');
-    const toggleBtn = $('btn-toggle-sheet-import');
-    const cropBtn = $('btn-toggle-tile-adjust');
-
-    if (active) {
-      if (global.PictureBookCropAdjust?.isActive?.()) {
-        global.PictureBookCropAdjust.setActive(false);
-      }
+    if (global.CreateModeTabs) {
+      global.CreateModeTabs.setMode(next ? 'import' : 'place');
+      return;
     }
-
-    if (mapPanel) mapPanel.classList.toggle('hidden-view', active);
-    if (adjustPanel && active) adjustPanel.classList.add('hidden-view');
-    if (importPanel) importPanel.classList.toggle('hidden-view', !active);
-    if (toggleBtn) {
-      toggleBtn.textContent = active ? '🗺️ マップ編集に戻る' : '📋 シート取込';
-      toggleBtn.classList.toggle('is-active', active);
-    }
-    if (cropBtn && active) cropBtn.classList.remove('is-active');
-
-    if (active) {
-      syncGridInputs();
-      ensureCellsFromGrid();
-      renderCellList();
-      updateCellListHeading();
-      refreshPreview();
-      refreshThumbs();
-      const CSA = global.CustomSheetAssets;
-      if (CSA && !CSA.getCells().length) {
-        showStatus('列・行を設定して「グリッド更新」を押すとマス一覧が表示されます', 'info');
-      }
-    } else {
-      showStatus('');
-      const CSA = global.CustomSheetAssets;
-      const adopted = CSA?.CATALOG?.length || 0;
-      if (adopted > 0 && typeof global.showMessage === 'function') {
-        global.showMessage(`📋 取込シートに ${adopted} 個のタイルがあります。左の一覧から選んでマップをクリック！`);
-      }
-    }
+    onEnterImport();
   }
 
   function init() {
     const CSA = global.CustomSheetAssets;
     if (!CSA) return false;
-
-    $('btn-toggle-sheet-import')?.addEventListener('click', () => setActive(!active));
 
     ['sgi-offset-x', 'sgi-offset-y', 'sgi-cell-size', 'sgi-gap', 'sgi-cols', 'sgi-rows'].forEach((id) => {
       const el = $(id);
@@ -552,6 +533,8 @@
     init,
     isActive: () => active,
     setActive,
+    onEnterImport,
+    onLeaveImport,
     refreshThumbs,
   };
 })(window);

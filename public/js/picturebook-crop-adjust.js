@@ -104,26 +104,22 @@
     refreshGrid();
   }
 
+  function onEnterAdjust() {
+    active = true;
+    buildGrid();
+    selectTile(selectedId);
+  }
+
+  function onLeaveAdjust() {
+    active = false;
+  }
+
   function setActive(next) {
-    active = !!next;
-    const mapPanel = $('create-map-panel');
-    const adjustPanel = $('create-tile-adjust-panel');
-    const importPanel = $('create-sheet-import-panel');
-    const toggleBtn = $('btn-toggle-tile-adjust');
-    if (active && global.SheetGridImporter?.isActive?.()) {
-      global.SheetGridImporter.setActive(false);
+    if (global.CreateModeTabs) {
+      global.CreateModeTabs.setMode(next ? 'adjust' : 'place');
+      return;
     }
-    if (mapPanel) mapPanel.classList.toggle('hidden-view', active);
-    if (adjustPanel) adjustPanel.classList.toggle('hidden-view', !active);
-    if (importPanel && active) importPanel.classList.add('hidden-view');
-    if (toggleBtn) {
-      toggleBtn.textContent = active ? '🗺️ マップ編集に戻る' : '📐 タイル余白調整';
-      toggleBtn.classList.toggle('is-active', active);
-    }
-    if (active) {
-      buildGrid();
-      selectTile(selectedId);
-    }
+    onEnterAdjust();
   }
 
   function init() {
@@ -133,7 +129,6 @@
     if (!panelEl || !gridEl || !previewCanvas) return false;
     previewCtx = previewCanvas.getContext('2d');
 
-    $('btn-toggle-tile-adjust')?.addEventListener('click', () => setActive(!active));
     SLIDER_IDS.forEach((key) => {
       $(`pb-crop-${key}`)?.addEventListener('input', onSliderInput);
     });
@@ -168,6 +163,8 @@
     init,
     isActive,
     setActive,
+    onEnterAdjust,
+    onLeaveAdjust,
     refreshThumbnails: refreshGrid,
   };
 })(window);
