@@ -17,6 +17,8 @@
     keyBlack: true,
   };
 
+  const EMPTY_CROP = { left: 0, top: 0, right: 0, bottom: 0 };
+
   let sheet = null;
   let grid = { ...EMPTY_GRID };
   let cells = [];
@@ -61,12 +63,10 @@
   function prewarmCellCache() {
     if (!sheet || !sheet.complete || !grid.keyBlack) return;
     invalidateCellCache();
-    for (let row = 0; row < grid.rows; row++) {
-      for (let col = 0; col < grid.cols; col++) {
-        const rect = cellRect(col, row);
-        getCachedCellCanvas(rect.x, rect.y, rect.w, rect.h);
-      }
-    }
+    cells.forEach((cell) => {
+      const rect = squareSourceRect(cell, getCellCrop(cell));
+      getCachedCellCanvas(rect.x, rect.y, rect.w, rect.h);
+    });
   }
 
   const byId = {};
@@ -95,6 +95,46 @@
     const x = grid.offsetX + col * (grid.cellSize + grid.gap);
     const y = grid.offsetY + row * (grid.cellSize + grid.gap);
     return { x, y, w: grid.cellSize, h: grid.cellSize };
+  }
+
+  function clampCrop(crop) {
+    const left = Math.max(0, Math.min(0.45, Number(crop?.left) || 0));
+    const top = Math.max(0, Math.min(0.45, Number(crop?.top) || 0));
+    const right = Math.max(0, Math.min(0.45, Number(crop?.right) || 0));
+    const bottom = Math.max(0, Math.min(0.45, Number(crop?.bottom) || 0));
+    return { left, top, right, bottom };
+  }
+
+  function getCellCrop(cell) {
+    return clampCrop(cell?.crop || EMPTY_CROP);
+  }
+
+  function squareSourceRect(cell, crop) {
+    const base = cellRect(cell.col, cell.row);
+    const cellW = base.w;
+    const cellH = base.h;
+    const c = crop || EMPTY_CROP;
+    const l = c.left * cellW;
+    const t = c.top * cellH;
+    const r = c.right * cellW;
+    const b = c.bottom * cellH;
+    const innerW = cellW - l - r;
+    const innerH = cellH - t - b;
+    if (innerW <= 2 || innerH <= 2) {
+      const side = Math.min(cellW, cellH);
+      const ox = (cellW - side) / 2;
+      const oy = (cellH - side) / 2;
+      return { x: base.x + ox, y: base.y + oy, w: side, h: side };
+    }
+    const side = Math.min(innerW, innerH);
+    const cx = l + innerW / 2;
+    const cy = t + innerH / 2;
+    return {
+      x: base.x + cx - side / 2,
+      y: base.y + cy - side / 2,
+      w: side,
+      h: side,
+    };
   }
 
   function allocSetId() {
@@ -189,6 +229,7 @@
           kind: old?.kind || 'prop',
           solid: old?.solid ?? false,
           setId: old?.setId || null,
+          crop: old?.crop ? { ...old.crop } : { ...EMPTY_CROP },
         });
       }
     }
@@ -321,9 +362,38 @@
     if (c.setId && (partial.enabled === true || partial.enabled === false)) {
       return;
     }
+    if (partial.crop) partial.crop = clampCrop(partial.crop);
     Object.assign(c, partial);
+    if (partial.crop) {
+      invalidateCellCache();
+      prewarmCellCache();
+    }
     rebuildCatalog();
     saveToStorage();
+  }
+
+  function getCrop(id) {
+    const c = cells.find((t) => t.id === id);
+    return c ? getCellCrop(c) : { ...EMPTY_CROP };
+  }
+
+  function setCrop(id, crop) {
+    updateCell(id, { crop: clampCrop(crop) });
+    global.dispatchEvent(new Event('customsheet:crops-updated'));
+  }
+
+  function resetCrop(id) {
+    updateCell(id, { crop: { ...EMPTY_CROP } });
+    global.dispatchEvent(new Event('customsheet:crops-updated'));
+  }
+
+  function resetAllCrops() {
+    cells.forEach((c) => { c.crop = { ...EMPTY_CROP }; });
+    invalidateCellCache();
+    prewarmCellCache();
+    rebuildCatalog();
+    saveToStorage();
+    global.dispatchEvent(new Event('customsheet:crops-updated'));
   }
 
   function getSet(id) {
@@ -380,7 +450,7 @@
 
   function specOfCell(entry) {
     if (!entry || !sheet) return null;
-    const rect = cellRect(entry.col, entry.row);
+    const rect = squareSourceRect(entry, getCellCrop(entry));
     return {
       ...rect,
       anchor: entry.kind === 'terrain' ? [0, 0] : [0.5, 0.92],
@@ -406,8 +476,8 @@
       heightCells: set.heightCells,
       members: set.members.map((m) => {
         const cell = cells.find((c) => c.id === m.cellId);
-        const rect = cellRect(m.col, m.row);
-        return { ...rect, dx: m.dx, dy: m.dy, cellId: m.cellId, kind: cell?.kind || set.kind };
+        const spec = cell ? specOfCell(cell) : cellRect(m.col, m.row);
+        return { ...spec, dx: m.dx, dy: m.dy, cellId: m.cellId, kind: cell?.kind || set.kind };
       }),
     };
   }
@@ -587,6 +657,54 @@
     return hasSheet;
   }
 
+  function drawAdjustPreview(ctx, id, canvasW, canvasH) {
+    const cell = cells.find((c) => c.id === id);
+    if (!cell || !sheet || !sheet.complete) return false;
+    const crop = getCellCrop(cell);
+    const base = cellRect(cell.col, cell.row);
+    const rect = squareSourceRect(cell, crop);
+
+    ctx.fillStyle = '#faf6ee';
+    ctx.fillRect(0, 0, canvasW, canvasH);
+
+    const pad = 10;
+    const availW = canvasW - pad * 2;
+    const availH = canvasH - pad * 2;
+    const cellScale = Math.min(availW / base.w, availH / base.h);
+    const drawCellW = base.w * cellScale;
+    const drawCellH = base.h * cellScale;
+    const ox = (canvasW - drawCellW) / 2;
+    const oy = (canvasH - drawCellH) / 2;
+
+    ctx.drawImage(sheet, base.x, base.y, base.w, base.h, ox, oy, drawCellW, drawCellH);
+
+    const innerL = crop.left * drawCellW;
+    const innerT = crop.top * drawCellH;
+    const innerW = drawCellW - (crop.left + crop.right) * drawCellW;
+    const innerH = drawCellH - (crop.top + crop.bottom) * drawCellH;
+    const side = Math.min(innerW, innerH);
+    const cx = ox + innerL + innerW / 2;
+    const cy = oy + innerT + innerH / 2;
+    const sqX = cx - side / 2;
+    const sqY = cy - side / 2;
+
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.fillRect(ox, oy, drawCellW, drawCellH);
+    const sqSrc = squareSourceRect(cell, crop);
+    const sqDrawSide = side;
+    ctx.drawImage(sheet, sqSrc.x, sqSrc.y, sqSrc.w, sqSrc.h, sqX, sqY, sqDrawSide, sqDrawSide);
+
+    ctx.strokeStyle = '#94a3b8';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([4, 3]);
+    ctx.strokeRect(ox, oy, drawCellW, drawCellH);
+    ctx.setLineDash([]);
+    ctx.strokeStyle = '#f97316';
+    ctx.lineWidth = 2.5;
+    ctx.strokeRect(sqX, sqY, sqDrawSide, sqDrawSide);
+    return true;
+  }
+
   function getSetFootprint(setId) {
     const set = getSet(setId);
     if (!set) return [];
@@ -617,6 +735,10 @@
     getSheetImage: () => (sheet && sheet.complete ? sheet : null),
     updateGrid,
     updateCell,
+    getCrop,
+    setCrop,
+    resetCrop,
+    resetAllCrops,
     createSet,
     updateSet,
     deleteSet,
@@ -629,6 +751,7 @@
     drawProp,
     drawPropBlock,
     drawThumb,
+    drawAdjustPreview,
     drawGridPreview,
     getDefaultLabel: (id) => byId[id]?.label || cells.find((c) => c.id === id)?.label || id,
     cellRect,

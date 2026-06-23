@@ -719,6 +719,14 @@
       overflow-y: auto;
       padding-right: 0.15rem;
     }
+    .pb-crop-section-title {
+      grid-column: 1 / -1;
+      font-size: 10px;
+      font-weight: 800;
+      color: #64748b;
+      padding: 0.35rem 0.15rem 0.1rem;
+      margin-top: 0.15rem;
+    }
     .pb-crop-grid-item {
       display: flex;
       flex-direction: column;
@@ -1213,7 +1221,7 @@
   <div id="create-mode-tabs" role="tablist" aria-label="クリエイトモード">
     <button type="button" id="create-tab-place" data-create-mode="place" class="create-mode-tab is-active" role="tab" aria-selected="true">🗺️ 配置</button>
     <button type="button" id="create-tab-import" data-create-mode="import" class="create-mode-tab" role="tab" aria-selected="false">📋 シート取込</button>
-    <button type="button" id="create-tab-adjust" data-create-mode="adjust" class="create-mode-tab" role="tab" aria-selected="false">📐 余白調整</button>
+    <button type="button" id="create-tab-adjust" data-create-mode="adjust" class="create-mode-tab" role="tab" aria-selected="false">📐 タイル調整</button>
   </div>
   <div class="flex-1 flex flex-row gap-3 min-h-0 overflow-hidden">
   <!-- 左パネル：ツール選択 -->
@@ -1322,7 +1330,7 @@
 
   <!-- 右パネル：タイル余白調整モード -->
   <div id="create-tile-adjust-panel" class="hidden-view flex-1 bg-white rounded-3xl shadow-sm p-4 flex flex-col overflow-hidden border border-amber-100 relative">
-    <div class="text-[11px] font-bold text-amber-600 mb-1">📐 白い余白をトリミングして正方形タイルに調整（オレンジ枠がゲーム内の表示領域）</div>
+    <div class="text-[11px] font-bold text-amber-600 mb-1">📐 タイルごとに余白をトリミング（オレンジ枠＝ゲーム内の表示領域）</div>
     <div class="flex flex-col lg:flex-row gap-3 flex-1 min-h-0 overflow-hidden">
       <div class="lg:w-56 shrink-0 flex flex-col gap-2">
         <div class="text-xs font-bold text-slate-600">選択中: <span id="pb-crop-selected-name">草地</span></div>
@@ -2279,6 +2287,10 @@
   });
   window.addEventListener('customsheet:updated', () => {
     registerCustomSheetCreateTools(true);
+    refreshCreateToolThumbnails();
+    if (!viewCreate.classList.contains('hidden-view')) drawCreateCanvas();
+  });
+  window.addEventListener('customsheet:crops-updated', () => {
     refreshCreateToolThumbnails();
     if (!viewCreate.classList.contains('hidden-view')) drawCreateCanvas();
   });

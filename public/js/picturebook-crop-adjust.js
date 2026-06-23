@@ -1,5 +1,5 @@
 /**
- * 絵本タイル余白調整モード
+ * タイル余白調整モード（絵本タイル + 取込シートをタイルごとに調整）
  */
 (function (global) {
   let active = false;
@@ -17,6 +17,35 @@
 
   function isActive() {
     return active;
+  }
+
+  function isCustomSheetTile(id) {
+    return global.CustomSheetAssets?.isSheetType?.(id);
+  }
+
+  function getCropForTile(id) {
+    if (isCustomSheetTile(id)) return global.CustomSheetAssets.getCrop(id);
+    return global.PictureBookAssets?.getCrop(id) || { left: 0, top: 0, right: 0, bottom: 0 };
+  }
+
+  function setCropForTile(id, crop) {
+    if (isCustomSheetTile(id)) global.CustomSheetAssets.setCrop(id, crop);
+    else global.PictureBookAssets?.setCrop(id, crop);
+  }
+
+  function resetCropForTile(id) {
+    if (isCustomSheetTile(id)) global.CustomSheetAssets.resetCrop(id);
+    else global.PictureBookAssets?.resetCrop(id);
+  }
+
+  function drawThumbForTile(ctx, id, size) {
+    if (isCustomSheetTile(id)) return global.CustomSheetAssets.drawThumb(ctx, id, size);
+    return global.PictureBookAssets?.drawThumb(ctx, id, size);
+  }
+
+  function getLabelForTile(id) {
+    if (isCustomSheetTile(id)) return global.CustomSheetAssets.getDefaultLabel(id);
+    return global.PictureBookAssets?.getDefaultLabel(id) || id;
   }
 
   function readSliders() {
@@ -39,23 +68,27 @@
   }
 
   function refreshPreview() {
-    if (!previewCanvas || !previewCtx || !global.PictureBookAssets) return;
+    if (!previewCanvas || !previewCtx) return;
     previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
-    PictureBookAssets.drawAdjustPreview(previewCtx, selectedId, previewCanvas.width, previewCanvas.height);
-    const nameEl = $('pb-crop-selected-name');
-    if (nameEl) {
-      nameEl.textContent = PictureBookAssets.getDefaultLabel(selectedId);
+    if (isCustomSheetTile(selectedId)) {
+      global.CustomSheetAssets?.drawAdjustPreview(previewCtx, selectedId, previewCanvas.width, previewCanvas.height);
+    } else {
+      global.PictureBookAssets?.drawAdjustPreview(previewCtx, selectedId, previewCanvas.width, previewCanvas.height);
     }
+    const nameEl = $('pb-crop-selected-name');
+    if (nameEl) nameEl.textContent = getLabelForTile(selectedId);
   }
 
   function refreshGrid() {
-    if (!gridEl || !global.PictureBookAssets || !PictureBookAssets.isReady()) return;
+    if (!gridEl) return;
     gridEl.querySelectorAll('.pb-crop-grid-item').forEach((btn) => {
       const id = btn.dataset.tileId;
       const canvas = btn.querySelector('.pb-crop-thumb');
       if (canvas) {
         const ctx = canvas.getContext('2d');
-        PictureBookAssets.drawThumb(ctx, id, canvas.width);
+        ctx.fillStyle = '#faf6ee';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        drawThumbForTile(ctx, id, canvas.width);
       }
       btn.classList.toggle('is-selected', id === selectedId);
     });
@@ -63,7 +96,7 @@
 
   function selectTile(id) {
     selectedId = id;
-    syncSlidersFromCrop(PictureBookAssets.getCrop(id));
+    syncSlidersFromCrop(getCropForTile(id));
     refreshGrid();
     refreshPreview();
   }
@@ -74,33 +107,62 @@
       const val = $(`pb-crop-${key}-val`);
       if (el && val) val.textContent = `${el.value}%`;
     });
-    PictureBookAssets.setCrop(selectedId, readSliders());
+    setCropForTile(selectedId, readSliders());
     refreshGrid();
     refreshPreview();
   }
 
+  function appendSection(title) {
+    const h = document.createElement('div');
+    h.className = 'pb-crop-section-title';
+    h.textContent = title;
+    gridEl.appendChild(h);
+  }
+
+  function appendTileButton(entry) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'pb-crop-grid-item';
+    btn.dataset.tileId = entry.id;
+    btn.title = entry.label;
+    const canvas = document.createElement('canvas');
+    canvas.className = 'pb-crop-thumb';
+    canvas.width = 48;
+    canvas.height = 48;
+    const label = document.createElement('span');
+    label.className = 'pb-crop-grid-label';
+    label.textContent = entry.label;
+    btn.appendChild(canvas);
+    btn.appendChild(label);
+    btn.addEventListener('click', () => selectTile(entry.id));
+    gridEl.appendChild(btn);
+  }
+
   function buildGrid() {
-    if (!gridEl || !global.PictureBookAssets) return;
+    if (!gridEl) return;
     gridEl.innerHTML = '';
-    PictureBookAssets.CATALOG.forEach((entry) => {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'pb-crop-grid-item';
-      btn.dataset.tileId = entry.id;
-      btn.title = entry.label;
-      const canvas = document.createElement('canvas');
-      canvas.className = 'pb-crop-thumb';
-      canvas.dataset.tileId = entry.id;
-      canvas.width = 48;
-      canvas.height = 48;
-      const label = document.createElement('span');
-      label.className = 'pb-crop-grid-label';
-      label.textContent = entry.label;
-      btn.appendChild(canvas);
-      btn.appendChild(label);
-      btn.addEventListener('click', () => selectTile(entry.id));
-      gridEl.appendChild(btn);
-    });
+    const tileIds = [];
+
+    if (global.PictureBookAssets?.isReady?.()) {
+      appendSection('📖 不思議な絵本');
+      global.PictureBookAssets.CATALOG.forEach((entry) => {
+        appendTileButton(entry);
+        tileIds.push(entry.id);
+      });
+    }
+
+    const CSA = global.CustomSheetAssets;
+    if (CSA?.hasSheetImage?.()) {
+      appendSection('📋 取込シート（マスごと）');
+      CSA.getCells().forEach((cell) => {
+        appendTileButton({ id: cell.id, label: cell.label || cell.id });
+        tileIds.push(cell.id);
+      });
+    }
+
+    if (!tileIds.includes(selectedId) && tileIds.length) {
+      selectedId = tileIds[0];
+    }
     refreshGrid();
   }
 
@@ -133,14 +195,15 @@
       $(`pb-crop-${key}`)?.addEventListener('input', onSliderInput);
     });
     $('pb-crop-reset-tile')?.addEventListener('click', () => {
-      PictureBookAssets.resetCrop(selectedId);
-      syncSlidersFromCrop(PictureBookAssets.getCrop(selectedId));
+      resetCropForTile(selectedId);
+      syncSlidersFromCrop(getCropForTile(selectedId));
       refreshGrid();
       refreshPreview();
     });
     $('pb-crop-reset-all')?.addEventListener('click', () => {
-      PictureBookAssets.resetAllCrops();
-      syncSlidersFromCrop(PictureBookAssets.getCrop(selectedId));
+      global.PictureBookAssets?.resetAllCrops();
+      global.CustomSheetAssets?.resetAllCrops();
+      syncSlidersFromCrop(getCropForTile(selectedId));
       refreshGrid();
       refreshPreview();
     });
@@ -148,6 +211,16 @@
     global.addEventListener('picturebook:crops-updated', () => {
       if (!active) return;
       refreshGrid();
+      refreshPreview();
+    });
+    global.addEventListener('customsheet:crops-updated', () => {
+      if (!active) return;
+      refreshGrid();
+      refreshPreview();
+    });
+    global.addEventListener('customsheet:updated', () => {
+      if (!active) return;
+      buildGrid();
       refreshPreview();
     });
     global.addEventListener('picturebook:sheet-ready', () => {
