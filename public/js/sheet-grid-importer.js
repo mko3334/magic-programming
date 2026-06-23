@@ -5,6 +5,27 @@
   let active = false;
   let selectedCol = 0;
   let selectedRow = 0;
+  const setPickIds = new Set();
+
+  function pickCellKeys() {
+    const CSA = global.CustomSheetAssets;
+    if (!CSA) return new Set();
+    const keys = new Set();
+    setPickIds.forEach((id) => {
+      const cell = CSA.getCells().find((c) => c.id === id);
+      if (cell) keys.add(`${cell.col},${cell.row}`);
+    });
+    return keys;
+  }
+
+  function updateSetPickCount() {
+    const el = $('sgi-set-pick-count');
+    if (!el) return;
+    const n = setPickIds.size;
+    el.textContent = n >= 2
+      ? `${n}マス選択中 → セット名を付けて「セット作成」`
+      : 'マス一覧の☑で2マス以上選んで「セット作成」';
+  }
 
   function $(id) {
     return document.getElementById(id);
@@ -47,7 +68,91 @@
     const CSA = global.CustomSheetAssets;
     if (!canvas || !CSA) return;
     const ctx = canvas.getContext('2d');
-    CSA.drawGridPreview(ctx, canvas.width, canvas.height, selectedCol, selectedRow);
+    CSA.drawGridPreview(ctx, canvas.width, canvas.height, selectedCol, selectedRow, pickCellKeys());
+  }
+
+  function renderSetList() {
+    const list = $('sgi-set-list');
+    const CSA = global.CustomSheetAssets;
+    if (!list || !CSA) return;
+    const sets = CSA.getSets();
+    list.innerHTML = '';
+    if (!sets.length) {
+      list.innerHTML = '<div class="text-[10px] text-slate-400">セットはまだありません</div>';
+      return;
+    }
+
+    sets.forEach((set) => {
+      const row = document.createElement('div');
+      row.className = 'sgi-set-row' + (set.enabled ? ' is-enabled' : '');
+
+      const thumb = document.createElement('canvas');
+      thumb.width = 40;
+      thumb.height = 40;
+      thumb.className = 'sgi-cell-thumb';
+
+      const meta = document.createElement('div');
+      meta.className = 'sgi-cell-meta';
+      meta.innerHTML = `
+        <div class="sgi-cell-coord">${set.widthCells}×${set.heightCells} / ${set.members.length}マス</div>
+        <input type="text" class="sgi-cell-name sgi-set-name-input" value="${set.label}" spellcheck="false">
+      `;
+
+      const adoptBtn = document.createElement('button');
+      adoptBtn.type = 'button';
+      adoptBtn.className = 'sgi-adopt-btn' + (set.enabled ? ' is-on' : '');
+      adoptBtn.textContent = set.enabled ? '✓ 採用中' : '＋ 採用';
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.type = 'button';
+      deleteBtn.className = 'sgi-set-delete-btn';
+      deleteBtn.textContent = '解除';
+
+      meta.querySelector('.sgi-set-name-input').addEventListener('change', (e) => {
+        CSA.updateSet(set.id, { label: e.target.value.trim() || set.label });
+        if (typeof global.registerCustomSheetCreateTools === 'function') {
+          global.registerCustomSheetCreateTools(true);
+        }
+      });
+
+      adoptBtn.addEventListener('click', () => {
+        const next = !set.enabled;
+        CSA.updateSet(set.id, { enabled: next });
+        adoptBtn.classList.toggle('is-on', next);
+        adoptBtn.textContent = next ? '✓ 採用中' : '＋ 採用';
+        row.classList.toggle('is-enabled', next);
+        if (typeof global.registerCustomSheetCreateTools === 'function') {
+          global.registerCustomSheetCreateTools(true);
+        }
+        renderCellList();
+        refreshPreview();
+        showStatus(next ? `セット「${set.label}」を採用しました` : `セット「${set.label}」の採用を解除`, 'ok');
+      });
+
+      deleteBtn.addEventListener('click', () => {
+        if (!confirm(`セット「${set.label}」を解除しますか？`)) return;
+        CSA.deleteSet(set.id);
+        renderSetList();
+        renderCellList();
+        refreshPreview();
+        refreshThumbs();
+        if (typeof global.registerCustomSheetCreateTools === 'function') {
+          global.registerCustomSheetCreateTools(true);
+        }
+        showStatus('セットを解除しました', 'ok');
+      });
+
+      row.appendChild(thumb);
+      row.appendChild(meta);
+      row.appendChild(adoptBtn);
+      row.appendChild(deleteBtn);
+      list.appendChild(row);
+
+      const tctx = thumb.getContext('2d');
+      tctx.fillStyle = '#faf6ee';
+      tctx.fillRect(0, 0, 40, 40);
+      CSA.drawThumb(tctx, set.id, 40);
+    });
   }
 
   function renderCellList() {
@@ -60,9 +165,28 @@
 
     cells.forEach((cell) => {
       const row = document.createElement('div');
-      row.className = 'sgi-cell-row' + (cell.enabled ? ' is-enabled' : '');
+      const picked = setPickIds.has(cell.id);
+      const inSet = !!cell.setId;
+      row.className = 'sgi-cell-row'
+        + (cell.enabled && !inSet ? ' is-enabled' : '')
+        + (picked ? ' is-picked' : '')
+        + (inSet ? ' is-in-set' : '');
       row.dataset.col = String(cell.col);
       row.dataset.row = String(cell.row);
+
+      const pickLabel = document.createElement('label');
+      pickLabel.className = 'flex items-center justify-center';
+      pickLabel.title = inSet ? 'セット済み' : 'セット用に選択';
+      pickLabel.innerHTML = `<input type="checkbox" class="sgi-cell-pick"${picked ? ' checked' : ''}${inSet ? ' disabled' : ''}>`;
+
+      pickLabel.querySelector('input').addEventListener('change', (e) => {
+        if (inSet) return;
+        if (e.target.checked) setPickIds.add(cell.id);
+        else setPickIds.delete(cell.id);
+        row.classList.toggle('is-picked', e.target.checked);
+        updateSetPickCount();
+        refreshPreview();
+      });
 
       const thumb = document.createElement('canvas');
       thumb.width = 40;
@@ -74,7 +198,7 @@
 
       const coord = document.createElement('div');
       coord.className = 'sgi-cell-coord';
-      coord.textContent = `${cell.col + 1}, ${cell.row + 1}`;
+      coord.textContent = inSet ? `${cell.col + 1}, ${cell.row + 1}（セット内）` : `${cell.col + 1}, ${cell.row + 1}`;
 
       const nameInput = document.createElement('input');
       nameInput.type = 'text';
@@ -98,7 +222,11 @@
       const adoptBtn = document.createElement('button');
       adoptBtn.type = 'button';
       adoptBtn.className = 'sgi-adopt-btn' + (cell.enabled ? ' is-on' : '');
-      adoptBtn.textContent = cell.enabled ? '✓ 採用中' : '＋ 採用';
+      adoptBtn.textContent = inSet ? 'セット内' : (cell.enabled ? '✓ 採用中' : '＋ 採用');
+      if (inSet) {
+        adoptBtn.disabled = true;
+        adoptBtn.classList.add('opacity-60');
+      }
 
       nameInput.addEventListener('change', () => {
         CSA.updateCell(cell.id, { label: nameInput.value.trim() || cell.label });
@@ -119,6 +247,7 @@
       });
 
       adoptBtn.addEventListener('click', () => {
+        if (inSet) return;
         const next = !cell.enabled;
         CSA.updateCell(cell.id, { enabled: next });
         adoptBtn.classList.toggle('is-on', next);
@@ -157,6 +286,7 @@
       meta.appendChild(coord);
       meta.appendChild(nameInput);
       meta.appendChild(opts);
+      row.appendChild(pickLabel);
       row.appendChild(thumb);
       row.appendChild(meta);
       row.appendChild(adoptBtn);
@@ -174,6 +304,8 @@
       }
     });
     updateCellListHeading();
+    updateSetPickCount();
+    renderSetList();
   }
 
   function refreshThumbs() {
@@ -224,6 +356,36 @@
     heading.textContent = count
       ? `▼ マス一覧（${count}マス）— 下にスクロールして「＋ 採用」`
       : '▼ マス一覧 — 名前を付けて「＋ 採用」';
+  }
+
+  function createSetFromPick() {
+    const CSA = global.CustomSheetAssets;
+    if (!CSA) return;
+    if (setPickIds.size < 2) {
+      showStatus('セットには2マス以上選択してください', 'warn');
+      return;
+    }
+    const name = ($('sgi-set-name')?.value || '').trim();
+    const kind = $('sgi-set-kind')?.value || 'prop';
+    const solid = !!$('sgi-set-solid')?.checked;
+    const set = CSA.createSet([...setPickIds], name, { kind, solid });
+    if (!set) {
+      showStatus('セットを作成できません（既にセット内のマスが含まれています）', 'warn');
+      return;
+    }
+    setPickIds.clear();
+    if ($('sgi-set-name')) $('sgi-set-name').value = '';
+    renderCellList();
+    renderSetList();
+    refreshPreview();
+    refreshThumbs();
+    if (typeof global.registerCustomSheetCreateTools === 'function') {
+      global.registerCustomSheetCreateTools(true);
+    }
+    showStatus(`セット「${set.label}」を作成しました。採用してマップ編集へ`, 'ok');
+    requestAnimationFrame(() => {
+      $('sgi-set-list')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
   }
 
   function applyGridSettings() {
@@ -333,6 +495,14 @@
 
     $('sgi-regenerate-grid')?.addEventListener('click', () => {
       applyGridSettings();
+    });
+
+    $('sgi-set-create')?.addEventListener('click', createSetFromPick);
+    $('sgi-set-clear-pick')?.addEventListener('click', () => {
+      setPickIds.clear();
+      updateSetPickCount();
+      renderCellList();
+      refreshPreview();
     });
 
     $('sgi-file')?.addEventListener('change', (e) => {

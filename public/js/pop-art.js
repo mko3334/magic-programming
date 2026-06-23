@@ -399,7 +399,7 @@
 
   function drawTerrainTile(ctx, type, tx, ty, tileSize, gx, gy, frame) {
     const CSA = global.CustomSheetAssets;
-    if (CSA && CSA.isSheetType(type) && CSA.isReady() && CSA.drawTerrainTile(ctx, type, tx, ty, tileSize)) {
+    if (CSA && CSA.isCustomType(type) && CSA.isReady() && CSA.drawTerrainTile(ctx, type, tx, ty, tileSize)) {
       return;
     }
     const PB = global.PictureBookAssets;
@@ -489,9 +489,15 @@
     }
 
     const CSA = global.CustomSheetAssets;
-    if (CSA && CSA.isSheetType(type) && CSA.isReady() && CSA.drawProp(ctx, type, cx, cy, block.width)) {
-      drawBurnOverlay(ctx, block);
-      return;
+    if (CSA && CSA.isCustomType(type) && CSA.isReady()) {
+      if (CSA.isSetType(type) && CSA.drawPropBlock(ctx, type, block)) {
+        drawBurnOverlay(ctx, block);
+        return;
+      }
+      if (CSA.isSheetType(type) && CSA.drawProp(ctx, type, cx, cy, block.width)) {
+        drawBurnOverlay(ctx, block);
+        return;
+      }
     }
 
     const PB = global.PictureBookAssets;
@@ -663,7 +669,7 @@
 
   function isSolidPropType(type) {
     const CSA = global.CustomSheetAssets;
-    if (CSA && CSA.isSheetType(type) && CSA.SOLID_IDS.has(type)) return true;
+    if (CSA && CSA.isCustomType(type) && CSA.SOLID_IDS.has(type)) return true;
     const CO = global.CutoutAssets;
     if (CO && CO.isCutoutType(type) && CO.SOLID_IDS.has(type)) return true;
     const PB = global.PictureBookAssets;
@@ -686,7 +692,7 @@
     const f = frame || 0;
 
     const CSA = global.CustomSheetAssets;
-    if (CSA && CSA.isSheetType(kind) && CSA.isReady() && CSA.drawThumb(ctx, kind, size)) {
+    if (CSA && CSA.isCustomType(kind) && CSA.isReady() && CSA.drawThumb(ctx, kind, size)) {
       return;
     }
 
