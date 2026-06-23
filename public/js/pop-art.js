@@ -398,6 +398,10 @@
   }
 
   function drawTerrainTile(ctx, type, tx, ty, tileSize, gx, gy, frame) {
+    const PB = global.PictureBookAssets;
+    if (PB && PB.isPbType(type) && PB.isReady() && PB.drawTerrainTile(ctx, type, tx, ty, tileSize)) {
+      return;
+    }
     const SA = global.SproutAssets;
     if (SA && SA.isReady() && SA.drawTerrainTile(ctx, type, tx, ty, tileSize, gx, gy, frame)) {
       return;
@@ -423,7 +427,8 @@
     tileSize = tileSize || 32;
     setupCrisp(ctx);
     const SA = global.SproutAssets;
-    ctx.fillStyle = SA && SA.isReady() ? '#8ecf6a' : '#4ade80';
+    const paperBg = terrainMap && Object.values(terrainMap).some((v) => typeof v === 'string' && v.startsWith('pb_'));
+    ctx.fillStyle = paperBg ? '#faf6ee' : (SA && SA.isReady() ? '#8ecf6a' : '#4ade80');
     ctx.fillRect(0, 0, w, h);
 
     const cols = Math.ceil(w / tileSize);
@@ -477,6 +482,12 @@
 
     if (SOLID_PROP_TYPES.has(type)) {
       drawShadow(ctx, cx, cy + 4, block.width * 0.35, block.height * 0.12);
+    }
+
+    const PB = global.PictureBookAssets;
+    if (PB && PB.isPbType(type) && PB.isReady() && PB.drawProp(ctx, type, cx, cy, block.width)) {
+      drawBurnOverlay(ctx, block);
+      return;
     }
 
     if (SA && SA.isReady() && SA.drawProp(ctx, type, cx, cy, block.width)) {
@@ -641,10 +652,14 @@
   }
 
   function isSolidPropType(type) {
+    const PB = global.PictureBookAssets;
+    if (PB && PB.isPbType(type) && PB.SOLID_IDS.has(type)) return true;
     return SOLID_PROP_TYPES.has(type);
   }
 
   function isWaterTerrain(type) {
+    const PB = global.PictureBookAssets;
+    if (PB && PB.isPbType(type) && PB.WATER_IDS.has(type)) return true;
     return type === 'water';
   }
 
@@ -655,6 +670,11 @@
 
     const SA = global.SproutAssets;
     const f = frame || 0;
+
+    const PB = global.PictureBookAssets;
+    if (PB && PB.isPbType(kind) && PB.isReady() && PB.drawThumb(ctx, kind, size)) {
+      return;
+    }
 
     if (kind === 'grass' || kind === 'path' || kind === 'water') {
       drawTerrainTile(ctx, kind, 0, 0, size, 0, 0, f);
