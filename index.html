@@ -914,7 +914,7 @@
 
   <!-- 登録魔法スロットHUD (Z/X/C) -->
   <div class="absolute top-4 right-4 z-10 bg-slate-800/80 backdrop-blur border border-slate-700 p-4 rounded-2xl w-56 shadow-lg pointer-events-none text-white text-xs flex flex-col gap-2">
-    <div class="font-bold text-sky-400 mb-1 border-b border-slate-700 pb-1 text-[11px]">🪄 登録魔法 (Z/X/Cキー)</div>
+    <div class="font-bold text-sky-400 mb-1 border-b border-slate-700 pb-1 text-[11px]">🪄 登録魔法 (Z/X/C・スペース)</div>
     <div id="hud-slot-z" class="flex items-center gap-2">
       <span class="bg-slate-900 px-1.5 py-0.5 rounded font-mono font-bold text-pink-400">Z</span>
       <span id="hud-slot-z-desc" class="truncate text-slate-300">未登録</span>
@@ -933,6 +933,17 @@
     <span id="msg-text" class="bg-white text-pink-500 px-6 py-3 rounded-full font-bold shadow-xl border-4 border-pink-200 text-lg"></span>
   </div>
 
+  <!-- ダンジョン再生成・操作ヒント -->
+  <div class="absolute bottom-4 left-4 z-10 flex flex-col gap-2 pointer-events-auto">
+    <button id="btn-reset-dungeon" type="button" class="px-4 py-2 bg-amber-100 hover:bg-amber-200 border-2 border-amber-300 text-amber-800 rounded-xl font-bold text-xs shadow-md transition-all active:scale-95">
+      🔄 ダンジョン再生成
+    </button>
+    <div class="bg-slate-800/75 text-white text-[10px] px-3 py-2 rounded-xl border border-slate-600 leading-relaxed">
+      <div>移動: WASD / 矢印</div>
+      <div>魔法: Zキー または スペース</div>
+    </div>
+  </div>
+
 </div>
 
 <div id="block-target-menu" class="hidden" role="menu"></div>
@@ -943,6 +954,7 @@
 <script src="/js/sprout-assets.js"></script>
 <script src="/js/sprout-player-sprites.js"></script>
 <script src="/js/picturebook-assets.js"></script>
+<script src="/js/dungeon-generator.js"></script>
 <script src="/js/pop-art.js"></script>
 <script>
   // --- タブ切り替えロジック ---
@@ -995,7 +1007,11 @@
     requestAnimationFrame(() => {
       try {
         resize();
-        initLevel(isCustomPlay ? 'custom' : currentLevel);
+        if (isCustomPlay) {
+          initLevel('custom');
+        } else {
+          startProceduralTestPlay();
+        }
       } finally {
         isPaused = false;
       }
@@ -1922,6 +1938,13 @@
     keys[key] = true;
     
     if (e.repeat) return;
+    if (key === ' ' || key === 'spacebar') {
+      if (!viewTest.classList.contains('hidden-view') && !isPaused) {
+        e.preventDefault();
+        castSavedMagic('z');
+        return;
+      }
+    }
     if (key === 'z' || key === 'x' || key === 'c') {
       if (!viewEditor.classList.contains('hidden-view')) {
         castSandboxSavedMagic(key);
@@ -4863,9 +4886,69 @@
   let propBlocks = [];
   let mapTerrain = null;
   let gameCleared = false;
-  let currentLevel = 1;
+  let currentLevel = 'procedural';
+  let proceduralSeed = Date.now();
 
-  function initLevel(level) {
+  function ensureProceduralStarterMagic() {
+    savedMagics.z = [
+      { type: 'gen', val: 'fire', target: 'none' },
+      { type: 'vec', val: 'forward', target: 'none' },
+    ];
+    inventory.available.fire = Math.max(inventory.available.fire || 0, BASIC_MAGIC_STOCK);
+    inventory.available.forward = Math.max(inventory.available.forward || 0, BASIC_MAGIC_STOCK);
+    activeMagicSlot = 'z';
+    try {
+      localStorage.setItem(MAGIC_SLOTS_STORAGE_KEY, JSON.stringify({
+        z: savedMagics.z,
+        x: savedMagics.x,
+        c: savedMagics.c,
+      }));
+    } catch (_) { /* ignore */ }
+    updateSavedMagicsHUD();
+  }
+
+  function loadProceduralDungeon(seed) {
+    const w = width || window.innerWidth || 800;
+    const h = height || window.innerHeight || 600;
+    const dungeon = DungeonGenerator.generate({
+      cols: Math.floor(w / TILE_W),
+      rows: Math.floor(h / TILE_H),
+      tileW: TILE_W,
+      tileH: TILE_H,
+      seed: seed ?? Date.now(),
+    });
+
+    proceduralSeed = dungeon.seed;
+    mapTerrain = dungeon.terrain;
+    player.x = dungeon.player.x;
+    player.y = dungeon.player.y;
+    player.facing = 'right';
+
+    chest.active = true;
+    chest.x = dungeon.chest.x - chest.width / 2;
+    chest.y = dungeon.chest.y - chest.height / 2;
+
+    dungeon.gateCells.forEach((cell) => {
+      propBlocks.push(new MapProp(cell.gx, cell.gy, 'pb_thorn'));
+    });
+
+    dungeon.props.forEach((p) => {
+      propBlocks.push(new MapProp(p.gridX, p.gridY, p.type));
+    });
+
+    enemies = [];
+    gameCleared = false;
+    ensureProceduralStarterMagic();
+    showMessage('新しいダンジョンが生成されました！炎で茨を焼いて進もう 🔥');
+  }
+
+  function startProceduralTestPlay(seed) {
+    isCustomPlay = false;
+    currentLevel = 'procedural';
+    initLevel('procedural', seed);
+  }
+
+  function initLevel(level, seed) {
     ibaraBlocks = [];
     rockBlocks = [];
     propBlocks = [];
@@ -4903,8 +4986,11 @@
         propBlocks.push(new MapProp(pos.gridX, pos.gridY, pos.type));
       });
     }
+    else if (level === 'procedural') {
+      loadProceduralDungeon(seed);
+    }
     else {
-      // 通常レベルのロード
+      // レガシー固定ステージ（デバッグ用）
       player.x = width * 0.15; player.y = height / 2;
       chest.active = true;
       chest.x = width * 0.8;
@@ -4960,10 +5046,9 @@
       machines.push(new Machine(width * 0.62, height * 0.15));
       weightSwitches.push(new WeightSwitch(width * 0.55, height * 0.85));
     }
-
-    // インベントリの同期
-    syncInventory();
     }
+
+    syncInventory();
   }
 
   function nextLevel() {
@@ -4987,38 +5072,31 @@
       }, 2500);
       return;
     }
-    
-    if (currentLevel === 1) {
-      grantBasicMagicStock('split');
-      grantBasicMagicStock('water');
-      showMessage("第1階層クリア！『分裂』と『水』の魔法を獲得した！");
-      currentLevel = 2;
-      setTimeout(() => {
-        initLevel(2);
-        isPaused = false;
-      }, 2500);
-    } else if (currentLevel === 2) {
-      grantBasicMagicStock('homing');
-      grantBasicMagicStock('wood');
-      showMessage("第2階層クリア！『ホーミング』と『木』の魔法を獲得した！");
-      currentLevel = 3;
-      setTimeout(() => {
-        initLevel(3);
-        isPaused = false;
-      }, 2500);
-    } else if (currentLevel === 3) {
-      grantBasicMagicStock('lightning');
-      grantBasicMagicStock('earth');
-      gameCleared = true;
-      showMessage("ダンジョンクリア！『雷』と『土』の魔法を獲得した！");
-    }
+
+    showMessage('ゴール到達！新しいダンジョンを生成します…');
+    setTimeout(() => {
+      gameCleared = false;
+      startProceduralTestPlay(Date.now());
+      isPaused = false;
+    }, 2200);
   }
+
+  document.getElementById('btn-reset-dungeon')?.addEventListener('click', () => {
+    if (isCustomPlay) {
+      showMessage('カスタムマップ中は再生成できません');
+      return;
+    }
+    if (viewTest.classList.contains('hidden-view')) return;
+    isPaused = true;
+    startProceduralTestPlay(Date.now());
+    isPaused = false;
+  });
 
   function init() {
     width = window.innerWidth || 800; height = window.innerHeight || 600;
     canvas.width = width; canvas.height = height;
     
-    currentLevel = 1;
+    currentLevel = 'procedural';
     gameCleared = false;
     chest.active = true;
 
@@ -5050,7 +5128,7 @@
     // インベントリの初期状態設定（基礎魔法すべて解放）
     unlockAllBasicMagic();
 
-    initLevel(1);
+    startProceduralTestPlay(proceduralSeed);
     if (!gameLoopStarted) {
       gameLoopStarted = true;
       gameLoop();

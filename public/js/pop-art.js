@@ -427,7 +427,8 @@
     tileSize = tileSize || 32;
     setupCrisp(ctx);
     const SA = global.SproutAssets;
-    ctx.fillStyle = SA && SA.isReady() ? '#8ecf6a' : '#4ade80';
+    const paperBg = terrainMap && Object.values(terrainMap).some((v) => typeof v === 'string' && v.startsWith('pb_'));
+    ctx.fillStyle = paperBg ? '#faf6ee' : (SA && SA.isReady() ? '#8ecf6a' : '#4ade80');
     ctx.fillRect(0, 0, w, h);
 
     const cols = Math.ceil(w / tileSize);
