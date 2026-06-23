@@ -509,9 +509,6 @@
         const img = CSA.getSheetImage();
         const px = img ? `${img.naturalWidth}×${img.naturalHeight}px` : '';
         showStatus(`原寸で読み込みました（${px} / マス${g.cellSize}px・${g.cols}×${g.rows}列）。位置を調整して「グリッド更新」`, 'ok');
-        if (typeof global.syncCreateGridSize === 'function') {
-          global.syncCreateGridSize();
-        }
         if (typeof global.registerCustomSheetCreateTools === 'function') {
           global.registerCustomSheetCreateTools(true);
         }
