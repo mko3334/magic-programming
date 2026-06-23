@@ -16,6 +16,37 @@
     });
   }
 
+  function updateLeftPanel() {
+    const placePanel = $('create-place-tools-panel');
+    const adjustPanel = $('create-adjust-left-panel');
+    const actions = $('create-left-actions');
+    const title = $('create-left-title');
+    const hint = $('create-left-hint');
+
+    if (placePanel) placePanel.classList.toggle('hidden-view', mode !== 'place');
+    if (adjustPanel) adjustPanel.classList.toggle('hidden-view', mode !== 'adjust');
+    if (actions) actions.classList.toggle('hidden-view', mode !== 'place');
+
+    if (title) {
+      if (mode === 'adjust') {
+        title.textContent = '📐 タイル調整';
+        title.className = 'text-sm font-bold text-amber-600 mb-1 text-center md:text-left';
+      } else {
+        title.textContent = '🛠️ 配置ツール';
+        title.className = 'text-sm font-bold text-emerald-500 mb-1 text-center md:text-left';
+      }
+    }
+    if (hint) {
+      if (mode === 'adjust') {
+        hint.textContent = '一覧からタイルを選んで、右で余白を調整';
+      } else if (mode === 'import') {
+        hint.textContent = 'シート取込は右パネル。採用後は配置タブへ';
+      } else {
+        hint.textContent = 'タイル名をクリックして編集（自動保存）';
+      }
+    }
+  }
+
   function setMode(next, options = {}) {
     const prev = mode;
     if (!['place', 'import', 'adjust'].includes(next)) return;
@@ -30,6 +61,7 @@
     if (adjustPanel) adjustPanel.classList.toggle('hidden-view', mode !== 'adjust');
 
     updateTabButtons();
+    updateLeftPanel();
 
     if (prev === 'import' && mode !== 'import') {
       global.SheetGridImporter?.onLeaveImport?.();
@@ -43,6 +75,9 @@
     }
     if (mode === 'adjust') {
       global.PictureBookCropAdjust?.onEnterAdjust?.();
+      if (!options.silent && typeof global.showMessage === 'function') {
+        global.showMessage('📐 左の一覧からタイルを選び、右のスライダーで余白を調整');
+      }
     }
 
     if (mode === 'place' && !options.silent && prev !== 'place') {

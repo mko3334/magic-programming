@@ -81,7 +81,7 @@
 
   function refreshGrid() {
     if (!gridEl) return;
-    gridEl.querySelectorAll('.pb-crop-grid-item').forEach((btn) => {
+    gridEl.querySelectorAll('.pb-crop-list-item').forEach((btn) => {
       const id = btn.dataset.tileId;
       const canvas = btn.querySelector('.pb-crop-thumb');
       if (canvas) {
@@ -122,13 +122,13 @@
   function appendTileButton(entry) {
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = 'pb-crop-grid-item';
+    btn.className = 'pb-crop-list-item';
     btn.dataset.tileId = entry.id;
     btn.title = entry.label;
     const canvas = document.createElement('canvas');
     canvas.className = 'pb-crop-thumb';
-    canvas.width = 48;
-    canvas.height = 48;
+    canvas.width = 36;
+    canvas.height = 36;
     const label = document.createElement('span');
     label.className = 'pb-crop-grid-label';
     label.textContent = entry.label;
@@ -186,7 +186,7 @@
 
   function init() {
     panelEl = $('create-tile-adjust-panel');
-    gridEl = $('pb-crop-grid');
+    gridEl = $('create-adjust-tile-list');
     previewCanvas = $('pb-crop-preview');
     if (!panelEl || !gridEl || !previewCanvas) return false;
     previewCtx = previewCanvas.getContext('2d');
