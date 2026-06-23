@@ -68,7 +68,17 @@
     const CSA = global.CustomSheetAssets;
     if (!canvas || !CSA) return;
     const ctx = canvas.getContext('2d');
-    CSA.drawGridPreview(ctx, canvas.width, canvas.height, selectedCol, selectedRow, pickCellKeys());
+    const cssW = canvas.clientWidth || 480;
+    const cssH = Math.round(cssW * (3 / 4));
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const backingW = Math.round(cssW * dpr);
+    const backingH = Math.round(cssH * dpr);
+    if (canvas.width !== backingW || canvas.height !== backingH) {
+      canvas.width = backingW;
+      canvas.height = backingH;
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    CSA.drawGridPreview(ctx, cssW, cssH, selectedCol, selectedRow, pickCellKeys());
   }
 
   function renderSetList() {
@@ -489,22 +499,23 @@
     $('sgi-file')?.addEventListener('change', (e) => {
       const file = e.target.files?.[0];
       if (!file) return;
-      const reader = new FileReader();
-      reader.onload = () => {
-        CSA.setSheetDataUrl(reader.result).then(() => {
-          syncGridInputs();
-          if (!CSA.getCells().length) CSA.generateCellsFromGrid();
-          renderCellList();
-          refreshPreview();
-          refreshThumbs();
-          const g = CSA.getGrid();
-          showStatus(`画像を読み込みました（${g.cols}×${g.rows}）。位置を調整して「グリッド更新」`, 'ok');
-          if (typeof global.registerCustomSheetCreateTools === 'function') {
-            global.registerCustomSheetCreateTools(true);
-          }
-        }).catch(() => alert('画像の読み込みに失敗しました'));
-      };
-      reader.readAsDataURL(file);
+      CSA.setSheetFile(file).then(() => {
+        syncGridInputs();
+        if (!CSA.getCells().length) CSA.generateCellsFromGrid();
+        renderCellList();
+        refreshPreview();
+        refreshThumbs();
+        const g = CSA.getGrid();
+        const img = CSA.getSheetImage();
+        const px = img ? `${img.naturalWidth}×${img.naturalHeight}px` : '';
+        showStatus(`原寸で読み込みました（${px} / マス${g.cellSize}px・${g.cols}×${g.rows}列）。位置を調整して「グリッド更新」`, 'ok');
+        if (typeof global.syncCreateGridSize === 'function') {
+          global.syncCreateGridSize();
+        }
+        if (typeof global.registerCustomSheetCreateTools === 'function') {
+          global.registerCustomSheetCreateTools(true);
+        }
+      }).catch(() => alert('画像の読み込みに失敗しました'));
     });
 
     global.addEventListener('customsheet:updated', () => {

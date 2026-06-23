@@ -4,6 +4,9 @@
 (function (global) {
   const STORAGE_KEY = 'pop-magic-custom-sheet-v1';
   const SHEET_DATA_KEY = 'pop-magic-custom-sheet-image-v1';
+  const SHEET_BLOB_KEY = 'sheet-image';
+  const SHEET_DB_NAME = 'pop-magic-sheet-db';
+  const SHEET_DB_STORE = 'blobs';
   const ID_PREFIX = 'gs_';
   const SET_PREFIX = 'gset_';
 
@@ -28,6 +31,84 @@
 
   /** 黒透過処理済みタイルのキャッシュ（毎フレーム getImageData しない） */
   const cellCache = new Map();
+  let sheetObjectUrl = null;
+
+  function revokeSheetObjectUrl() {
+    if (sheetObjectUrl) {
+      URL.revokeObjectURL(sheetObjectUrl);
+      sheetObjectUrl = null;
+    }
+  }
+
+  function openSheetDb() {
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(SHEET_DB_NAME, 1);
+      req.onupgradeneeded = () => {
+        if (!req.result.objectStoreNames.contains(SHEET_DB_STORE)) {
+          req.result.createObjectStore(SHEET_DB_STORE);
+        }
+      };
+      req.onerror = () => reject(req.error);
+      req.onsuccess = () => resolve(req.result);
+    });
+  }
+
+  function idbGetBlob(key) {
+    return openSheetDb().then((db) => new Promise((resolve, reject) => {
+      const tx = db.transaction(SHEET_DB_STORE, 'readonly');
+      const req = tx.objectStore(SHEET_DB_STORE).get(key);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
+    }));
+  }
+
+  function idbSetBlob(key, blob) {
+    return openSheetDb().then((db) => new Promise((resolve, reject) => {
+      const tx = db.transaction(SHEET_DB_STORE, 'readwrite');
+      tx.objectStore(SHEET_DB_STORE).put(blob, key);
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = () => reject(tx.error);
+    }));
+  }
+
+  function loadSheetImageFromBlob(blob) {
+    return new Promise((resolve, reject) => {
+      revokeSheetObjectUrl();
+      sheetObjectUrl = URL.createObjectURL(blob);
+      const img = new Image();
+      img.onload = () => {
+        sheet = img;
+        resolve(img);
+      };
+      img.onerror = reject;
+      img.src = sheetObjectUrl;
+    });
+  }
+
+  function loadSheetImageFromDataUrl(dataUrl) {
+    return new Promise((resolve, reject) => {
+      revokeSheetObjectUrl();
+      const img = new Image();
+      img.onload = () => {
+        sheet = img;
+        resolve(img);
+      };
+      img.onerror = reject;
+      img.src = dataUrl;
+    });
+  }
+
+  function finalizeSheetLoad(options = {}) {
+    if (options.regenerateGrid && !cells.length) {
+      autoFitGridFromImage();
+    }
+    if (options.regenerateGrid) {
+      generateCellsFromGrid();
+    }
+    prewarmCellCache();
+    saveToStorage();
+    return true;
+  }
 
   function cacheKey(x, y, w, h) {
     return `${x}|${y}|${w}|${h}|${grid.keyBlack ? 1 : 0}`;
@@ -45,6 +126,7 @@
     tmp.width = w;
     tmp.height = h;
     const tctx = tmp.getContext('2d');
+    global.PopArt?.setupCrisp?.(tctx);
     tctx.drawImage(sheet, x, y, w, h, 0, 0, w, h);
 
     if (grid.keyBlack) {
@@ -276,25 +358,39 @@
       sets = [];
     }
 
-    const dataUrl = localStorage.getItem(SHEET_DATA_KEY);
-    if (!dataUrl) {
-      rebuildCatalog();
-      return Promise.resolve(false);
-    }
+    return idbGetBlob(SHEET_BLOB_KEY).then((blob) => {
+      if (blob) {
+        return loadSheetImageFromBlob(blob).then(() => {
+          prewarmCellCache();
+          rebuildCatalog();
+          return true;
+        }).catch(() => {
+          sheet = null;
+          rebuildCatalog();
+          return false;
+        });
+      }
 
-    sheet = new Image();
-    return new Promise((resolve) => {
-      sheet.onload = () => {
+      const dataUrl = localStorage.getItem(SHEET_DATA_KEY);
+      if (!dataUrl) {
+        rebuildCatalog();
+        return false;
+      }
+
+      return loadSheetImageFromDataUrl(dataUrl).then(() => {
         prewarmCellCache();
         rebuildCatalog();
-        resolve(true);
-      };
-      sheet.onerror = () => {
+        return fetch(dataUrl)
+          .then((r) => r.blob())
+          .then((migrated) => idbSetBlob(SHEET_BLOB_KEY, migrated))
+          .then(() => localStorage.removeItem(SHEET_DATA_KEY))
+          .catch(() => {})
+          .then(() => true);
+      }).catch(() => {
         sheet = null;
         rebuildCatalog();
-        resolve(false);
-      };
-      sheet.src = dataUrl;
+        return false;
+      });
     });
   }
 
@@ -305,26 +401,73 @@
   }
 
   function setSheetDataUrl(dataUrl) {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.onload = () => {
-        sheet = img;
+    return fetch(dataUrl)
+      .then((r) => r.blob())
+      .then((blob) => setSheetBlob(blob))
+      .catch(() => loadSheetImageFromDataUrl(dataUrl).then(() => {
+        finalizeSheetLoad({ regenerateGrid: true });
         try {
           localStorage.setItem(SHEET_DATA_KEY, dataUrl);
         } catch (e) {
           console.warn('CustomSheet: image too large for localStorage', e);
         }
-        if (!cells.length) {
-          autoFitGridFromImage();
+        return true;
+      }));
+  }
+
+  function setSheetBlob(blob) {
+    if (!blob) return Promise.reject(new Error('empty blob'));
+    return idbSetBlob(SHEET_BLOB_KEY, blob)
+      .then(() => loadSheetImageFromBlob(blob))
+      .then(() => {
+        localStorage.removeItem(SHEET_DATA_KEY);
+        finalizeSheetLoad({ regenerateGrid: true });
+        return true;
+      });
+  }
+
+  function setSheetFile(file) {
+    if (!file) return Promise.reject(new Error('empty file'));
+    return setSheetBlob(file);
+  }
+
+  function findBestGrid(w, h) {
+    let best = null;
+    let bestScore = Infinity;
+    const sizes = [128, 96, 64, 48, 32, 24, 16];
+    const gaps = [0, 1, 2, 4, 8];
+
+    sizes.forEach((size) => {
+      gaps.forEach((gap) => {
+        for (let cols = 1; cols <= 64; cols++) {
+          const usedW = cols * size + Math.max(0, cols - 1) * gap;
+          const dw = Math.abs(usedW - w);
+          if (dw > Math.max(4, gap * 2 + 2)) continue;
+
+          for (let rows = 1; rows <= 64; rows++) {
+            const usedH = rows * size + Math.max(0, rows - 1) * gap;
+            const dh = Math.abs(usedH - h);
+            if (dh > Math.max(4, gap * 2 + 2)) continue;
+
+            const sizeBonus = size === 32 ? 0 : size === 64 ? 1 : 2;
+            const score = dw + dh + sizeBonus;
+            if (score < bestScore) {
+              bestScore = score;
+              best = { cellSize: size, gap, cols, rows };
+            }
+          }
         }
-        generateCellsFromGrid();
-        prewarmCellCache();
-        saveToStorage();
-        resolve(true);
-      };
-      img.onerror = reject;
-      img.src = dataUrl;
+      });
     });
+
+    if (best) return best;
+    const size = 32;
+    return {
+      cellSize: size,
+      gap: 0,
+      cols: Math.max(1, Math.floor(w / size)),
+      rows: Math.max(1, Math.floor(h / size)),
+    };
   }
 
   function autoFitGridFromImage() {
@@ -333,15 +476,20 @@
     const h = sheet.naturalHeight;
     grid.offsetX = 0;
     grid.offsetY = 0;
-    if (w >= h) {
-      grid.cellSize = Math.max(16, Math.floor(w / 9));
-      grid.gap = Math.max(0, Math.floor(grid.cellSize * 0.05));
-    } else {
-      grid.cellSize = Math.max(16, Math.floor(w / 4));
-      grid.gap = 4;
-    }
-    grid.cols = Math.max(1, Math.floor((w - grid.offsetX + grid.gap) / (grid.cellSize + grid.gap)));
-    grid.rows = Math.max(1, Math.floor((h - grid.offsetY + grid.gap) / (grid.cellSize + grid.gap)));
+    const fit = findBestGrid(w, h);
+    grid.cellSize = fit.cellSize;
+    grid.gap = fit.gap;
+    grid.cols = fit.cols;
+    grid.rows = fit.rows;
+  }
+
+  function hasAdoptedTiles() {
+    return CATALOG.length > 0;
+  }
+
+  function getNativeTileSize() {
+    const size = Math.round(Number(grid.cellSize) || 32);
+    return Math.max(16, Math.min(128, size));
   }
 
   function updateGrid(partial) {
@@ -622,6 +770,7 @@
   }
 
   function drawGridPreview(ctx, canvasW, canvasH, highlightCol, highlightRow, pickCellKeys) {
+    global.PopArt?.setupCrisp?.(ctx);
     ctx.fillStyle = '#1e293b';
     ctx.fillRect(0, 0, canvasW, canvasH);
 
@@ -658,6 +807,7 @@
   }
 
   function drawAdjustPreview(ctx, id, canvasW, canvasH) {
+    global.PopArt?.setupCrisp?.(ctx);
     const cell = cells.find((c) => c.id === id);
     if (!cell || !sheet || !sheet.complete) return false;
     const crop = getCellCrop(cell);
@@ -744,7 +894,11 @@
     deleteSet,
     generateCellsFromGrid,
     setSheetDataUrl,
+    setSheetBlob,
+    setSheetFile,
     autoFitGridFromImage,
+    hasAdoptedTiles,
+    getNativeTileSize,
     saveToStorage,
     loadFromStorage,
     drawTerrainTile,

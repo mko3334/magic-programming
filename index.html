@@ -1386,7 +1386,7 @@
   <div id="create-sheet-import-panel" class="hidden-view flex-1 bg-white rounded-3xl shadow-sm p-4 flex flex-col overflow-hidden border border-cyan-100 relative">
     <button id="btn-go-place-mode" type="button">🗺️ 配置モードへ — 採用したタイルをマップに置く</button>
     <div class="text-[11px] font-bold text-cyan-700 mb-0 shrink-0 mt-2">📋 PNGシートを等間隔スクエアで切り抜き → 採用したタイルだけクリエイトに追加</div>
-    <div class="text-[10px] text-slate-400 shrink-0">※ シート・採用タイルはブラウザに自動保存されます（保存ボタン不要）</div>
+    <div class="text-[10px] text-slate-400 shrink-0">※ PNG推奨（原寸保存）。マス幅を画像の1タイルのピクセル数に合わせると画質が保たれます</div>
     <div class="sgi-scroll custom-scrollbar">
       <div class="flex flex-col gap-2">
         <label class="text-[10px] font-bold text-slate-500">PNG画像を選択（黒背景は透過可）</label>
@@ -1407,7 +1407,7 @@
           <button id="sgi-regenerate-grid" type="button" class="flex-1 py-1.5 text-[10px] font-bold rounded-lg bg-cyan-50 border border-cyan-200 text-cyan-700">グリッド更新</button>
         </div>
         <div id="sgi-status" class="text-[10px] font-bold text-slate-500 min-h-[1.25rem]" aria-live="polite"></div>
-        <canvas id="sgi-preview" width="480" height="360"></canvas>
+        <canvas id="sgi-preview"></canvas>
       </div>
       <div class="sgi-cell-section">
         <div id="sgi-set-builder" class="sgi-set-builder">
@@ -2106,6 +2106,7 @@
     player: { x: 160, y: 240 },
     chest: { x: 480, y: 240, reward: 'lightning' },
     enemies: [],
+    tileSize: 32,
   };
 
   function persistCreateMap() {
@@ -2127,6 +2128,7 @@
       createMapData.player = data.player ?? null;
       createMapData.chest = data.chest ?? null;
       createMapData.enemies = Array.isArray(data.enemies) ? data.enemies : [];
+      createMapData.tileSize = Number(data.tileSize) || 32;
       const rewardSelectEl = document.getElementById('chest-reward-select');
       if (rewardSelectEl && createMapData.chest?.reward) {
         rewardSelectEl.value = createMapData.chest.reward;
@@ -2136,14 +2138,33 @@
     }
   }
 
-  loadCreateMap();
-
   const createCanvas = document.getElementById('createCanvas');
   const createCtx = createCanvas.getContext('2d');
   PopArt.setupCrisp(createCtx);
-  
-  const gridW = 32;
-  const gridH = 32;
+
+  let gridW = 32;
+  let gridH = 32;
+  let activeTileSize = 32;
+
+  function getCreateTileSize() {
+    const CSA = window.CustomSheetAssets;
+    if (CSA?.hasAdoptedTiles?.()) {
+      return CSA.getNativeTileSize?.() || 32;
+    }
+    return 32;
+  }
+
+  function syncCreateGridSize() {
+    const next = getCreateTileSize();
+    gridW = next;
+    gridH = next;
+    if (createMapData.tileSize !== next) {
+      createMapData.tileSize = next;
+      persistCreateMap();
+    }
+    drawCreateCanvas();
+  }
+  global.syncCreateGridSize = syncCreateGridSize;
   let createW = 800;
   let createH = 600;
 
@@ -2313,6 +2334,8 @@
   if (window.SheetGridImporter) SheetGridImporter.init();
   if (window.PictureBookCropAdjust) PictureBookCropAdjust.init();
   if (window.CreateModeTabs) CreateModeTabs.init();
+  loadCreateMap();
+  syncCreateGridSize();
   window.startCreateCanvasAnim = startCreateCanvasAnim;
 
   window.addEventListener('picturebook:crops-updated', () => {
@@ -2322,7 +2345,7 @@
   window.addEventListener('customsheet:updated', () => {
     registerCustomSheetCreateTools(true);
     refreshCreateToolThumbnails();
-    if (!viewCreate.classList.contains('hidden-view')) drawCreateCanvas();
+    syncCreateGridSize();
   });
   window.addEventListener('customsheet:crops-updated', () => {
     refreshCreateToolThumbnails();
@@ -2502,7 +2525,7 @@
     }
     
     normalizeCreateMapOccupancy();
-    // カスタムテストプレイフラグを立ててテスト画面へ遷移
+    activeTileSize = createMapData.tileSize || getCreateTileSize();
     isCustomPlay = true;
     
     resetTabStyles();
@@ -3814,10 +3837,10 @@
         const set = CSA.getSet(b.type);
         set?.members.forEach((m) => {
           solidProps.push({
-            x: (b.gridX + m.dx) * TILE_W,
-            y: (b.gridY + m.dy) * TILE_H,
-            width: TILE_W,
-            height: TILE_H,
+            x: b.x + m.dx * b.width,
+            y: b.y + m.dy * b.height,
+            width: b.width,
+            height: b.height,
             active: true,
           });
         });
@@ -4694,8 +4717,9 @@
       }
 
       if (!collide && mapTerrain) {
-        const gx = Math.floor(nextX / TILE_W);
-        const gy = Math.floor(nextY / TILE_H);
+        const tileSize = isCustomPlay ? activeTileSize : TILE_W;
+        const gx = Math.floor(nextX / tileSize);
+        const gy = Math.floor(nextY / tileSize);
         if (PopArt.isWaterTerrain(PopArt.getTerrainAt(mapTerrain, gx, gy))) {
           collide = true;
         }
@@ -5808,6 +5832,7 @@
     let blockHeight = TILE_H;
 
     if (level === 'custom') {
+      activeTileSize = createMapData.tileSize || getCreateTileSize();
       if (createMapData.player) {
         player.x = createMapData.player.x;
         player.y = createMapData.player.y;
@@ -5823,7 +5848,7 @@
         enemies.push(new Enemy(pos.x, pos.y));
       });
       createMapData.props.forEach(pos => {
-        propBlocks.push(new MapProp(pos.gridX, pos.gridY, pos.type));
+        propBlocks.push(new MapProp(pos.gridX, pos.gridY, pos.type, activeTileSize));
       });
     }
     else if (level === 'procedural') {
@@ -6014,7 +6039,8 @@
       }
 
       ctx.clearRect(0, 0, width, height);
-      PopArt.drawGround(ctx, width, height, frameCount, TILE_W, mapTerrain);
+      const groundTileSize = (isCustomPlay && mapTerrain) ? activeTileSize : TILE_W;
+      PopArt.drawGround(ctx, width, height, frameCount, groundTileSize, mapTerrain);
 
       propBlocks.filter(b => b.active && !PopArt.isSolidPropType(b.type)).forEach(b => b.draw(ctx));
 
