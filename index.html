@@ -2173,22 +2173,27 @@
     }
   }
 
-  let createAnimId = null;
+  let createAnimTimer = null;
+  function stopCreateCanvasAnim() {
+    if (createAnimTimer) {
+      clearInterval(createAnimTimer);
+      createAnimTimer = null;
+    }
+  }
   function startCreateCanvasAnim() {
-    if (createAnimId) return;
-    const loop = () => {
+    stopCreateCanvasAnim();
+    drawCreateCanvas();
+    createAnimTimer = setInterval(() => {
       if (viewCreate.classList.contains('hidden-view')) {
-        createAnimId = null;
+        stopCreateCanvasAnim();
         return;
       }
       drawCreateCanvas();
-      createAnimId = requestAnimationFrame(loop);
-    };
-    createAnimId = requestAnimationFrame(loop);
+    }, 300);
   }
 
   // --- クリエイトビューのイベントリスナー ---
-  let createThumbTimer = null;
+  let createThumbTimer = null; /* legacy: no longer polled every frame */
 
   function refreshCreateToolThumbnails() {
     const frame = Math.floor(performance.now() / 120);
@@ -2213,12 +2218,6 @@
 
   function startCreateThumbRefresh() {
     tryRefreshCreateThumbs();
-    if (createThumbTimer) return;
-    createThumbTimer = setInterval(() => {
-      if (!viewCreate.classList.contains('hidden-view')) {
-        refreshCreateToolThumbnails();
-      }
-    }, 400);
   }
 
   const tools = {
@@ -2280,6 +2279,7 @@
   });
   window.addEventListener('customsheet:updated', () => {
     registerCustomSheetCreateTools(true);
+    refreshCreateToolThumbnails();
     if (!viewCreate.classList.contains('hidden-view')) drawCreateCanvas();
   });
 

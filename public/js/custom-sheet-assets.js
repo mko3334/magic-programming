@@ -24,6 +24,51 @@
   let ready = false;
   let nextSetId = 1;
 
+  /** 黒透過処理済みタイルのキャッシュ（毎フレーム getImageData しない） */
+  const cellCache = new Map();
+
+  function cacheKey(x, y, w, h) {
+    return `${x}|${y}|${w}|${h}|${grid.keyBlack ? 1 : 0}`;
+  }
+
+  function invalidateCellCache() {
+    cellCache.clear();
+  }
+
+  function getCachedCellCanvas(x, y, w, h) {
+    const key = cacheKey(x, y, w, h);
+    if (cellCache.has(key)) return cellCache.get(key);
+
+    const tmp = document.createElement('canvas');
+    tmp.width = w;
+    tmp.height = h;
+    const tctx = tmp.getContext('2d');
+    tctx.drawImage(sheet, x, y, w, h, 0, 0, w, h);
+
+    if (grid.keyBlack) {
+      const img = tctx.getImageData(0, 0, w, h);
+      const d = img.data;
+      for (let i = 0; i < d.length; i += 4) {
+        if (d[i] < 48 && d[i + 1] < 48 && d[i + 2] < 48) d[i + 3] = 0;
+      }
+      tctx.putImageData(img, 0, 0);
+    }
+
+    cellCache.set(key, tmp);
+    return tmp;
+  }
+
+  function prewarmCellCache() {
+    if (!sheet || !sheet.complete || !grid.keyBlack) return;
+    invalidateCellCache();
+    for (let row = 0; row < grid.rows; row++) {
+      for (let col = 0; col < grid.cols; col++) {
+        const rect = cellRect(col, row);
+        getCachedCellCanvas(rect.x, rect.y, rect.w, rect.h);
+      }
+    }
+  }
+
   const byId = {};
   const CATALOG = [];
   const TERRAIN_IDS = new Set();
@@ -199,6 +244,7 @@
     sheet = new Image();
     return new Promise((resolve) => {
       sheet.onload = () => {
+        prewarmCellCache();
         rebuildCatalog();
         resolve(true);
       };
@@ -231,6 +277,7 @@
           autoFitGridFromImage();
         }
         generateCellsFromGrid();
+        prewarmCellCache();
         saveToStorage();
         resolve(true);
       };
@@ -257,8 +304,14 @@
   }
 
   function updateGrid(partial) {
+    const keyBlackChanged = partial.keyBlack !== undefined && partial.keyBlack !== grid.keyBlack;
     grid = { ...grid, ...partial };
+    if (keyBlackChanged || partial.cellSize !== undefined || partial.offsetX !== undefined
+      || partial.offsetY !== undefined || partial.gap !== undefined) {
+      invalidateCellCache();
+    }
     generateCellsFromGrid();
+    prewarmCellCache();
     saveToStorage();
   }
 
@@ -367,23 +420,8 @@
       return true;
     }
 
-    const tmp = document.createElement('canvas');
-    tmp.width = spec.w;
-    tmp.height = spec.h;
-    const tctx = tmp.getContext('2d');
-    tctx.drawImage(sheet, spec.x, spec.y, spec.w, spec.h, 0, 0, spec.w, spec.h);
-    const img = tctx.getImageData(0, 0, spec.w, spec.h);
-    const d = img.data;
-    for (let i = 0; i < d.length; i += 4) {
-      const r = d[i];
-      const g = d[i + 1];
-      const b = d[i + 2];
-      if (r < 48 && g < 48 && b < 48) {
-        d[i + 3] = 0;
-      }
-    }
-    tctx.putImageData(img, 0, 0);
-    ctx.drawImage(tmp, dx, dy, dw, dh);
+    const cached = getCachedCellCanvas(spec.x, spec.y, spec.w, spec.h);
+    ctx.drawImage(cached, dx, dy, dw, dh);
     return true;
   }
 
