@@ -108,9 +108,14 @@
     active = !!next;
     const mapPanel = $('create-map-panel');
     const adjustPanel = $('create-tile-adjust-panel');
+    const importPanel = $('create-sheet-import-panel');
     const toggleBtn = $('btn-toggle-tile-adjust');
+    if (active && global.SheetGridImporter?.isActive?.()) {
+      global.SheetGridImporter.setActive(false);
+    }
     if (mapPanel) mapPanel.classList.toggle('hidden-view', active);
     if (adjustPanel) adjustPanel.classList.toggle('hidden-view', !active);
+    if (importPanel && active) importPanel.classList.add('hidden-view');
     if (toggleBtn) {
       toggleBtn.textContent = active ? '🗺️ マップ編集に戻る' : '📐 タイル余白調整';
       toggleBtn.classList.toggle('is-active', active);
