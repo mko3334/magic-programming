@@ -166,6 +166,7 @@
         }
       }
     });
+    updateCellListHeading();
   }
 
   function refreshThumbs() {
@@ -205,6 +206,17 @@
     const CSA = global.CustomSheetAssets;
     if (!CSA || CSA.getCells().length) return;
     CSA.updateGrid(readGridInputs());
+  }
+
+  function updateCellListHeading() {
+    const CSA = global.CustomSheetAssets;
+    const heading = $('sgi-cell-list-heading');
+    if (!heading || !CSA) return;
+    const g = CSA.getGrid();
+    const count = g.cols * g.rows;
+    heading.textContent = count
+      ? `マス一覧（${count}マス）— 名前を付けて「＋ 採用」`
+      : 'マス一覧 — 名前を付けて「採用」';
   }
 
   function applyGridSettings() {
@@ -259,6 +271,7 @@
       syncGridInputs();
       ensureCellsFromGrid();
       renderCellList();
+      updateCellListHeading();
       refreshPreview();
       refreshThumbs();
       const CSA = global.CustomSheetAssets;
