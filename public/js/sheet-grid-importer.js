@@ -91,6 +91,13 @@
     }
   }
 
+  function objectScaleBoundsPct() {
+    const CSA = global.CustomSheetAssets;
+    const min = CSA?.VISUAL_SCALE_MIN ?? 0.05;
+    const max = CSA?.VISUAL_SCALE_MAX ?? 4;
+    return { min: Math.round(min * 100), max: Math.round(max * 100), minScale: min, maxScale: max };
+  }
+
   function syncObjectInputsFromActiveGroup() {
     const CSA = global.CustomSheetAssets;
     if (!CSA) return;
@@ -101,21 +108,23 @@
     if ($('sgi-object-kind')) $('sgi-object-kind').value = obj?.kind || 'prop';
     if ($('sgi-object-solid')) $('sgi-object-solid').checked = !!obj?.solid;
     if ($('sgi-object-key-black')) $('sgi-object-key-black').checked = group?.hasImage ? (CSA.getGrid().keyBlack ?? true) : true;
-    const scalePct = Math.round((obj?.visualScale ?? 1) * 100);
-    if ($('sgi-object-scale')) $('sgi-object-scale').value = String(Math.max(25, Math.min(400, scalePct)));
+    const bounds = objectScaleBoundsPct();
+    const scalePct = Math.round((obj?.visualScale ?? CSA.DEFAULT_OBJECT_SCALE ?? 0.1) * 100);
+    if ($('sgi-object-scale')) $('sgi-object-scale').value = String(Math.max(bounds.min, Math.min(bounds.max, scalePct)));
     if ($('sgi-object-scale-val')) $('sgi-object-scale-val').textContent = `${scalePct}%`;
     if (group?.importMode === 'object') setImportMode('object');
   }
 
   function readObjectInputs() {
-    const scaleRaw = Number($('sgi-object-scale')?.value) || 100;
+    const bounds = objectScaleBoundsPct();
+    const scaleRaw = Number($('sgi-object-scale')?.value) || Math.round((global.CustomSheetAssets?.DEFAULT_OBJECT_SCALE ?? 0.1) * 100);
     return {
       footprintW: Number($('sgi-footprint-w')?.value) || 1,
       footprintH: Number($('sgi-footprint-h')?.value) || 1,
       kind: $('sgi-object-kind')?.value || 'prop',
       solid: !!$('sgi-object-solid')?.checked,
       keyBlack: !!$('sgi-object-key-black')?.checked,
-      visualScale: Math.max(0.25, Math.min(4, scaleRaw / 100)),
+      visualScale: Math.max(bounds.minScale, Math.min(bounds.maxScale, scaleRaw / 100)),
     };
   }
 
@@ -124,8 +133,9 @@
     const groupId = CSA?.getActiveGroupId();
     if (!CSA || !groupId || importMode !== 'object') return;
     const scale = CSA.suggestObjectFitOneTileScale(groupId);
+    const bounds = objectScaleBoundsPct();
     const pct = Math.round(scale * 100);
-    if ($('sgi-object-scale')) $('sgi-object-scale').value = String(Math.max(25, Math.min(400, pct)));
+    if ($('sgi-object-scale')) $('sgi-object-scale').value = String(Math.max(bounds.min, Math.min(bounds.max, pct)));
     updateObjectScaleLabel();
     applyObjectInputsToActiveGroup({ adopt: CSA.getActiveObject()?.enabled ?? false });
     refreshObjectPreview();
@@ -199,7 +209,7 @@
       global.registerCustomSheetCreateTools(true);
     }
     const obj = CSA.getActiveObject();
-    showStatus(`「${obj?.label || groupMeta.name}」を ${obj?.footprintW}×${obj?.footprintH} マス / 表示${Math.round((obj?.visualScale ?? 1) * 100)}% で採用しました`, 'ok');
+    showStatus(`「${obj?.label || groupMeta.name}」を ${obj?.footprintW}×${obj?.footprintH} マス / 表示${Math.round((obj?.visualScale ?? global.CustomSheetAssets?.DEFAULT_OBJECT_SCALE ?? 0.1) * 100)}% で採用しました`, 'ok');
   }
 
   function pickCellKeys() {
@@ -842,7 +852,8 @@
         e.target.value = '';
         const img = CSA.getSheetImage();
         const px = img ? `${img.naturalWidth}×${img.naturalHeight}px` : '';
-        showStatus(`「${groupName}」${px ? `（${px}・原寸表示）` : ''} — 倍率を調整して「保存して採用」`, 'ok');
+        const pct = Math.round((CSA.getActiveObject()?.visualScale ?? 0.1) * 100);
+        showStatus(`「${groupName}」${px ? `（${px}→${pct}%表示）` : ''} — 確認して「保存して採用」`, 'ok');
       }).catch(() => alert('画像の読み込みに失敗しました'));
     });
 

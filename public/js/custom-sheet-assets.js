@@ -14,6 +14,11 @@
   const SET_PREFIX = 'gset_';
   const OBJECT_PREFIX = 'gobj_';
   const DISPLAY_TILE_SIZE = 32;
+  /** 1マス分の素材を描くときの推奨ピクセル数（表示は TILE_SIZE に縮小） */
+  const ART_TILE_SIZE = 320;
+  const DEFAULT_OBJECT_SCALE = DISPLAY_TILE_SIZE / ART_TILE_SIZE;
+  const VISUAL_SCALE_MIN = 0.05;
+  const VISUAL_SCALE_MAX = 4;
 
   const EMPTY_GRID = {
     offsetX: 0,
@@ -144,7 +149,7 @@
       solid: !!options.solid,
       footprintW: Math.max(1, Math.min(4, Number(options.footprintW) || 1)),
       footprintH: Math.max(1, Math.min(4, Number(options.footprintH) || 1)),
-      visualScale: clampVisualScale(options.visualScale ?? 1),
+      visualScale: clampVisualScale(options.visualScale ?? DEFAULT_OBJECT_SCALE),
       crop: { ...EMPTY_CROP },
     };
     return group;
@@ -611,7 +616,7 @@
           object: g.object ? {
             ...g.object,
             crop: { ...(g.object.crop || EMPTY_CROP) },
-            visualScale: clampVisualScale(g.object.visualScale ?? 1),
+            visualScale: clampVisualScale(g.object.visualScale ?? DEFAULT_OBJECT_SCALE),
           } : null,
           collapsed: !!g.collapsed,
         }));
@@ -743,6 +748,11 @@
     groups.push(group);
     activeGroupId = group.id;
     return setSheetBlobForGroup(group, file, { regenerateGrid: false }).then(() => {
+      const spec = objectSourceRect(group, group.object);
+      if (spec && group.object) {
+        group.object.visualScale = suggestObjectFitOneTileScale(group.id);
+        saveToStorage();
+      }
       prewarmObjectCacheForGroup(group);
       return group;
     });
@@ -782,8 +792,8 @@
 
   function clampVisualScale(value) {
     const n = Number(value);
-    if (!Number.isFinite(n)) return 1;
-    return Math.max(0.25, Math.min(4, n));
+    if (!Number.isFinite(n)) return DEFAULT_OBJECT_SCALE;
+    return Math.max(VISUAL_SCALE_MIN, Math.min(VISUAL_SCALE_MAX, n));
   }
 
   function objectDrawSize(spec, visualScale) {
@@ -849,7 +859,7 @@
       anchor: ctx.object.kind === 'terrain' ? [0, 0] : [0.5, 0.92],
       footprintW: ctx.object.footprintW,
       footprintH: ctx.object.footprintH,
-      visualScale: clampVisualScale(ctx.object.visualScale ?? 1),
+      visualScale: clampVisualScale(ctx.object.visualScale ?? DEFAULT_OBJECT_SCALE),
       kind: ctx.object.kind,
     };
   }
@@ -870,7 +880,7 @@
     if (group.importMode !== 'object' || !group.object) return;
     const spec = objectSourceRect(group, group.object);
     if (!spec) return;
-    const { w, h } = objectDrawSize(spec, group.object.visualScale ?? 1);
+    const { w, h } = objectDrawSize(spec, group.object.visualScale ?? DEFAULT_OBJECT_SCALE);
     getCachedDisplayCanvas(group.id, spec, w, h);
   }
 
@@ -910,7 +920,7 @@
     const ox = (canvasW - gridW) / 2;
     const oy = (canvasH - gridH) / 2;
 
-    const visualScale = clampVisualScale(group.object.visualScale ?? 1);
+    const visualScale = clampVisualScale(group.object.visualScale ?? DEFAULT_OBJECT_SCALE);
     const { w: drawW, h: drawH } = objectDrawSize(spec, visualScale);
     const cx = ox + gridW / 2;
     const cy = oy + gridH - 4;
@@ -1697,6 +1707,10 @@
     drawObjectPreview,
     suggestObjectFitOneTileScale,
     TILE_SIZE: DISPLAY_TILE_SIZE,
+    ART_TILE_SIZE,
+    DEFAULT_OBJECT_SCALE,
+    VISUAL_SCALE_MIN,
+    VISUAL_SCALE_MAX,
     getDefaultLabel,
     cellRect,
   };
