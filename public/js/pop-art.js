@@ -6,6 +6,14 @@
   const OUTLINE = '#1a2e1a';
   const TILE_COLS = 16;
 
+  function worldTileScale() {
+    return (global.MAP_TILE_PX || 32) / 32;
+  }
+
+  function blitScale() {
+    return PX * worldTileScale();
+  }
+
   const PAL = {
     '.': null,
     O: '#1a2e1a',
@@ -533,11 +541,12 @@
     const cy = player.y;
     const SPS = global.SproutPlayerSprites;
 
-    drawShadow(ctx, cx, cy + 4, Math.max(18, player.radius * 0.9), 6);
+    drawShadow(ctx, cx, cy + 4, Math.max(18, player.radius * 0.9), 6 * worldTileScale());
 
     if (SPS && SPS.draw(ctx, player, frame, cx, cy)) {
       if (player.effectType === 'stop') {
-        blitAt(ctx, ['O..', '.O.'], cx - 14, cy - 28, 2, false, { ...PAL, O: '#fff', '.': null });
+        const s = blitScale();
+        blitAt(ctx, ['O..', '.O.'], cx - 14 * worldTileScale(), cy - 28 * worldTileScale(), s, false, { ...PAL, O: '#fff', '.': null });
       }
       if (player.burnTimer > 0) {
         drawBurnOverlay(ctx, {
@@ -573,15 +582,15 @@
     const cy = enemy.y + bob;
     const burning = enemy.burnTimer > 0;
 
-    drawShadow(ctx, cx, cy + enemy.radius * 0.35, enemy.radius * 0.6, 4);
-    blit(ctx, SPR.enemyWalk, cx, cy, PX, false, getPal(enemy.effectType, burning));
+    drawShadow(ctx, cx, cy + enemy.radius * 0.35, enemy.radius * 0.6, 4 * worldTileScale());
+    blit(ctx, SPR.enemyWalk, cx, cy, blitScale(), false, getPal(enemy.effectType, burning));
 
     if (enemy.effectType === 'stop') {
-      blit(ctx, ['O..', '.O.'], cx - 10, cy - 12, 2, false, { ...PAL, O: '#fff', '.': null });
+      blit(ctx, ['O..', '.O.'], cx - 10 * worldTileScale(), cy - 12 * worldTileScale(), blitScale(), false, { ...PAL, O: '#fff', '.': null });
     }
 
     if (enemy.hp < enemy.maxHp && enemy.hp > 0) {
-      const barW = 28;
+      const barW = 28 * worldTileScale();
       const bx = Math.round(cx - barW / 2);
       const by = Math.round(cy - enemy.radius - 12);
       ctx.fillStyle = OUTLINE;

@@ -1788,6 +1788,7 @@
   /** 1マス = 320px（素材・マップ・プレビュー共通） */
   const MAP_TILE_PX = 320;
   const MAP_TILE_UNIT = MAP_TILE_PX / 32;
+  window.MAP_TILE_PX = MAP_TILE_PX;
 
   // --- タブ切り替えロジック ---
   const tabEditor = document.getElementById('tab-editor');
@@ -2491,12 +2492,14 @@
   const createMapData = {
     terrain: {},
     props: [],
-    player: { x: 160, y: 240 },
-    chest: { x: 480, y: 240, reward: 'lightning' },
+    player: { x: MAP_TILE_PX / 2, y: MAP_TILE_PX * 0.92 },
+    chest: { x: MAP_TILE_PX * 1.5, y: MAP_TILE_PX * 0.92, reward: 'lightning' },
     enemies: [],
+    mapTilePx: MAP_TILE_PX,
   };
 
   function persistCreateMap() {
+    createMapData.mapTilePx = MAP_TILE_PX;
     try {
       localStorage.setItem(CREATE_MAP_KEY, JSON.stringify(createMapData));
     } catch (_) {
@@ -2532,17 +2535,45 @@
     });
   }
 
+  /** 32px 時代の絶対座標を 320px グリッドへ変換 */
+  function migrateCreateMapCoords(data) {
+    if (!data || typeof data !== 'object') return data;
+    const fromPx = data.mapTilePx || 32;
+    if (fromPx >= MAP_TILE_PX) {
+      data.mapTilePx = MAP_TILE_PX;
+      return data;
+    }
+    const factor = MAP_TILE_PX / fromPx;
+    if (data.player) {
+      data.player = { ...data.player, x: data.player.x * factor, y: data.player.y * factor };
+    }
+    if (data.chest) {
+      data.chest = { ...data.chest, x: data.chest.x * factor, y: data.chest.y * factor };
+    }
+    data.enemies = (data.enemies || []).map((e) => ({ ...e, x: e.x * factor, y: e.y * factor }));
+    data.props = (data.props || []).map((p) => {
+      if (p.sticker && p.x != null && p.y != null) {
+        return { ...p, x: p.x * factor, y: p.y * factor };
+      }
+      return p;
+    });
+    data.mapTilePx = MAP_TILE_PX;
+    return data;
+  }
+
   function loadCreateMap() {
     try {
       const raw = localStorage.getItem(CREATE_MAP_KEY);
       if (!raw) return;
-      const data = JSON.parse(raw);
+      let data = JSON.parse(raw);
       if (!data || typeof data !== 'object') return;
+      data = migrateCreateMapCoords(data);
       createMapData.terrain = data.terrain && typeof data.terrain === 'object' ? data.terrain : {};
       createMapData.props = migrateCreateMapProps(Array.isArray(data.props) ? data.props : []);
       createMapData.player = data.player ?? null;
       createMapData.chest = data.chest ?? null;
       createMapData.enemies = Array.isArray(data.enemies) ? data.enemies : [];
+      createMapData.mapTilePx = MAP_TILE_PX;
       const rewardSelectEl = document.getElementById('chest-reward-select');
       if (rewardSelectEl && createMapData.chest?.reward) {
         rewardSelectEl.value = createMapData.chest.reward;
@@ -2982,6 +3013,11 @@
     return { x: gridX * gridW + gridW / 2, y: gridY * gridH + gridH / 2 };
   }
 
+  /** キャラ・宝箱など足元基準のアンカー（タイル下端付近） */
+  function getCreateEntityAnchor(gridX, gridY) {
+    return { x: gridX * gridW + gridW / 2, y: gridY * gridH + gridH * 0.92 };
+  }
+
   function isInsideCreateCanvas(clickX, clickY) {
     return clickX >= 0 && clickX <= createW && clickY >= 0 && clickY <= createH;
   }
@@ -3097,10 +3133,21 @@
     createMapData.enemies.forEach(e => {
       const gx = Math.floor(e.x / gridW);
       const gy = Math.floor(e.y / gridH);
-      const c = getCreateGridCenter(gx, gy);
-      enemyByCell.set(`${gx},${gy}`, { x: c.x, y: c.y });
+      enemyByCell.set(`${gx},${gy}`, getCreateEntityAnchor(gx, gy));
     });
     createMapData.enemies = [...enemyByCell.values()];
+
+    if (createMapData.player) {
+      const pgx = Math.floor(createMapData.player.x / gridW);
+      const pgy = Math.floor(createMapData.player.y / gridH);
+      createMapData.player = getCreateEntityAnchor(pgx, pgy);
+    }
+    if (createMapData.chest) {
+      const cgx = Math.floor(createMapData.chest.x / gridW);
+      const cgy = Math.floor(createMapData.chest.y / gridH);
+      const anchor = getCreateEntityAnchor(cgx, cgy);
+      createMapData.chest = { ...createMapData.chest, x: anchor.x, y: anchor.y };
+    }
   }
 
   function applyCreateTool(clickX, clickY, gridX, gridY, paintMode) {
@@ -3221,16 +3268,16 @@
     }
 
     if (activeTool === 'player') {
-      const center = getCreateGridCenter(gridX, gridY);
+      const anchor = getCreateEntityAnchor(gridX, gridY);
       clearCreateCellObjects(gridX, gridY);
-      createMapData.player = { x: center.x, y: center.y };
+      createMapData.player = { x: anchor.x, y: anchor.y };
       if (paintMode) lastPaintCell = cellKey;
       return true;
     }
     if (activeTool === 'chest') {
-      const center = getCreateGridCenter(gridX, gridY);
+      const anchor = getCreateEntityAnchor(gridX, gridY);
       clearCreateCellObjects(gridX, gridY);
-      createMapData.chest = { x: center.x, y: center.y, reward: rewardSelect.value };
+      createMapData.chest = { x: anchor.x, y: anchor.y, reward: rewardSelect.value };
       if (paintMode) lastPaintCell = cellKey;
       return true;
     }
@@ -3243,8 +3290,8 @@
         return true;
       }
       clearCreateCellObjects(gridX, gridY);
-      const center = getCreateGridCenter(gridX, gridY);
-      createMapData.enemies.push({ x: center.x, y: center.y });
+      const anchor = getCreateEntityAnchor(gridX, gridY);
+      createMapData.enemies.push({ x: anchor.x, y: anchor.y });
       return true;
     }
     return false;
@@ -4712,11 +4759,12 @@
   let width, height;
   function resize() {
     if (viewTest.classList.contains('hidden-view')) return;
-    width = viewTest.clientWidth; height = viewTest.clientHeight;
-    if (width === 0) width = window.innerWidth || 800;
-    if (height === 0) height = window.innerHeight || 600;
-    canvas.width = width; canvas.height = height;
-    player.x = width * 0.15; player.y = height / 2;
+    const nextW = viewTest.clientWidth || window.innerWidth || 800;
+    const nextH = viewTest.clientHeight || window.innerHeight || 600;
+    width = nextW;
+    height = nextH;
+    canvas.width = width;
+    canvas.height = height;
   }
   function resetEnemies() {
     enemies.forEach(e => {
@@ -5383,7 +5431,7 @@
   class Enemy {
     constructor(x, y) {
       this.x = x; this.startY = y; this.y = y;
-      this.radius = 18; this.active = true;
+      this.radius = 18 * MAP_TILE_UNIT; this.active = true;
       this.offset = Math.random() * Math.PI * 2;
       this.time = 0; this.speedMult = 1.0;
       this.effectTimer = 0; this.effectType = null;
