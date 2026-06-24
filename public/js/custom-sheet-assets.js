@@ -1,12 +1,15 @@
 /**
  * ユーザー定義グリッドシート（等間隔スクエア切り抜き）+ マスセット
+ * 複数シートグループ対応（追加取込・名前付きグループ）
  */
 (function (global) {
-  const STORAGE_KEY = 'pop-magic-custom-sheet-v1';
+  const STORAGE_KEY = 'pop-magic-custom-sheet-v2';
+  const LEGACY_STORAGE_KEY = 'pop-magic-custom-sheet-v1';
   const SHEET_DATA_KEY = 'pop-magic-custom-sheet-image-v1';
-  const SHEET_BLOB_KEY = 'sheet-image';
+  const LEGACY_SHEET_BLOB_KEY = 'sheet-image';
   const SHEET_DB_NAME = 'pop-magic-sheet-db';
   const SHEET_DB_STORE = 'blobs';
+  const GROUP_PREFIX = 'grp_';
   const ID_PREFIX = 'gs_';
   const SET_PREFIX = 'gset_';
   const DISPLAY_TILE_SIZE = 32;
@@ -23,23 +26,33 @@
 
   const EMPTY_CROP = { left: 0, top: 0, right: 0, bottom: 0 };
 
-  let sheet = null;
-  let grid = { ...EMPTY_GRID };
-  let cells = [];
-  let sets = [];
+  let groups = [];
+  let activeGroupId = null;
+  let nextGroupId = 1;
+  let globalNextSetId = 1;
   let ready = false;
-  let nextSetId = 1;
 
-  /** 黒透過処理済みタイルのキャッシュ（毎フレーム getImageData しない） */
+  const sheetImages = new Map();
+  const sheetObjectUrls = new Map();
   const cellCache = new Map();
-  /** 表示サイズ（32px）へ段階縮小したキャッシュ */
   const displayCache = new Map();
-  let sheetObjectUrl = null;
 
-  function revokeSheetObjectUrl() {
-    if (sheetObjectUrl) {
-      URL.revokeObjectURL(sheetObjectUrl);
-      sheetObjectUrl = null;
+  const byId = {};
+  const CATALOG = [];
+  const TERRAIN_IDS = new Set();
+  const PROP_IDS = new Set();
+  const SOLID_IDS = new Set();
+
+  function blobKeyForGroup(groupId, legacyBlob) {
+    if (legacyBlob) return LEGACY_SHEET_BLOB_KEY;
+    return `sheet-image-${groupId}`;
+  }
+
+  function revokeGroupObjectUrl(groupId) {
+    const url = sheetObjectUrls.get(groupId);
+    if (url) {
+      URL.revokeObjectURL(url);
+      sheetObjectUrls.delete(groupId);
     }
   }
 
@@ -74,26 +87,77 @@
     }));
   }
 
-  function loadSheetImageFromBlob(blob) {
+  function getGroup(groupId) {
+    return groups.find((g) => g.id === groupId) || null;
+  }
+
+  function getActiveGroup() {
+    return getGroup(activeGroupId) || groups[0] || null;
+  }
+
+  function allocGroupId() {
+    while (groups.some((g) => g.id === `${GROUP_PREFIX}${nextGroupId}`)) nextGroupId += 1;
+    const id = `${GROUP_PREFIX}${nextGroupId}`;
+    nextGroupId += 1;
+    return id;
+  }
+
+  function createEmptyGroup(name, options = {}) {
+    return {
+      id: options.id || allocGroupId(),
+      name: (name || '取込シート').trim() || '取込シート',
+      legacyCellIds: !!options.legacyCellIds,
+      legacyBlob: !!options.legacyBlob,
+      grid: { ...EMPTY_GRID },
+      cells: [],
+      sets: [],
+      collapsed: !!options.collapsed,
+    };
+  }
+
+  function cellIdForGroup(group, col, row) {
+    if (group.legacyCellIds) return `${ID_PREFIX}${col}_${row}`;
+    const num = group.id.replace(GROUP_PREFIX, '');
+    return `${ID_PREFIX}g${num}_${col}_${row}`;
+  }
+
+  function findCellContext(id) {
+    for (const group of groups) {
+      const cell = group.cells.find((c) => c.id === id);
+      if (cell) return { group, cell };
+    }
+    return null;
+  }
+
+  function findSetContext(id) {
+    for (const group of groups) {
+      const set = group.sets.find((s) => s.id === id);
+      if (set) return { group, set };
+    }
+    return null;
+  }
+
+  function loadSheetImageForGroup(group, blob) {
     return new Promise((resolve, reject) => {
-      revokeSheetObjectUrl();
-      sheetObjectUrl = URL.createObjectURL(blob);
+      revokeGroupObjectUrl(group.id);
+      const url = URL.createObjectURL(blob);
+      sheetObjectUrls.set(group.id, url);
       const img = new Image();
       img.onload = () => {
-        sheet = img;
+        sheetImages.set(group.id, img);
         resolve(img);
       };
       img.onerror = reject;
-      img.src = sheetObjectUrl;
+      img.src = url;
     });
   }
 
-  function loadSheetImageFromDataUrl(dataUrl) {
+  function loadSheetImageFromDataUrlForGroup(group, dataUrl) {
     return new Promise((resolve, reject) => {
-      revokeSheetObjectUrl();
+      revokeGroupObjectUrl(group.id);
       const img = new Image();
       img.onload = () => {
-        sheet = img;
+        sheetImages.set(group.id, img);
         resolve(img);
       };
       img.onerror = reject;
@@ -101,20 +165,8 @@
     });
   }
 
-  function finalizeSheetLoad(options = {}) {
-    if (options.regenerateGrid && !cells.length) {
-      autoFitGridFromImage();
-    }
-    if (options.regenerateGrid) {
-      generateCellsFromGrid();
-    }
-    prewarmCellCache();
-    saveToStorage();
-    return true;
-  }
-
-  function cacheKey(x, y, w, h) {
-    return `${x}|${y}|${w}|${h}|${grid.keyBlack ? 1 : 0}`;
+  function cacheKey(groupId, x, y, w, h, keyBlack) {
+    return `${groupId}|${x}|${y}|${w}|${h}|${keyBlack ? 1 : 0}`;
   }
 
   function invalidateCellCache() {
@@ -149,9 +201,11 @@
     return out;
   }
 
-  function getSourceCellCanvas(spec) {
+  function getSourceCellCanvas(groupId, spec) {
+    const sheet = sheetImages.get(groupId);
+    if (!sheet) return null;
     if (spec.keyBlack) {
-      return getCachedCellCanvas(spec.x, spec.y, spec.w, spec.h);
+      return getCachedCellCanvas(groupId, spec.x, spec.y, spec.w, spec.h, spec.keyBlack);
     }
     const tmp = document.createElement('canvas');
     tmp.width = spec.w;
@@ -162,27 +216,30 @@
     return tmp;
   }
 
-  function displayCacheKey(spec, dstW, dstH) {
-    return `${spec.x}|${spec.y}|${spec.w}|${spec.h}|${spec.keyBlack ? 1 : 0}|${dstW}|${dstH}`;
+  function displayCacheKey(groupId, spec, dstW, dstH) {
+    return `${groupId}|${spec.x}|${spec.y}|${spec.w}|${spec.h}|${spec.keyBlack ? 1 : 0}|${dstW}|${dstH}`;
   }
 
-  function getCachedDisplayCanvas(spec, dstW, dstH) {
+  function getCachedDisplayCanvas(groupId, spec, dstW, dstH) {
     const tw = Math.max(1, Math.round(dstW));
     const th = Math.max(1, Math.round(dstH));
     if (spec.w === tw && spec.h === th) {
-      return getSourceCellCanvas(spec);
+      return getSourceCellCanvas(groupId, spec);
     }
-    const key = displayCacheKey(spec, tw, th);
+    const key = displayCacheKey(groupId, spec, tw, th);
     if (displayCache.has(key)) return displayCache.get(key);
-    const src = getSourceCellCanvas(spec);
+    const src = getSourceCellCanvas(groupId, spec);
     const scaled = crispDownscale(src, spec.w, spec.h, tw, th);
     displayCache.set(key, scaled);
     return scaled;
   }
 
-  function getCachedCellCanvas(x, y, w, h) {
-    const key = cacheKey(x, y, w, h);
+  function getCachedCellCanvas(groupId, x, y, w, h, keyBlack) {
+    const key = cacheKey(groupId, x, y, w, h, keyBlack);
     if (cellCache.has(key)) return cellCache.get(key);
+
+    const sheet = sheetImages.get(groupId);
+    if (!sheet) return null;
 
     const tmp = document.createElement('canvas');
     tmp.width = w;
@@ -191,7 +248,7 @@
     global.PopArt?.setupCrisp?.(tctx);
     tctx.drawImage(sheet, x, y, w, h, 0, 0, w, h);
 
-    if (grid.keyBlack) {
+    if (keyBlack) {
       const img = tctx.getImageData(0, 0, w, h);
       const d = img.data;
       for (let i = 0; i < d.length; i += 4) {
@@ -204,21 +261,20 @@
     return tmp;
   }
 
-  function prewarmCellCache() {
+  function prewarmCellCacheForGroup(group) {
+    const sheet = sheetImages.get(group.id);
     if (!sheet || !sheet.complete) return;
-    invalidateCellCache();
-    cells.filter((c) => c.enabled).forEach((cell) => {
-      const spec = specOfCell(cell);
+    group.cells.filter((c) => c.enabled).forEach((cell) => {
+      const spec = specOfCell(group, cell);
       if (!spec) return;
-      getCachedDisplayCanvas(spec, DISPLAY_TILE_SIZE, DISPLAY_TILE_SIZE);
+      getCachedDisplayCanvas(group.id, spec, DISPLAY_TILE_SIZE, DISPLAY_TILE_SIZE);
     });
   }
 
-  const byId = {};
-  const CATALOG = [];
-  const TERRAIN_IDS = new Set();
-  const PROP_IDS = new Set();
-  const SOLID_IDS = new Set();
+  function prewarmAllCellCaches() {
+    invalidateCellCache();
+    groups.forEach(prewarmCellCacheForGroup);
+  }
 
   function isSheetType(type) {
     return typeof type === 'string' && type.startsWith(ID_PREFIX);
@@ -232,11 +288,8 @@
     return isSheetType(type) || isSetType(type);
   }
 
-  function cellId(col, row) {
-    return `${ID_PREFIX}${col}_${row}`;
-  }
-
-  function cellRect(col, row) {
+  function cellRectForGroup(group, col, row) {
+    const grid = group.grid;
     const x = grid.offsetX + col * (grid.cellSize + grid.gap);
     const y = grid.offsetY + row * (grid.cellSize + grid.gap);
     return { x, y, w: grid.cellSize, h: grid.cellSize };
@@ -254,8 +307,8 @@
     return clampCrop(cell?.crop || EMPTY_CROP);
   }
 
-  function squareSourceRect(cell, crop) {
-    const base = cellRect(cell.col, cell.row);
+  function squareSourceRect(group, cell, crop) {
+    const base = cellRectForGroup(group, cell.col, cell.row);
     const cellW = base.w;
     const cellH = base.h;
     const c = crop || EMPTY_CROP;
@@ -283,8 +336,12 @@
   }
 
   function allocSetId() {
-    while (sets.some((s) => s.id === `${SET_PREFIX}${nextSetId}`)) nextSetId++;
-    return `${SET_PREFIX}${nextSetId++}`;
+    while (groups.some((g) => g.sets.some((s) => s.id === `${SET_PREFIX}${globalNextSetId}`))) {
+      globalNextSetId += 1;
+    }
+    const id = `${SET_PREFIX}${globalNextSetId}`;
+    globalNextSetId += 1;
+    return id;
   }
 
   function normalizeSetMembers(memberCells) {
@@ -314,59 +371,91 @@
     PROP_IDS.clear();
     SOLID_IDS.clear();
 
-    const cellsInEnabledSets = new Set();
-    sets.filter((s) => s.enabled).forEach((s) => {
-      s.members.forEach((m) => cellsInEnabledSets.add(m.cellId));
+    groups.forEach((group) => {
+      const cellsInEnabledSets = new Set();
+      group.sets.filter((s) => s.enabled).forEach((s) => {
+        s.members.forEach((m) => cellsInEnabledSets.add(m.cellId));
+      });
+
+      group.cells.filter((c) => c.enabled && !cellsInEnabledSets.has(c.id)).forEach((c) => {
+        const entry = { ...c, isSet: false, groupId: group.id, groupName: group.name };
+        CATALOG.push(entry);
+        byId[entry.id] = entry;
+        if (entry.kind === 'terrain') TERRAIN_IDS.add(entry.id);
+        else PROP_IDS.add(entry.id);
+        if (entry.solid) SOLID_IDS.add(entry.id);
+      });
+
+      group.sets.filter((s) => s.enabled).forEach((s) => {
+        const entry = { ...s, isSet: true, groupId: group.id, groupName: group.name };
+        CATALOG.push(entry);
+        byId[entry.id] = entry;
+        if (entry.kind === 'terrain') TERRAIN_IDS.add(entry.id);
+        else PROP_IDS.add(entry.id);
+        if (entry.solid) SOLID_IDS.add(entry.id);
+      });
     });
 
-    cells.filter((c) => c.enabled && !cellsInEnabledSets.has(c.id)).forEach((c) => {
-      const entry = { ...c, isSet: false };
-      CATALOG.push(entry);
-      byId[entry.id] = entry;
-      if (entry.kind === 'terrain') TERRAIN_IDS.add(entry.id);
-      else PROP_IDS.add(entry.id);
-      if (entry.solid) SOLID_IDS.add(entry.id);
-    });
+    ready = groups.some((g) => {
+      const img = sheetImages.get(g.id);
+      return img && img.complete && img.naturalWidth && groupHasAdopted(g);
+    }) || CATALOG.length > 0;
 
-    sets.filter((s) => s.enabled).forEach((s) => {
-      const entry = { ...s, isSet: true };
-      CATALOG.push(entry);
-      byId[entry.id] = entry;
-      if (entry.kind === 'terrain') TERRAIN_IDS.add(entry.id);
-      else PROP_IDS.add(entry.id);
-      if (entry.solid) SOLID_IDS.add(entry.id);
-    });
-
-    ready = !!(sheet && sheet.complete && sheet.naturalWidth && CATALOG.length);
     global.dispatchEvent(new Event('customsheet:updated'));
   }
 
+  function groupHasAdopted(group) {
+    const cellsInSets = new Set();
+    group.sets.filter((s) => s.enabled).forEach((s) => s.members.forEach((m) => cellsInSets.add(m.cellId)));
+    return group.cells.some((c) => c.enabled && !cellsInSets.has(c.id))
+      || group.sets.some((s) => s.enabled);
+  }
+
+  function serializeGroups() {
+    return groups.map((g) => ({
+      id: g.id,
+      name: g.name,
+      legacyCellIds: !!g.legacyCellIds,
+      legacyBlob: !!g.legacyBlob,
+      grid: { ...g.grid },
+      cells: g.cells.map((c) => ({ ...c })),
+      sets: g.sets.map((s) => ({ ...s, members: s.members.map((m) => ({ ...m })) })),
+      collapsed: !!g.collapsed,
+    }));
+  }
+
   function getConfig() {
+    const group = getActiveGroup();
+    if (!group) {
+      return { grid: { ...EMPTY_GRID }, cells: [], sets: [], nextSetId: globalNextSetId };
+    }
     return {
-      grid: { ...grid },
-      cells: cells.map((c) => ({ ...c })),
-      sets: sets.map((s) => ({ ...s, members: s.members.map((m) => ({ ...m })) })),
-      nextSetId,
+      grid: { ...group.grid },
+      cells: group.cells.map((c) => ({ ...c })),
+      sets: group.sets.map((s) => ({ ...s, members: s.members.map((m) => ({ ...m })) })),
+      nextSetId: globalNextSetId,
     };
   }
 
   function setConfig(config) {
-    grid = { ...EMPTY_GRID, ...(config.grid || {}) };
-    cells = (config.cells || []).map((c) => ({ ...c }));
-    sets = (config.sets || []).map((s) => ({ ...s, members: (s.members || []).map((m) => ({ ...m })) }));
-    nextSetId = config.nextSetId || 1;
+    const group = getActiveGroup();
+    if (!group) return;
+    group.grid = { ...EMPTY_GRID, ...(config.grid || {}) };
+    group.cells = (config.cells || []).map((c) => ({ ...c }));
+    group.sets = (config.sets || []).map((s) => ({ ...s, members: (s.members || []).map((m) => ({ ...m })) }));
+    if (config.nextSetId) globalNextSetId = config.nextSetId;
     rebuildCatalog();
   }
 
-  function generateCellsFromGrid() {
-    const prev = Object.fromEntries(cells.map((c) => [`${c.col},${c.row}`, c]));
+  function generateCellsFromGridForGroup(group) {
+    const prev = Object.fromEntries(group.cells.map((c) => [`${c.col},${c.row}`, c]));
     const next = [];
-    for (let row = 0; row < grid.rows; row++) {
-      for (let col = 0; col < grid.cols; col++) {
+    for (let row = 0; row < group.grid.rows; row++) {
+      for (let col = 0; col < group.grid.cols; col++) {
         const key = `${col},${row}`;
         const old = prev[key];
         next.push({
-          id: cellId(col, row),
+          id: cellIdForGroup(group, col, row),
           col,
           row,
           label: old?.label || `タイル ${col + 1}-${row + 1}`,
@@ -378,84 +467,146 @@
         });
       }
     }
-    cells = next;
-    pruneSetsAfterGridChange();
+    group.cells = next;
+    pruneSetsAfterGridChange(group);
     rebuildCatalog();
   }
 
-  function pruneSetsAfterGridChange() {
-    const cellIds = new Set(cells.map((c) => c.id));
-    sets = sets.filter((set) => {
+  function generateCellsFromGrid() {
+    const group = getActiveGroup();
+    if (!group) return;
+    generateCellsFromGridForGroup(group);
+  }
+
+  function pruneSetsAfterGridChange(group) {
+    const cellIds = new Set(group.cells.map((c) => c.id));
+    group.sets = group.sets.filter((set) => {
       const validMembers = set.members.filter((m) => cellIds.has(m.cellId));
       if (validMembers.length < 2) {
         validMembers.forEach((m) => {
-          const c = cells.find((t) => t.id === m.cellId);
+          const c = group.cells.find((t) => t.id === m.cellId);
           if (c) c.setId = null;
         });
         return false;
       }
       if (validMembers.length !== set.members.length) {
-        const memberCells = validMembers.map((m) => cells.find((c) => c.id === m.cellId)).filter(Boolean);
+        const memberCells = validMembers.map((m) => group.cells.find((c) => c.id === m.cellId)).filter(Boolean);
         Object.assign(set, normalizeSetMembers(memberCells));
       }
       return true;
     });
-    cells.forEach((c) => {
-      if (c.setId && !sets.some((s) => s.id === c.setId)) c.setId = null;
+    group.cells.forEach((c) => {
+      if (c.setId && !group.sets.some((s) => s.id === c.setId)) c.setId = null;
     });
   }
 
-  function loadFromStorage() {
+  function migrateLegacyStorage() {
+    try {
+      const raw = localStorage.getItem(LEGACY_STORAGE_KEY);
+      if (!raw) return null;
+      const data = JSON.parse(raw);
+      const group = createEmptyGroup('取込シート', {
+        id: `${GROUP_PREFIX}1`,
+        legacyCellIds: true,
+        legacyBlob: true,
+      });
+      group.grid = { ...EMPTY_GRID, ...(data.grid || {}) };
+      group.cells = data.cells || [];
+      group.sets = data.sets || [];
+      globalNextSetId = data.nextSetId || 1;
+      nextGroupId = 2;
+      return group;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function loadGroupsFromStorage() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const data = JSON.parse(raw);
-        grid = { ...EMPTY_GRID, ...(data.grid || {}) };
-        cells = data.cells || [];
-        sets = data.sets || [];
-        nextSetId = data.nextSetId || 1;
+        groups = (data.groups || []).map((g) => ({
+          id: g.id,
+          name: g.name || '取込シート',
+          legacyCellIds: !!g.legacyCellIds,
+          legacyBlob: !!g.legacyBlob,
+          grid: { ...EMPTY_GRID, ...(g.grid || {}) },
+          cells: g.cells || [],
+          sets: g.sets || [],
+          collapsed: !!g.collapsed,
+        }));
+        activeGroupId = data.activeGroupId || groups[0]?.id || null;
+        nextGroupId = data.nextGroupId || (groups.length ? Math.max(...groups.map((g) => Number(g.id.replace(GROUP_PREFIX, '')) || 0)) + 1 : 1);
+        globalNextSetId = data.globalNextSetId || 1;
+        return true;
       }
     } catch (_) {
-      grid = { ...EMPTY_GRID };
-      cells = [];
-      sets = [];
+      groups = [];
     }
 
-    rebuildCatalog();
+    const migrated = migrateLegacyStorage();
+    if (migrated) {
+      groups = [migrated];
+      activeGroupId = migrated.id;
+      return true;
+    }
+    return false;
+  }
 
-    return idbGetBlob(SHEET_BLOB_KEY).then((blob) => {
+  function loadGroupImage(group) {
+    const key = blobKeyForGroup(group.id, group.legacyBlob);
+    return idbGetBlob(key).then((blob) => {
       if (blob) {
-        return loadSheetImageFromBlob(blob).then(() => {
-          prewarmCellCache();
-          rebuildCatalog();
-          return true;
-        }).catch(() => {
-          sheet = null;
-          rebuildCatalog();
+        return loadSheetImageForGroup(group, blob).catch(() => {
+          sheetImages.delete(group.id);
           return false;
         });
       }
 
-      const dataUrl = localStorage.getItem(SHEET_DATA_KEY);
-      if (!dataUrl) {
-        rebuildCatalog();
-        return false;
-      }
+      if (!group.legacyBlob) return false;
 
-      return loadSheetImageFromDataUrl(dataUrl).then(() => {
-        prewarmCellCache();
-        rebuildCatalog();
-        return fetch(dataUrl)
-          .then((r) => r.blob())
-          .then((migrated) => idbSetBlob(SHEET_BLOB_KEY, migrated))
-          .then(() => localStorage.removeItem(SHEET_DATA_KEY))
-          .catch(() => {})
-          .then(() => true);
-      }).catch(() => {
-        sheet = null;
-        rebuildCatalog();
+      const dataUrl = localStorage.getItem(SHEET_DATA_KEY);
+      if (!dataUrl) return false;
+
+      return loadSheetImageFromDataUrlForGroup(group, dataUrl).then(() => fetch(dataUrl)
+        .then((r) => r.blob())
+        .then((migrated) => idbSetBlob(key, migrated))
+        .then(() => localStorage.removeItem(SHEET_DATA_KEY))
+        .catch(() => {})
+        .then(() => true)).catch(() => {
+        sheetImages.delete(group.id);
         return false;
       });
+    });
+  }
+
+  function loadFromStorage() {
+    loadGroupsFromStorage();
+    rebuildCatalog();
+
+    if (!groups.length) {
+      rebuildCatalog();
+      return Promise.resolve(false);
+    }
+
+    const hadLegacy = !!localStorage.getItem(LEGACY_STORAGE_KEY);
+
+    return Promise.all(groups.map(loadGroupImage)).then((results) => {
+      prewarmAllCellCaches();
+      rebuildCatalog();
+      if (hadLegacy && groups.length) {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify({
+            groups: serializeGroups(),
+            activeGroupId,
+            nextGroupId,
+            globalNextSetId,
+          }));
+          localStorage.removeItem(LEGACY_STORAGE_KEY);
+        } catch (_) { /* ignore */ }
+      }
+      return results.some(Boolean);
     }).catch(() => {
       rebuildCatalog();
       return false;
@@ -464,16 +615,61 @@
 
   function saveToStorage() {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ grid, cells, sets, nextSetId }));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        groups: serializeGroups(),
+        activeGroupId,
+        nextGroupId,
+        globalNextSetId,
+      }));
     } catch (_) { /* ignore */ }
   }
 
+  function finalizeGroupSheetLoad(group, options = {}) {
+    if (options.regenerateGrid && !group.cells.length) {
+      autoFitGridFromImage(group);
+    }
+    if (options.regenerateGrid) {
+      generateCellsFromGridForGroup(group);
+    }
+    prewarmCellCacheForGroup(group);
+    saveToStorage();
+    rebuildCatalog();
+    return true;
+  }
+
+  function setSheetBlobForGroup(group, blob, options = {}) {
+    if (!blob) return Promise.reject(new Error('empty blob'));
+    const key = blobKeyForGroup(group.id, group.legacyBlob);
+    return idbSetBlob(key, blob)
+      .then(() => loadSheetImageForGroup(group, blob))
+      .then(() => {
+        localStorage.removeItem(SHEET_DATA_KEY);
+        finalizeGroupSheetLoad(group, options);
+        return group;
+      });
+  }
+
+  function appendSheetFile(file, groupName) {
+    if (!file) return Promise.reject(new Error('empty file'));
+    const group = createEmptyGroup(groupName || `シート ${groups.length + 1}`);
+    groups.push(group);
+    activeGroupId = group.id;
+    return setSheetBlobForGroup(group, file, { regenerateGrid: true });
+  }
+
+  function setSheetFile(file) {
+    return appendSheetFile(file);
+  }
+
   function setSheetDataUrl(dataUrl) {
+    const group = createEmptyGroup(`シート ${groups.length + 1}`);
+    groups.push(group);
+    activeGroupId = group.id;
     return fetch(dataUrl)
       .then((r) => r.blob())
-      .then((blob) => setSheetBlob(blob))
-      .catch(() => loadSheetImageFromDataUrl(dataUrl).then(() => {
-        finalizeSheetLoad({ regenerateGrid: true });
+      .then((blob) => setSheetBlobForGroup(group, blob, { regenerateGrid: true }))
+      .catch(() => loadSheetImageFromDataUrlForGroup(group, dataUrl).then(() => {
+        finalizeGroupSheetLoad(group, { regenerateGrid: true });
         try {
           localStorage.setItem(SHEET_DATA_KEY, dataUrl);
         } catch (e) {
@@ -481,22 +677,6 @@
         }
         return true;
       }));
-  }
-
-  function setSheetBlob(blob) {
-    if (!blob) return Promise.reject(new Error('empty blob'));
-    return idbSetBlob(SHEET_BLOB_KEY, blob)
-      .then(() => loadSheetImageFromBlob(blob))
-      .then(() => {
-        localStorage.removeItem(SHEET_DATA_KEY);
-        finalizeSheetLoad({ regenerateGrid: true });
-        return true;
-      });
-  }
-
-  function setSheetFile(file) {
-    if (!file) return Promise.reject(new Error('empty file'));
-    return setSheetBlob(file);
   }
 
   function findBestGrid(w, h) {
@@ -538,17 +718,20 @@
     };
   }
 
-  function autoFitGridFromImage() {
+  function autoFitGridFromImage(groupArg) {
+    const group = groupArg || getActiveGroup();
+    if (!group) return;
+    const sheet = sheetImages.get(group.id);
     if (!sheet) return;
     const w = sheet.naturalWidth;
     const h = sheet.naturalHeight;
-    grid.offsetX = 0;
-    grid.offsetY = 0;
+    group.grid.offsetX = 0;
+    group.grid.offsetY = 0;
     const fit = findBestGrid(w, h);
-    grid.cellSize = fit.cellSize;
-    grid.gap = fit.gap;
-    grid.cols = fit.cols;
-    grid.rows = fit.rows;
+    group.grid.cellSize = fit.cellSize;
+    group.grid.gap = fit.gap;
+    group.grid.cols = fit.cols;
+    group.grid.rows = fit.rows;
   }
 
   function hasAdoptedTiles() {
@@ -556,25 +739,29 @@
   }
 
   function getNativeTileSize() {
-    const size = Math.round(Number(grid.cellSize) || 32);
+    const group = getActiveGroup();
+    const size = Math.round(Number(group?.grid.cellSize) || 32);
     return Math.max(16, Math.min(128, size));
   }
 
   function updateGrid(partial) {
-    const keyBlackChanged = partial.keyBlack !== undefined && partial.keyBlack !== grid.keyBlack;
-    grid = { ...grid, ...partial };
+    const group = getActiveGroup();
+    if (!group) return;
+    const keyBlackChanged = partial.keyBlack !== undefined && partial.keyBlack !== group.grid.keyBlack;
+    group.grid = { ...group.grid, ...partial };
     if (keyBlackChanged || partial.cellSize !== undefined || partial.offsetX !== undefined
       || partial.offsetY !== undefined || partial.gap !== undefined) {
       invalidateCellCache();
     }
-    generateCellsFromGrid();
-    prewarmCellCache();
+    generateCellsFromGridForGroup(group);
+    prewarmCellCacheForGroup(group);
     saveToStorage();
   }
 
   function updateCell(id, partial) {
-    const c = cells.find((t) => t.id === id);
-    if (!c) return;
+    const ctx = findCellContext(id);
+    if (!ctx) return;
+    const { group, cell: c } = ctx;
     if (c.setId && (partial.enabled === true || partial.enabled === false)) {
       return;
     }
@@ -582,15 +769,15 @@
     Object.assign(c, partial);
     if (partial.crop) {
       invalidateCellCache();
-      prewarmCellCache();
+      prewarmCellCacheForGroup(group);
     }
     rebuildCatalog();
     saveToStorage();
   }
 
   function getCrop(id) {
-    const c = cells.find((t) => t.id === id);
-    return c ? getCellCrop(c) : { ...EMPTY_CROP };
+    const ctx = findCellContext(id);
+    return ctx ? getCellCrop(ctx.cell) : { ...EMPTY_CROP };
   }
 
   function setCrop(id, crop) {
@@ -604,34 +791,38 @@
   }
 
   function resetAllCrops() {
-    cells.forEach((c) => { c.crop = { ...EMPTY_CROP }; });
+    groups.forEach((group) => {
+      group.cells.forEach((c) => { c.crop = { ...EMPTY_CROP }; });
+    });
     invalidateCellCache();
-    prewarmCellCache();
+    prewarmAllCellCaches();
     rebuildCatalog();
     saveToStorage();
     global.dispatchEvent(new Event('customsheet:crops-updated'));
   }
 
   function getSet(id) {
-    return sets.find((s) => s.id === id) || byId[id] || null;
+    return findSetContext(id)?.set || byId[id] || null;
   }
 
   function createSet(memberIds, label, options = {}) {
+    const group = getActiveGroup();
+    if (!group) return null;
     const uniqueIds = [...new Set(memberIds)];
-    const memberCells = uniqueIds.map((id) => cells.find((c) => c.id === id)).filter(Boolean);
+    const memberCells = uniqueIds.map((id) => group.cells.find((c) => c.id === id)).filter(Boolean);
     if (memberCells.length < 2) return null;
     if (memberCells.some((c) => c.setId)) return null;
 
     const id = allocSetId();
     const set = {
       id,
-      label: (label || `セット ${sets.length + 1}`).trim(),
+      label: (label || `セット ${group.sets.length + 1}`).trim(),
       enabled: true,
       kind: options.kind || 'prop',
       solid: !!options.solid,
       ...normalizeSetMembers(memberCells),
     };
-    sets.push(set);
+    group.sets.push(set);
     memberCells.forEach((c) => {
       c.setId = id;
       c.enabled = true;
@@ -642,63 +833,78 @@
   }
 
   function updateSet(id, partial) {
-    const set = sets.find((s) => s.id === id);
-    if (!set) return;
-    Object.assign(set, partial);
+    const ctx = findSetContext(id);
+    if (!ctx) return;
+    Object.assign(ctx.set, partial);
     rebuildCatalog();
     saveToStorage();
   }
 
   function deleteSet(id) {
-    const set = sets.find((s) => s.id === id);
-    if (!set) return;
+    const ctx = findSetContext(id);
+    if (!ctx) return;
+    const { group, set } = ctx;
     set.members.forEach((m) => {
-      const c = cells.find((t) => t.id === m.cellId);
+      const c = group.cells.find((t) => t.id === m.cellId);
       if (c) {
         c.setId = null;
         c.enabled = false;
       }
     });
-    sets = sets.filter((s) => s.id !== id);
+    group.sets = group.sets.filter((s) => s.id !== id);
     rebuildCatalog();
     saveToStorage();
   }
 
-  function specOfCell(entry) {
+  function specOfCell(group, entry) {
+    const sheet = sheetImages.get(group.id);
     if (!entry || !sheet) return null;
-    const rect = squareSourceRect(entry, getCellCrop(entry));
+    const rect = squareSourceRect(group, entry, getCellCrop(entry));
     return {
       ...rect,
       anchor: entry.kind === 'terrain' ? [0, 0] : [0.5, 0.92],
-      keyBlack: grid.keyBlack,
+      keyBlack: group.grid.keyBlack,
+      groupId: group.id,
     };
   }
 
   function specOf(type) {
     if (isSetType(type)) return setSpecOf(type);
-    const entry = byId[type] || cells.find((c) => c.id === type);
-    return specOfCell(entry);
+    const ctx = findCellContext(type);
+    if (ctx) return specOfCell(ctx.group, ctx.cell);
+    const entry = byId[type];
+    if (entry && entry.groupId) {
+      const group = getGroup(entry.groupId);
+      if (group) return specOfCell(group, entry);
+    }
+    return null;
   }
 
   function setSpecOf(type) {
-    const set = getSet(type);
-    if (!set || !sheet) return null;
+    const ctx = findSetContext(type);
+    const set = ctx?.set || getSet(type);
+    if (!set) return null;
+    const group = ctx?.group || getGroup(byId[type]?.groupId);
+    if (!group || !sheetImages.get(group.id)) return null;
     return {
       isSet: true,
       kind: set.kind,
       anchor: set.kind === 'terrain' ? [0, 0] : [0.5, 0.92],
-      keyBlack: grid.keyBlack,
+      keyBlack: group.grid.keyBlack,
+      groupId: group.id,
       widthCells: set.widthCells,
       heightCells: set.heightCells,
       members: set.members.map((m) => {
-        const cell = cells.find((c) => c.id === m.cellId);
-        const spec = cell ? specOfCell(cell) : cellRect(m.col, m.row);
-        return { ...spec, dx: m.dx, dy: m.dy, cellId: m.cellId, kind: cell?.kind || set.kind };
+        const cell = group.cells.find((c) => c.id === m.cellId);
+        const spec = cell ? specOfCell(group, cell) : cellRectForGroup(group, m.col, m.row);
+        return { ...spec, dx: m.dx, dy: m.dy, cellId: m.cellId, kind: cell?.kind || set.kind, groupId: group.id };
       }),
     };
   }
 
   function blitCell(ctx, spec, dx, dy, dw, dh) {
+    const groupId = spec.groupId;
+    const sheet = groupId ? sheetImages.get(groupId) : null;
     if (!sheet || !sheet.complete) return false;
 
     global.PopArt?.setupCrisp?.(ctx);
@@ -710,7 +916,8 @@
       return true;
     }
 
-    const cached = getCachedDisplayCanvas(spec, tw, th);
+    const cached = getCachedDisplayCanvas(groupId, spec, tw, th);
+    if (!cached) return false;
     ctx.drawImage(cached, dx, dy, tw, th);
     return true;
   }
@@ -729,7 +936,7 @@
     if (!spec) return false;
     let ok = false;
     spec.members.forEach((m) => {
-      const memberSpec = { x: m.x, y: m.y, w: m.w, h: m.h, keyBlack: spec.keyBlack };
+      const memberSpec = { x: m.x, y: m.y, w: m.w, h: m.h, keyBlack: spec.keyBlack, groupId: spec.groupId };
       if (blitCell(ctx, memberSpec, tx + m.dx * tileSize, ty + m.dy * tileSize, tileSize, tileSize)) ok = true;
     });
     return ok;
@@ -742,7 +949,7 @@
     spec.members.forEach((m) => {
       const cx = block.x + m.dx * block.width + block.width / 2;
       const cy = block.y + m.dy * block.height + block.height - 2;
-      const memberSpec = { ...m, anchor: spec.anchor, keyBlack: spec.keyBlack };
+      const memberSpec = { ...m, anchor: spec.anchor, keyBlack: spec.keyBlack, groupId: spec.groupId };
       if (drawAnchored(ctx, memberSpec, cx, cy, block.width / m.w)) ok = true;
     });
     return ok;
@@ -778,7 +985,7 @@
         const side = m.w * scale;
         const dx = (m.dx + 0.5) * size / spec.widthCells - side / 2;
         const dy = (m.dy + 0.5) * size / spec.heightCells - side / 2;
-        const memberSpec = { ...m, keyBlack: spec.keyBlack };
+        const memberSpec = { ...m, keyBlack: spec.keyBlack, groupId: spec.groupId };
         if (blitCell(ctx, memberSpec, dx, dy, side, side)) ok = true;
       });
       return ok;
@@ -792,23 +999,25 @@
     return blitCell(ctx, spec, dx, dy, side, side);
   }
 
-  function gridContentSize() {
+  function gridContentSize(group) {
+    const grid = group.grid;
     const w = grid.offsetX + grid.cols * grid.cellSize + Math.max(0, grid.cols - 1) * grid.gap;
     const h = grid.offsetY + grid.rows * grid.cellSize + Math.max(0, grid.rows - 1) * grid.gap;
     return { w: Math.max(w, grid.cellSize), h: Math.max(h, grid.cellSize) };
   }
 
-  function drawGridOverlay(ctx, scale, ox, oy, highlightCol, highlightRow, pickCellKeys) {
+  function drawGridOverlay(ctx, group, scale, ox, oy, highlightCol, highlightRow, pickCellKeys) {
     const picked = pickCellKeys instanceof Set ? pickCellKeys : new Set();
+    const grid = group.grid;
 
     for (let row = 0; row < grid.rows; row++) {
       for (let col = 0; col < grid.cols; col++) {
-        const rect = cellRect(col, row);
+        const rect = cellRectForGroup(group, col, row);
         const sx = ox + rect.x * scale;
         const sy = oy + rect.y * scale;
         const sw = rect.w * scale;
         const sh = rect.h * scale;
-        const cell = cells.find((c) => c.col === col && c.row === row);
+        const cell = group.cells.find((c) => c.col === col && c.row === row);
         const enabled = cell?.enabled;
         const inSet = !!cell?.setId;
         const pickedCell = picked.has(`${col},${row}`);
@@ -828,9 +1037,9 @@
       }
     }
 
-    sets.forEach((set) => {
-      const x = ox + cellRect(set.anchorCol, set.anchorRow).x * scale;
-      const y = oy + cellRect(set.anchorCol, set.anchorRow).y * scale;
+    group.sets.forEach((set) => {
+      const x = ox + cellRectForGroup(group, set.anchorCol, set.anchorRow).x * scale;
+      const y = oy + cellRectForGroup(group, set.anchorCol, set.anchorRow).y * scale;
       const w = set.widthCells * grid.cellSize * scale + Math.max(0, set.widthCells - 1) * grid.gap * scale;
       const h = set.heightCells * grid.cellSize * scale + Math.max(0, set.heightCells - 1) * grid.gap * scale;
       ctx.strokeStyle = set.enabled ? '#6366f1' : '#94a3b8';
@@ -846,10 +1055,20 @@
     ctx.fillStyle = '#1e293b';
     ctx.fillRect(0, 0, canvasW, canvasH);
 
+    const group = getActiveGroup();
+    if (!group) {
+      ctx.fillStyle = '#cbd5e1';
+      ctx.font = 'bold 11px Nunito, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('PNGを選択してシートを追加してください', canvasW / 2, canvasH / 2);
+      return false;
+    }
+
+    const sheet = sheetImages.get(group.id);
     const hasSheet = !!(sheet && sheet.complete && sheet.naturalWidth);
     const content = hasSheet
       ? { w: sheet.naturalWidth, h: sheet.naturalHeight }
-      : gridContentSize();
+      : gridContentSize(group);
     const scale = Math.min(canvasW / content.w, canvasH / content.h) * (hasSheet ? 1 : 0.92);
     const dw = content.w * scale;
     const dh = content.h * scale;
@@ -866,7 +1085,7 @@
       ctx.strokeRect(ox + 0.5, oy + 0.5, dw - 1, dh - 1);
     }
 
-    drawGridOverlay(ctx, scale, ox, oy, highlightCol, highlightRow, pickCellKeys);
+    drawGridOverlay(ctx, group, scale, ox, oy, highlightCol, highlightRow, pickCellKeys);
 
     if (!hasSheet) {
       ctx.fillStyle = '#cbd5e1';
@@ -880,11 +1099,14 @@
 
   function drawAdjustPreview(ctx, id, canvasW, canvasH) {
     global.PopArt?.setupCrisp?.(ctx);
-    const cell = cells.find((c) => c.id === id);
-    if (!cell || !sheet || !sheet.complete) return false;
+    const ctxCell = findCellContext(id);
+    if (!ctxCell) return false;
+    const { group, cell } = ctxCell;
+    const sheet = sheetImages.get(group.id);
+    if (!sheet || !sheet.complete) return false;
+
     const crop = getCellCrop(cell);
-    const base = cellRect(cell.col, cell.row);
-    const rect = squareSourceRect(cell, crop);
+    const base = cellRectForGroup(group, cell.col, cell.row);
 
     ctx.fillStyle = '#faf6ee';
     ctx.fillRect(0, 0, canvasW, canvasH);
@@ -912,7 +1134,7 @@
 
     ctx.fillStyle = 'rgba(255,255,255,0.55)';
     ctx.fillRect(ox, oy, drawCellW, drawCellH);
-    const sqSrc = squareSourceRect(cell, crop);
+    const sqSrc = squareSourceRect(group, cell, crop);
     const sqDrawSide = side;
     ctx.drawImage(sheet, sqSrc.x, sqSrc.y, sqSrc.w, sqSrc.h, sqX, sqY, sqDrawSide, sqDrawSide);
 
@@ -933,11 +1155,85 @@
     return set.members.map((m) => ({ dx: m.dx, dy: m.dy }));
   }
 
+  function getCellsForGroup(groupId) {
+    const group = getGroup(groupId);
+    return group ? group.cells.map((c) => ({ ...c })) : [];
+  }
+
+  function hasAnySheetImage() {
+    return groups.some((g) => {
+      const img = sheetImages.get(g.id);
+      return img && img.complete && img.naturalWidth;
+    });
+  }
+
+  function getGroups() {
+    return groups.map((g) => {
+      const img = sheetImages.get(g.id);
+      const cellsInSets = new Set();
+      g.sets.filter((s) => s.enabled).forEach((s) => s.members.forEach((m) => cellsInSets.add(m.cellId)));
+      const adoptedCount = g.cells.filter((c) => c.enabled && !cellsInSets.has(c.id)).length
+        + g.sets.filter((s) => s.enabled).length;
+      return {
+        id: g.id,
+        name: g.name,
+        collapsed: !!g.collapsed,
+        hasImage: !!(img && img.complete && img.naturalWidth),
+        adoptedCount,
+      };
+    });
+  }
+
+  function setActiveGroup(groupId) {
+    if (!getGroup(groupId)) return false;
+    activeGroupId = groupId;
+    saveToStorage();
+    global.dispatchEvent(new Event('customsheet:active-changed'));
+    return true;
+  }
+
+  function getActiveGroupId() {
+    return activeGroupId;
+  }
+
+  function updateGroup(groupId, partial) {
+    const group = getGroup(groupId);
+    if (!group) return;
+    if (partial.name !== undefined) {
+      group.name = String(partial.name || '取込シート').trim() || '取込シート';
+    }
+    if (partial.collapsed !== undefined) {
+      group.collapsed = !!partial.collapsed;
+    }
+    rebuildCatalog();
+    saveToStorage();
+    global.dispatchEvent(new Event('customsheet:updated'));
+  }
+
+  function isGroupCollapsed(groupId) {
+    return !!getGroup(groupId)?.collapsed;
+  }
+
+  function getDefaultLabel(id) {
+    if (byId[id]?.label) return byId[id].label;
+    const ctx = findCellContext(id);
+    if (ctx) return ctx.cell.label;
+    const set = getSet(id);
+    return set?.label || id;
+  }
+
+  function cellRect(col, row) {
+    const group = getActiveGroup();
+    if (!group) return { x: 0, y: 0, w: 32, h: 32 };
+    return cellRectForGroup(group, col, row);
+  }
+
   loadFromStorage();
 
   global.CustomSheetAssets = {
     ID_PREFIX,
     SET_PREFIX,
+    GROUP_PREFIX,
     get CATALOG() { return CATALOG; },
     TERRAIN_IDS,
     PROP_IDS,
@@ -948,13 +1244,30 @@
     isReady: () => ready,
     getConfig,
     setConfig,
-    getGrid: () => ({ ...grid }),
-    getCells: () => cells.map((c) => ({ ...c })),
-    getSets: () => sets.map((s) => ({ ...s, members: s.members.map((m) => ({ ...m })) })),
+    getGrid: () => ({ ...(getActiveGroup()?.grid || EMPTY_GRID) }),
+    getCells: () => (getActiveGroup()?.cells || []).map((c) => ({ ...c })),
+    getSets: () => (getActiveGroup()?.sets || []).map((s) => ({ ...s, members: s.members.map((m) => ({ ...m })) })),
+    getCellsForGroup,
+    hasAnySheetImage,
+    getGroups,
+    getActiveGroupId,
+    setActiveGroup,
+    updateGroup,
+    isGroupCollapsed,
     getSet,
     getSetFootprint,
-    hasSheetImage: () => !!(sheet && sheet.complete && sheet.naturalWidth),
-    getSheetImage: () => (sheet && sheet.complete ? sheet : null),
+    hasSheetImage: () => {
+      const group = getActiveGroup();
+      if (!group) return false;
+      const sheet = sheetImages.get(group.id);
+      return !!(sheet && sheet.complete && sheet.naturalWidth);
+    },
+    getSheetImage: () => {
+      const group = getActiveGroup();
+      if (!group) return null;
+      const sheet = sheetImages.get(group.id);
+      return sheet && sheet.complete ? sheet : null;
+    },
     updateGrid,
     updateCell,
     getCrop,
@@ -966,8 +1279,14 @@
     deleteSet,
     generateCellsFromGrid,
     setSheetDataUrl,
-    setSheetBlob,
+    setSheetBlob: (blob) => {
+      const group = getActiveGroup() || createEmptyGroup('取込シート');
+      if (!getGroup(group.id)) groups.push(group);
+      activeGroupId = group.id;
+      return setSheetBlobForGroup(group, blob, { regenerateGrid: true });
+    },
     setSheetFile,
+    appendSheetFile,
     autoFitGridFromImage,
     hasAdoptedTiles,
     getNativeTileSize,
@@ -979,7 +1298,7 @@
     drawThumb,
     drawAdjustPreview,
     drawGridPreview,
-    getDefaultLabel: (id) => byId[id]?.label || cells.find((c) => c.id === id)?.label || id,
+    getDefaultLabel,
     cellRect,
   };
 })(window);

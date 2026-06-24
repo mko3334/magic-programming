@@ -7,6 +7,55 @@
   let selectedRow = 0;
   const setPickIds = new Set();
 
+  function renderGroupSelector() {
+    const CSA = global.CustomSheetAssets;
+    const select = $('sgi-group-select');
+    const nameInput = $('sgi-group-name');
+    if (!CSA || !select) return;
+
+    const groups = CSA.getGroups();
+    const activeId = CSA.getActiveGroupId();
+    select.innerHTML = '';
+
+    if (!groups.length) {
+      const opt = document.createElement('option');
+      opt.value = '';
+      opt.textContent = '（新規グループ）';
+      select.appendChild(opt);
+      select.disabled = true;
+      if (nameInput) {
+        nameInput.disabled = false;
+        if (!nameInput.value.trim()) nameInput.placeholder = 'グループ名（例: 森のタイル）';
+      }
+      return;
+    }
+
+    select.disabled = false;
+    groups.forEach((g) => {
+      const opt = document.createElement('option');
+      opt.value = g.id;
+      opt.textContent = `${g.name}${g.adoptedCount ? ` (${g.adoptedCount})` : ''}`;
+      if (g.id === activeId) opt.selected = true;
+      select.appendChild(opt);
+    });
+
+    const active = groups.find((g) => g.id === activeId) || groups[0];
+    if (nameInput && active) {
+      nameInput.value = active.name;
+      nameInput.placeholder = 'グループ名';
+    }
+  }
+
+  function syncActiveGroupNameFromInput() {
+    const CSA = global.CustomSheetAssets;
+    const nameInput = $('sgi-group-name');
+    const activeId = CSA?.getActiveGroupId();
+    if (!CSA || !nameInput || !activeId) return;
+    const trimmed = nameInput.value.trim();
+    if (trimmed) CSA.updateGroup(activeId, { name: trimmed });
+    renderGroupSelector();
+  }
+
   function pickCellKeys() {
     const CSA = global.CustomSheetAssets;
     if (!CSA) return new Set();
@@ -183,6 +232,7 @@
         + (inSet ? ' is-in-set' : '');
       row.dataset.col = String(cell.col);
       row.dataset.row = String(cell.row);
+      row.dataset.cellId = cell.id;
 
       const pickLabel = document.createElement('label');
       pickLabel.className = 'flex items-center justify-center';
@@ -324,13 +374,12 @@
     document.querySelectorAll('.sgi-cell-thumb').forEach((canvas) => {
       const row = canvas.closest('.sgi-cell-row');
       if (!row) return;
-      const col = Number(row.dataset.col);
-      const r = Number(row.dataset.row);
-      const id = `${CSA.ID_PREFIX}${col}_${r}`;
+      const cellId = row.dataset.cellId;
+      if (!cellId) return;
       const ctx = canvas.getContext('2d');
       ctx.fillStyle = '#faf6ee';
       ctx.fillRect(0, 0, 40, 40);
-      CSA.drawThumb(ctx, id, 40);
+      CSA.drawThumb(ctx, cellId, 40);
     });
   }
 
@@ -428,6 +477,7 @@
 
   function onEnterImport() {
     active = true;
+    renderGroupSelector();
     syncGridInputs();
     ensureCellsFromGrid();
     renderCellList();
@@ -435,7 +485,9 @@
     refreshPreview();
     refreshThumbs();
     const CSA = global.CustomSheetAssets;
-    if (CSA && !CSA.getCells().length) {
+    if (CSA && !CSA.getCells().length && !CSA.getGroups().length) {
+      showStatus('グループ名を付けてPNGを追加すると取込を始められます', 'info');
+    } else if (CSA && !CSA.getCells().length) {
       showStatus('列・行を設定して「グリッド更新」を押すとマス一覧が表示されます', 'info');
     }
   }
@@ -488,6 +540,25 @@
       applyGridSettings();
     });
 
+    $('sgi-group-select')?.addEventListener('change', (e) => {
+      const groupId = e.target.value;
+      if (!groupId || !CSA.setActiveGroup(groupId)) return;
+      setPickIds.clear();
+      syncGridInputs();
+      renderGroupSelector();
+      renderCellList();
+      refreshPreview();
+      refreshThumbs();
+      showStatus(`編集中: ${CSA.getGroups().find((g) => g.id === groupId)?.name || groupId}`, 'info');
+    });
+
+    $('sgi-group-name')?.addEventListener('change', () => {
+      syncActiveGroupNameFromInput();
+      if (typeof global.registerCustomSheetCreateTools === 'function') {
+        global.registerCustomSheetCreateTools(true);
+      }
+    });
+
     $('sgi-set-create')?.addEventListener('click', createSetFromPick);
     $('sgi-set-clear-pick')?.addEventListener('click', () => {
       setPickIds.clear();
@@ -499,8 +570,10 @@
     $('sgi-file')?.addEventListener('change', (e) => {
       const file = e.target.files?.[0];
       if (!file) return;
-      CSA.setSheetFile(file).then(() => {
+      const groupName = ($('sgi-group-name')?.value || '').trim() || `シート ${CSA.getGroups().length + 1}`;
+      CSA.appendSheetFile(file, groupName).then(() => {
         syncGridInputs();
+        renderGroupSelector();
         if (!CSA.getCells().length) CSA.generateCellsFromGrid();
         renderCellList();
         refreshPreview();
@@ -508,11 +581,23 @@
         const g = CSA.getGrid();
         const img = CSA.getSheetImage();
         const px = img ? `${img.naturalWidth}×${img.naturalHeight}px` : '';
-        showStatus(`原寸で読み込みました（${px} / マス${g.cellSize}px・${g.cols}×${g.rows}列）。位置を調整して「グリッド更新」`, 'ok');
+        const group = CSA.getGroups().find((gr) => gr.id === CSA.getActiveGroupId());
+        showStatus(`「${group?.name || groupName}」を追加しました（${px} / マス${g.cellSize}px・${g.cols}×${g.rows}列）。位置を調整して「グリッド更新」`, 'ok');
+        if ($('sgi-group-name')) $('sgi-group-name').value = group?.name || groupName;
+        e.target.value = '';
         if (typeof global.registerCustomSheetCreateTools === 'function') {
           global.registerCustomSheetCreateTools(true);
         }
       }).catch(() => alert('画像の読み込みに失敗しました'));
+    });
+
+    global.addEventListener('customsheet:active-changed', () => {
+      if (!active) return;
+      renderGroupSelector();
+      syncGridInputs();
+      renderCellList();
+      refreshPreview();
+      refreshThumbs();
     });
 
     global.addEventListener('customsheet:updated', () => {
@@ -525,6 +610,7 @@
       if (typeof global.registerCustomSheetCreateTools === 'function') {
         global.registerCustomSheetCreateTools(true);
       }
+      renderGroupSelector();
       if (active && loaded) {
         syncGridInputs();
         ensureCellsFromGrid();
