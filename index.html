@@ -1108,6 +1108,23 @@
       background: #fff1f2;
       color: #be123c;
     }
+    .sgi-delete-picked-btn,
+    .sgi-delete-group-btn {
+      font-size: 10px;
+      font-weight: 800;
+      padding: 0.35rem 0.55rem;
+      border-radius: 0.5rem;
+      border: 2px solid #fecaca;
+      background: #fff1f2;
+      color: #be123c;
+    }
+    .sgi-delete-group-btn {
+      border-color: #fda4af;
+      background: #ffe4e6;
+    }
+    #create-canvas-container.is-eraser-mode {
+      cursor: cell;
+    }
   </style>
 </head>
 <body class="flex flex-col h-screen">
@@ -1439,6 +1456,10 @@
 
     <!-- 操作ボタン -->
     <div id="create-left-actions" class="mt-4 flex flex-col gap-2 shrink-0">
+      <div id="tool-eraser" data-tool="eraser" class="create-tool-item py-2 px-3 bg-rose-50 border-2 border-transparent text-rose-600 rounded-xl font-bold text-xs text-left flex items-center gap-2 hover:bg-rose-100 transition-all">
+        <span class="text-base leading-none" aria-hidden="true">🧹</span>
+        <span>タイル消去（クリック/ドラッグ）</span>
+      </div>
       <button id="btn-clear-map" class="py-2 px-3 bg-rose-50 border border-rose-200 text-rose-600 rounded-xl font-bold text-xs hover:bg-rose-100 transition-all">🗑️ 全て消去</button>
       <button id="btn-start-custom-play" class="py-3 px-3 bg-gradient-to-r from-emerald-400 to-teal-500 hover:from-emerald-500 hover:to-teal-600 text-white rounded-2xl font-bold text-sm shadow-md transition-all active:scale-95">🎮 テストプレイ！</button>
     </div>
@@ -1446,7 +1467,7 @@
 
   <!-- 右パネル：マップ編集 -->
   <div id="create-map-panel" class="flex-1 bg-white rounded-3xl shadow-sm p-4 flex flex-col overflow-hidden border border-gray-100 relative">
-    <div class="text-[11px] font-bold text-slate-400 mb-2">🖱️ クリックで配置 / ドラッグで連続配置 / 再度クリックで消去（マップは自動保存）</div>
+    <div class="text-[11px] font-bold text-slate-400 mb-2">🖱️ クリックで配置 / ドラッグで連続配置 / 🧹消去ツールで選択削除（マップは自動保存）</div>
     <div id="create-canvas-container" class="flex-1 bg-slate-900 rounded-2xl overflow-hidden relative cursor-crosshair">
       <canvas id="createCanvas" class="w-full h-full block"></canvas>
     </div>
@@ -1481,6 +1502,7 @@
         <input id="sgi-group-name" type="text" placeholder="グループ名（例: 森のタイル）" spellcheck="false" class="text-xs p-2 rounded-lg border border-slate-200 bg-white font-bold text-slate-700">
         <label class="text-[10px] font-bold text-slate-500">編集するグループ</label>
         <select id="sgi-group-select" class="text-xs p-2 rounded-lg border border-slate-200 bg-white font-bold text-slate-700"></select>
+        <button id="sgi-delete-group" type="button" class="sgi-delete-group-btn w-full">🗑️ 選択中のグループを削除</button>
         <label class="text-[10px] font-bold text-slate-500">PNG画像を追加（上書きではなく新グループとして追加）</label>
         <input id="sgi-file" type="file" accept="image/png,image/jpeg,image/webp" class="text-xs">
         <div class="sgi-grid-fields">
@@ -1515,6 +1537,7 @@
               <input id="sgi-set-solid" type="checkbox"> 壁
             </label>
             <button id="sgi-set-create" type="button" class="sgi-set-create-btn">セット作成</button>
+            <button id="sgi-delete-picked" type="button" class="sgi-delete-picked-btn">☑ 選択削除</button>
             <button id="sgi-set-clear-pick" type="button" class="text-[10px] font-bold px-2 py-1 rounded-md border border-slate-200 bg-white text-slate-500">選択解除</button>
           </div>
           <div id="sgi-set-list" class="flex flex-col gap-1"></div>
@@ -2300,6 +2323,18 @@
     }
   }
 
+  function removeCustomSheetFromCreateMap(cellIds, setIds) {
+    const typeSet = new Set([...(cellIds || []), ...(setIds || [])]);
+    if (!typeSet.size) return;
+    Object.keys(createMapData.terrain).forEach((key) => {
+      if (typeSet.has(createMapData.terrain[key])) delete createMapData.terrain[key];
+    });
+    createMapData.props = createMapData.props.filter((p) => !typeSet.has(p.type));
+    persistCreateMap();
+    drawCreateCanvas();
+  }
+  window.removeCustomSheetFromCreateMap = removeCustomSheetFromCreateMap;
+
   function loadCreateMap() {
     try {
       const raw = localStorage.getItem(CREATE_MAP_KEY);
@@ -2458,6 +2493,12 @@
     player: document.getElementById('tool-player'),
     enemy: document.getElementById('tool-enemy'),
     chest: document.getElementById('tool-chest'),
+    eraser: document.getElementById('tool-eraser'),
+  };
+
+  const ERASER_TOOL_CLASS = {
+    idle: 'create-tool-item py-2 px-3 bg-rose-50 border-2 border-transparent text-rose-600 rounded-xl font-bold text-xs text-left flex items-center gap-2 hover:bg-rose-100 transition-all',
+    active: 'create-tool-item py-2 px-3 bg-rose-100 border-2 border-rose-400 text-rose-700 rounded-xl font-bold text-xs text-left flex items-center gap-2 transition-all',
   };
 
   const CREATE_TOOL_CLASS = {
@@ -2473,9 +2514,15 @@
 
   function selectTool(toolKey) {
     activeTool = toolKey;
+    const canvasContainer = document.getElementById('create-canvas-container');
+    if (canvasContainer) canvasContainer.classList.toggle('is-eraser-mode', toolKey === 'eraser');
     for (let key in tools) {
       const el = tools[key];
       if (!el) continue;
+      if (key === 'eraser') {
+        el.className = toolKey === 'eraser' ? ERASER_TOOL_CLASS.active : ERASER_TOOL_CLASS.idle;
+        continue;
+      }
       const size = el.className.includes('rounded-2xl') ? 'lg' : 'sm';
       el.className = key === toolKey ? CREATE_TOOL_CLASS[size].active : CREATE_TOOL_CLASS[size].idle;
     }
@@ -2759,6 +2806,46 @@
     removeCreateEnemyAtGrid(gridX, gridY);
   }
 
+  function eraseCreateCell(gridX, gridY) {
+    const cellKey = PopArt.terrainKey(gridX, gridY);
+    let changed = false;
+
+    if (createMapData.terrain[cellKey]) {
+      delete createMapData.terrain[cellKey];
+      changed = true;
+    }
+
+    if (findCreateProp(gridX, gridY) !== -1) {
+      removeCreatePropAt(gridX, gridY);
+      changed = true;
+    }
+
+    if (findCreateEnemyAtGrid(gridX, gridY) !== -1) {
+      removeCreateEnemyAtGrid(gridX, gridY);
+      changed = true;
+    }
+
+    if (createMapData.player) {
+      const pgx = Math.floor(createMapData.player.x / gridW);
+      const pgy = Math.floor(createMapData.player.y / gridH);
+      if (pgx === gridX && pgy === gridY) {
+        createMapData.player = null;
+        changed = true;
+      }
+    }
+
+    if (createMapData.chest) {
+      const cgx = Math.floor(createMapData.chest.x / gridW);
+      const cgy = Math.floor(createMapData.chest.y / gridH);
+      if (cgx === gridX && cgy === gridY) {
+        createMapData.chest = null;
+        changed = true;
+      }
+    }
+
+    return changed;
+  }
+
   function normalizeCreateMapOccupancy() {
     const propByCell = new Map();
     createMapData.props.forEach(p => propByCell.set(`${p.gridX},${p.gridY}`, p));
@@ -2781,6 +2868,11 @@
     const cellKey = PopArt.terrainKey(gridX, gridY);
     if (paintMode && lastPaintCell === cellKey && activeTool !== 'player' && activeTool !== 'chest' && activeTool !== 'enemy') {
       return false;
+    }
+
+    if (activeTool === 'eraser') {
+      if (paintMode) lastPaintCell = cellKey;
+      return eraseCreateCell(gridX, gridY);
     }
 
     if (CSA?.isSetType?.(activeTool)) {

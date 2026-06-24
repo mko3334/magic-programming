@@ -87,6 +87,15 @@
     }));
   }
 
+  function idbDeleteBlob(key) {
+    return openSheetDb().then((db) => new Promise((resolve, reject) => {
+      const tx = db.transaction(SHEET_DB_STORE, 'readwrite');
+      tx.objectStore(SHEET_DB_STORE).delete(key);
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = () => reject(tx.error);
+    })).catch(() => false);
+  }
+
   function getGroup(groupId) {
     return groups.find((g) => g.id === groupId) || null;
   }
@@ -1160,6 +1169,45 @@
     return group ? group.cells.map((c) => ({ ...c })) : [];
   }
 
+  function getSetsForGroup(groupId) {
+    const group = getGroup(groupId);
+    return group ? group.sets.map((s) => ({ ...s, members: s.members.map((m) => ({ ...m })) })) : [];
+  }
+
+  function collectGroupAssetIds(groupId) {
+    const group = getGroup(groupId);
+    if (!group) return { cellIds: [], setIds: [] };
+    return {
+      cellIds: group.cells.map((c) => c.id),
+      setIds: group.sets.map((s) => s.id),
+    };
+  }
+
+  function deleteGroup(groupId) {
+    const group = getGroup(groupId);
+    if (!group) return null;
+    const removed = collectGroupAssetIds(groupId);
+
+    revokeGroupObjectUrl(groupId);
+    sheetImages.delete(groupId);
+    invalidateCellCache();
+
+    const blobKey = blobKeyForGroup(groupId, group.legacyBlob);
+    idbDeleteBlob(blobKey);
+
+    groups = groups.filter((g) => g.id !== groupId);
+    if (activeGroupId === groupId) {
+      activeGroupId = groups[0]?.id || null;
+    }
+
+    saveToStorage();
+    rebuildCatalog();
+    global.dispatchEvent(new CustomEvent('customsheet:group-deleted', { detail: removed }));
+    if (activeGroupId) global.dispatchEvent(new Event('customsheet:active-changed'));
+    global.dispatchEvent(new Event('customsheet:updated'));
+    return removed;
+  }
+
   function hasAnySheetImage() {
     return groups.some((g) => {
       const img = sheetImages.get(g.id);
@@ -1248,6 +1296,9 @@
     getCells: () => (getActiveGroup()?.cells || []).map((c) => ({ ...c })),
     getSets: () => (getActiveGroup()?.sets || []).map((s) => ({ ...s, members: s.members.map((m) => ({ ...m })) })),
     getCellsForGroup,
+    getSetsForGroup,
+    collectGroupAssetIds,
+    deleteGroup,
     hasAnySheetImage,
     getGroups,
     getActiveGroupId,

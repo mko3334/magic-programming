@@ -72,8 +72,10 @@
     if (!el) return;
     const n = setPickIds.size;
     el.textContent = n >= 2
-      ? `${n}マス選択中 → セット名を付けて「セット作成」`
-      : 'マス一覧の☑で2マス以上選んで「セット作成」';
+      ? `${n}マス選択中 → セット作成 / 選択削除`
+      : n >= 1
+        ? `${n}マス選択中 → 「選択削除」で採用解除`
+        : 'マス一覧の☑で選択 → セット作成 or 選択削除';
   }
 
   function $(id) {
@@ -417,6 +419,66 @@
       : '▼ マス一覧 — 名前を付けて「＋ 採用」';
   }
 
+  function deletePickedCells() {
+    const CSA = global.CustomSheetAssets;
+    if (!CSA) return;
+    if (!setPickIds.size) {
+      showStatus('削除するマスを☑で選択してください', 'warn');
+      return;
+    }
+    const picked = [...setPickIds];
+    const cells = CSA.getCells();
+    const inSet = picked.filter((id) => cells.find((c) => c.id === id)?.setId);
+    if (inSet.length) {
+      showStatus('セット内のマスは先にセットを解除してください', 'warn');
+      return;
+    }
+    picked.forEach((id) => CSA.updateCell(id, { enabled: false }));
+    setPickIds.clear();
+    renderCellList();
+    renderSetList();
+    refreshPreview();
+    refreshThumbs();
+    if (typeof global.registerCustomSheetCreateTools === 'function') {
+      global.registerCustomSheetCreateTools(true);
+    }
+    showStatus(`${picked.length}マスの採用を解除しました`, 'ok');
+  }
+
+  function deleteActiveGroup() {
+    const CSA = global.CustomSheetAssets;
+    if (!CSA) return;
+    const groupId = CSA.getActiveGroupId();
+    if (!groupId) {
+      showStatus('削除するグループがありません', 'warn');
+      return;
+    }
+    const meta = CSA.getGroups().find((g) => g.id === groupId);
+    const name = meta?.name || 'このグループ';
+    if (!confirm(`グループ「${name}」を削除しますか？\n採用済みタイルもクリエイティブから消え、マップ上の該当タイルも除去されます。`)) {
+      return;
+    }
+    const removed = CSA.deleteGroup(groupId);
+    if (!removed) {
+      showStatus('グループを削除できませんでした', 'warn');
+      return;
+    }
+    if (typeof global.removeCustomSheetFromCreateMap === 'function') {
+      global.removeCustomSheetFromCreateMap(removed.cellIds, removed.setIds);
+    }
+    setPickIds.clear();
+    renderGroupSelector();
+    syncGridInputs();
+    renderCellList();
+    renderSetList();
+    refreshPreview();
+    refreshThumbs();
+    if (typeof global.registerCustomSheetCreateTools === 'function') {
+      global.registerCustomSheetCreateTools(true);
+    }
+    showStatus(`グループ「${name}」を削除しました`, 'ok');
+  }
+
   function createSetFromPick() {
     const CSA = global.CustomSheetAssets;
     if (!CSA) return;
@@ -560,6 +622,8 @@
     });
 
     $('sgi-set-create')?.addEventListener('click', createSetFromPick);
+    $('sgi-delete-picked')?.addEventListener('click', deletePickedCells);
+    $('sgi-delete-group')?.addEventListener('click', deleteActiveGroup);
     $('sgi-set-clear-pick')?.addEventListener('click', () => {
       setPickIds.clear();
       updateSetPickCount();
