@@ -103,11 +103,12 @@
     if (!CSA) return;
     const obj = CSA.getActiveObject();
     const group = CSA.getGroups().find((g) => g.id === CSA.getActiveGroupId());
-    if ($('sgi-footprint-w')) $('sgi-footprint-w').value = String(obj?.footprintW || 1);
-    if ($('sgi-footprint-h')) $('sgi-footprint-h').value = String(obj?.footprintH || 1);
-    if ($('sgi-object-kind')) $('sgi-object-kind').value = obj?.kind || 'prop';
     if ($('sgi-object-solid')) $('sgi-object-solid').checked = !!obj?.solid;
     if ($('sgi-object-key-black')) $('sgi-object-key-black').checked = group?.hasImage ? (CSA.getGrid().keyBlack ?? true) : true;
+    if ($('sgi-object-white-outline')) $('sgi-object-white-outline').checked = obj?.whiteOutline !== false;
+    const outlineW = obj?.outlineWidth ?? 8;
+    if ($('sgi-object-outline-width')) $('sgi-object-outline-width').value = String(outlineW);
+    if ($('sgi-object-outline-width-val')) $('sgi-object-outline-width-val').textContent = String(outlineW);
     const bounds = objectScaleBoundsPct();
     const scalePct = Math.round((obj?.visualScale ?? CSA.DEFAULT_OBJECT_SCALE ?? 1) * 100);
     if ($('sgi-object-scale')) $('sgi-object-scale').value = String(Math.max(bounds.min, Math.min(bounds.max, scalePct)));
@@ -119,26 +120,18 @@
     const bounds = objectScaleBoundsPct();
     const scaleRaw = Number($('sgi-object-scale')?.value) || Math.round((global.CustomSheetAssets?.DEFAULT_OBJECT_SCALE ?? 1) * 100);
     return {
-      footprintW: Number($('sgi-footprint-w')?.value) || 1,
-      footprintH: Number($('sgi-footprint-h')?.value) || 1,
-      kind: $('sgi-object-kind')?.value || 'prop',
+      kind: 'prop',
       solid: !!$('sgi-object-solid')?.checked,
       keyBlack: !!$('sgi-object-key-black')?.checked,
+      whiteOutline: !!$('sgi-object-white-outline')?.checked,
+      outlineWidth: Number($('sgi-object-outline-width')?.value) || 8,
       visualScale: Math.max(bounds.minScale, Math.min(bounds.maxScale, scaleRaw / 100)),
     };
   }
 
-  function fitObjectToOneTile() {
-    const CSA = global.CustomSheetAssets;
-    const groupId = CSA?.getActiveGroupId();
-    if (!CSA || !groupId || importMode !== 'object') return;
-    const scale = CSA.suggestObjectFitOneTileScale(groupId);
-    const bounds = objectScaleBoundsPct();
-    const pct = Math.round(scale * 100);
-    if ($('sgi-object-scale')) $('sgi-object-scale').value = String(Math.max(bounds.min, Math.min(bounds.max, pct)));
-    updateObjectScaleLabel();
-    applyObjectInputsToActiveGroup({ adopt: CSA.getActiveObject()?.enabled ?? false });
-    refreshObjectPreview();
+  function updateObjectOutlineLabel() {
+    const w = Number($('sgi-object-outline-width')?.value) || 8;
+    if ($('sgi-object-outline-width-val')) $('sgi-object-outline-width-val').textContent = String(w);
   }
 
   function updateObjectScaleLabel() {
@@ -175,11 +168,11 @@
     CSA.updateObject(groupId, {
       name,
       label: name || groupMeta.name,
-      footprintW: inputs.footprintW,
-      footprintH: inputs.footprintH,
-      kind: inputs.kind,
+      kind: 'prop',
       solid: inputs.solid,
       keyBlack: inputs.keyBlack,
+      whiteOutline: inputs.whiteOutline,
+      outlineWidth: inputs.outlineWidth,
       visualScale: inputs.visualScale,
       enabled: options.adopt !== false,
     });
@@ -209,7 +202,7 @@
       global.registerCustomSheetCreateTools(true);
     }
     const obj = CSA.getActiveObject();
-    showStatus(`「${obj?.label || groupMeta.name}」を ${obj?.footprintW}×${obj?.footprintH} マス / 表示${Math.round((obj?.visualScale ?? global.CustomSheetAssets?.DEFAULT_OBJECT_SCALE ?? 1) * 100)}% で採用しました`, 'ok');
+    showStatus(`「${obj?.label || groupMeta.name}」をシールとして採用（${Math.round((obj?.visualScale ?? 1) * 100)}%${obj?.whiteOutline !== false ? '・白縁' : ''}）`, 'ok');
   }
 
   function pickCellKeys() {
@@ -809,12 +802,19 @@
     $('sgi-mode-grid')?.addEventListener('click', () => setImportMode('grid'));
     $('sgi-mode-object')?.addEventListener('click', () => setImportMode('object'));
 
-    ['sgi-footprint-w', 'sgi-footprint-h', 'sgi-object-kind', 'sgi-object-solid', 'sgi-object-key-black'].forEach((id) => {
+    ['sgi-object-solid', 'sgi-object-key-black', 'sgi-object-white-outline'].forEach((id) => {
       $(id)?.addEventListener('change', () => {
         if (importMode !== 'object') return;
         applyObjectInputsToActiveGroup({ adopt: CSA.getActiveObject()?.enabled ?? false });
         refreshObjectPreview();
       });
+    });
+
+    $('sgi-object-outline-width')?.addEventListener('input', () => {
+      if (importMode !== 'object') return;
+      updateObjectOutlineLabel();
+      applyObjectInputsToActiveGroup({ adopt: CSA.getActiveObject()?.enabled ?? false });
+      refreshObjectPreview();
     });
 
     $('sgi-object-scale')?.addEventListener('input', () => {
@@ -823,8 +823,6 @@
       applyObjectInputsToActiveGroup({ adopt: CSA.getActiveObject()?.enabled ?? false });
       refreshObjectPreview();
     });
-
-    $('sgi-object-fit-tile')?.addEventListener('click', fitObjectToOneTile);
 
     $('sgi-object-save')?.addEventListener('click', saveObjectSettings);
 
@@ -835,16 +833,18 @@
       const groupName = ($('sgi-group-name')?.value || '').trim() || `オブジェクト ${CSA.getGroups().length + 1}`;
       CSA.appendObjectFile(file, {
         name: groupName,
-        footprintW: inputs.footprintW,
-        footprintH: inputs.footprintH,
-        kind: inputs.kind,
+        kind: 'prop',
         solid: inputs.solid,
+        whiteOutline: inputs.whiteOutline,
+        outlineWidth: inputs.outlineWidth,
         visualScale: inputs.visualScale,
         enabled: false,
       }).then(() => {
-        if ($('sgi-object-key-black')) {
-          CSA.updateObject(CSA.getActiveGroupId(), { keyBlack: inputs.keyBlack });
-        }
+        CSA.updateObject(CSA.getActiveGroupId(), {
+          keyBlack: inputs.keyBlack,
+          whiteOutline: inputs.whiteOutline,
+          outlineWidth: inputs.outlineWidth,
+        });
         renderGroupSelector();
         setImportMode('object');
         syncObjectInputsFromActiveGroup();
@@ -853,7 +853,7 @@
         const img = CSA.getSheetImage();
         const px = img ? `${img.naturalWidth}×${img.naturalHeight}px` : '';
         const pct = Math.round((CSA.getActiveObject()?.visualScale ?? 1) * 100);
-        showStatus(`「${groupName}」${px ? `（${px}→${pct}%）` : ''} — 確認して「保存して採用」`, 'ok');
+        showStatus(`「${groupName}」${px ? `（${px}）` : ''} — 白縁・サイズを確認して「保存して採用」`, 'ok');
       }).catch(() => alert('画像の読み込みに失敗しました'));
     });
 

@@ -146,9 +146,11 @@
       enabled: !!options.enabled,
       kind: options.kind || 'prop',
       solid: !!options.solid,
-      footprintW: Math.max(1, Math.min(4, Number(options.footprintW) || 1)),
-      footprintH: Math.max(1, Math.min(4, Number(options.footprintH) || 1)),
+      footprintW: 1,
+      footprintH: 1,
       visualScale: clampVisualScale(options.visualScale ?? DEFAULT_OBJECT_SCALE),
+      whiteOutline: options.whiteOutline !== false,
+      outlineWidth: Math.max(2, Math.min(24, Number(options.outlineWidth) || 8)),
       crop: { ...EMPTY_CROP },
     };
     return group;
@@ -616,6 +618,10 @@
             ...g.object,
             crop: { ...(g.object.crop || EMPTY_CROP) },
             visualScale: migrateObjectVisualScale(g.object.visualScale),
+            whiteOutline: g.object.whiteOutline !== false,
+            outlineWidth: Math.max(2, Math.min(24, Number(g.object.outlineWidth) || 8)),
+            footprintW: 1,
+            footprintH: 1,
           } : null,
           collapsed: !!g.collapsed,
         }));
@@ -781,6 +787,10 @@
     if (partial.visualScale !== undefined) {
       group.object.visualScale = clampVisualScale(partial.visualScale);
     }
+    if (partial.whiteOutline !== undefined) group.object.whiteOutline = !!partial.whiteOutline;
+    if (partial.outlineWidth !== undefined) {
+      group.object.outlineWidth = Math.max(2, Math.min(24, Number(partial.outlineWidth) || 8));
+    }
     if (partial.keyBlack !== undefined) group.grid.keyBlack = !!partial.keyBlack;
     if (partial.crop) group.object.crop = clampCrop(partial.crop);
     invalidateCellCache();
@@ -826,13 +836,45 @@
     return clampVisualScale(TILE_SIZE / Math.max(spec.w, spec.h, 1));
   }
 
-  function drawObjectImage(ctx, spec, cx, cy, visualScale, anchor) {
+  function drawObjectImage(ctx, spec, cx, cy, visualScale, anchor, drawOpts = {}) {
     const { w, h } = objectDrawSize(spec, visualScale);
     const ax = anchor?.[0] ?? 0.5;
     const ay = anchor?.[1] ?? 1;
-    const dx = Math.round(cx - w * ax);
-    const dy = Math.round(cy - h * ay);
-    return blitCell(ctx, spec, dx, dy, w, h);
+    const dx = cx - w * ax;
+    const dy = cy - h * ay;
+    const smooth = drawOpts.smooth !== false;
+    const whiteOutline = drawOpts.whiteOutline ?? spec.whiteOutline;
+    const outlineWidth = drawOpts.outlineWidth ?? spec.outlineWidth ?? 8;
+    return blitCell(ctx, spec, dx, dy, w, h, { smooth, whiteOutline, outlineWidth });
+  }
+
+  function getObjectStickerBounds(type, anchorX, anchorY) {
+    const spec = objectSpecOf(type);
+    if (!spec) return null;
+    const { w, h } = objectDrawSize(spec, spec.visualScale);
+    const ax = 0.5;
+    const ay = 0.92;
+    const left = anchorX - w * ax;
+    const top = anchorY - h * ay;
+    const pad = spec.whiteOutline ? (spec.outlineWidth || 8) : 0;
+    return {
+      left: left - pad,
+      top: top - pad,
+      right: left + w + pad,
+      bottom: top + h + pad,
+      width: w + pad * 2,
+      height: h + pad * 2,
+    };
+  }
+
+  function drawObjectSticker(ctx, type, anchorX, anchorY) {
+    const spec = objectSpecOf(type);
+    if (!spec) return false;
+    return drawObjectImage(ctx, spec, anchorX, anchorY, spec.visualScale, [0.5, 0.92], {
+      smooth: true,
+      whiteOutline: spec.whiteOutline,
+      outlineWidth: spec.outlineWidth,
+    });
   }
 
   function objectSourceRect(group, object) {
@@ -866,6 +908,8 @@
       footprintW: ctx.object.footprintW,
       footprintH: ctx.object.footprintH,
       visualScale: clampVisualScale(ctx.object.visualScale ?? DEFAULT_OBJECT_SCALE),
+      whiteOutline: ctx.object.whiteOutline !== false,
+      outlineWidth: ctx.object.outlineWidth ?? 8,
       kind: ctx.object.kind,
     };
   }
@@ -909,7 +953,6 @@
   }
 
   function drawObjectPreview(ctx, canvasW, canvasH, groupId) {
-    global.PopArt?.setupCrisp?.(ctx);
     const group = getGroup(groupId) || getActiveGroup();
     if (!group?.object) return false;
     const sheet = sheetImages.get(group.id);
@@ -917,51 +960,35 @@
     const spec = objectSourceRect(group, group.object);
     if (!spec) return false;
 
-    ctx.fillStyle = '#1e293b';
+    const grad = ctx.createLinearGradient(0, 0, 0, canvasH);
+    grad.addColorStop(0, '#e0f2fe');
+    grad.addColorStop(1, '#bbf7d0');
+    ctx.fillStyle = grad;
     ctx.fillRect(0, 0, canvasW, canvasH);
 
-    const tilePx = TILE_SIZE;
-    const fpW = group.object.footprintW;
-    const fpH = group.object.footprintH;
-    const logicalW = tilePx * fpW;
-    const logicalH = tilePx * fpH;
-    const margin = 20;
-    const zoom = Math.min(
-      (canvasW - margin * 2) / logicalW,
-      (canvasH - margin * 2) / logicalH,
-      8,
-    );
-    const ox = (canvasW - logicalW * zoom) / 2;
-    const oy = (canvasH - logicalH * zoom) / 2;
+    const previewSpec = {
+      ...spec,
+      whiteOutline: group.object.whiteOutline !== false,
+      outlineWidth: group.object.outlineWidth ?? 8,
+      visualScale: clampVisualScale(group.object.visualScale ?? DEFAULT_OBJECT_SCALE),
+    };
+    const { w, h } = objectDrawSize(previewSpec, previewSpec.visualScale);
+    const cx = canvasW / 2;
+    const cy = canvasH * 0.78;
+    drawObjectImage(ctx, previewSpec, cx, cy, previewSpec.visualScale, [0.5, 0.92], {
+      smooth: true,
+      whiteOutline: previewSpec.whiteOutline,
+      outlineWidth: previewSpec.outlineWidth,
+    });
 
-    ctx.save();
-    ctx.translate(ox, oy);
-    ctx.scale(zoom, zoom);
-
-    const visualScale = clampVisualScale(group.object.visualScale ?? DEFAULT_OBJECT_SCALE);
-    const { w: drawW, h: drawH } = objectDrawSize(spec, visualScale);
-    const cx = logicalW / 2;
-    const cy = logicalH - 4;
-    drawObjectImage(ctx, spec, cx, cy, visualScale, [0.5, 1]);
-
-    ctx.strokeStyle = '#22c55e';
-    ctx.lineWidth = 2 / zoom;
-    ctx.setLineDash([4 / zoom, 3 / zoom]);
-    for (let row = 0; row < fpH; row++) {
-      for (let col = 0; col < fpW; col++) {
-        ctx.strokeRect(col * tilePx + 0.5, row * tilePx + 0.5, tilePx - 1, tilePx - 1);
-      }
-    }
-    ctx.setLineDash([]);
-    ctx.restore();
-
-    ctx.fillStyle = '#cbd5e1';
-    ctx.font = 'bold 10px Nunito, sans-serif';
+    ctx.fillStyle = '#475569';
+    ctx.font = 'bold 11px Nunito, sans-serif';
     ctx.textAlign = 'center';
+    const outlineLabel = previewSpec.whiteOutline ? `白縁 ${previewSpec.outlineWidth}px` : '白縁なし';
     ctx.fillText(
-      `${fpW}×${fpH} マス（${tilePx}px/マス）/ 表示 ${drawW}×${drawH}px（${Math.round(visualScale * 100)}%）`,
+      `${w}×${h}px / ${Math.round(previewSpec.visualScale * 100)}% / ${outlineLabel}`,
       canvasW / 2,
-      canvasH - 8,
+      canvasH - 10,
     );
     return true;
   }
@@ -1227,22 +1254,69 @@
     };
   }
 
-  function blitCell(ctx, spec, dx, dy, dw, dh) {
+  function blitCell(ctx, spec, dx, dy, dw, dh, drawOpts = {}) {
     const groupId = spec.groupId;
     const sheet = groupId ? sheetImages.get(groupId) : null;
     if (!sheet || !sheet.complete) return false;
 
-    global.PopArt?.setupCrisp?.(ctx);
     const tw = Math.max(1, Math.round(dw));
     const th = Math.max(1, Math.round(dh));
+    const smooth = !!drawOpts.smooth;
+    const whiteOutline = !!drawOpts.whiteOutline;
+    const outlineWidth = Math.max(2, Math.round(drawOpts.outlineWidth || 8));
 
-    if (spec.w === tw && spec.h === th && !spec.keyBlack) {
-      ctx.drawImage(sheet, spec.x, spec.y, spec.w, spec.h, dx, dy, tw, th);
-      return true;
+    if (!smooth && !whiteOutline) {
+      global.PopArt?.setupCrisp?.(ctx);
+    } else {
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
     }
 
-    const cached = getCachedDisplayCanvas(groupId, spec, tw, th);
+    let cached;
+    if (spec.w === tw && spec.h === th && !spec.keyBlack) {
+      cached = (() => {
+        const tmp = document.createElement('canvas');
+        tmp.width = tw;
+        tmp.height = th;
+        const tctx = tmp.getContext('2d');
+        if (smooth) {
+          tctx.imageSmoothingEnabled = true;
+          tctx.imageSmoothingQuality = 'high';
+        } else {
+          global.PopArt?.setupCrisp?.(tctx);
+        }
+        tctx.drawImage(sheet, spec.x, spec.y, spec.w, spec.h, 0, 0, tw, th);
+        return tmp;
+      })();
+    } else {
+      cached = getCachedDisplayCanvas(groupId, spec, tw, th);
+    }
     if (!cached) return false;
+
+    if (whiteOutline && outlineWidth > 0) {
+      const pad = outlineWidth + 2;
+      const oc = document.createElement('canvas');
+      oc.width = cached.width + pad * 2;
+      oc.height = cached.height + pad * 2;
+      const octx = oc.getContext('2d');
+      octx.imageSmoothingEnabled = true;
+      octx.drawImage(cached, pad, pad);
+      octx.globalCompositeOperation = 'source-in';
+      octx.fillStyle = '#ffffff';
+      octx.fillRect(0, 0, oc.width, oc.height);
+
+      ctx.save();
+      ctx.imageSmoothingEnabled = true;
+      for (let j = -outlineWidth; j <= outlineWidth; j++) {
+        for (let i = -outlineWidth; i <= outlineWidth; i++) {
+          if (i * i + j * j <= outlineWidth * outlineWidth + outlineWidth * 0.5) {
+            ctx.drawImage(oc, dx + i - pad, dy + j - pad);
+          }
+        }
+      }
+      ctx.restore();
+    }
+
     ctx.drawImage(cached, dx, dy, tw, th);
     return true;
   }
@@ -1309,7 +1383,11 @@
       const { w, h } = objectDrawSizeForThumb(spec, size, spec.visualScale);
       const dx = (size - w) / 2;
       const dy = (size - h) / 2;
-      return blitCell(ctx, spec, dx, dy, w, h);
+      return blitCell(ctx, spec, dx, dy, w, h, {
+        smooth: true,
+        whiteOutline: spec.whiteOutline,
+        outlineWidth: Math.max(2, Math.round((spec.outlineWidth || 8) * (w / Math.max(spec.w, 1)))),
+      });
     }
     if (isSetType(type)) {
       const spec = setSpecOf(type);
@@ -1725,6 +1803,8 @@
     drawAdjustPreview,
     drawGridPreview,
     drawObjectPreview,
+    drawObjectSticker,
+    getObjectStickerBounds,
     suggestObjectFitOneTileScale,
     TILE_SIZE,
     ART_TILE_SIZE,
