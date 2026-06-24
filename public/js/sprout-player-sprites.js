@@ -10,12 +10,9 @@
   const BASE_TILE_PX = 32;
   const FOOT = [23, 31];
 
-  function worldTileScale() {
-    return (global.MAP_TILE_PX || BASE_TILE_PX) / BASE_TILE_PX;
-  }
-
   function pixelScale() {
-    return SCALE * worldTileScale();
+    const tilePx = global.MAP_TILE_PX || BASE_TILE_PX;
+    return (tilePx * 0.42) / FRAME;
   }
 
   // Rows: down, up, left, right

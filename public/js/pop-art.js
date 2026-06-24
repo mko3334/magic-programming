@@ -6,12 +6,33 @@
   const OUTLINE = '#1a2e1a';
   const TILE_COLS = 16;
 
+  function tilePx() {
+    return global.MAP_TILE_PX || 32;
+  }
+
   function worldTileScale() {
-    return (global.MAP_TILE_PX || 32) / 32;
+    return tilePx() / 32;
+  }
+
+  /** キャラ・敵など像素スプライト用（320px マスに合わせた倍率） */
+  function entityBlitScale() {
+    return Math.max(4, Math.round(tilePx() / 80));
   }
 
   function blitScale() {
-    return PX * worldTileScale();
+    return entityBlitScale();
+  }
+
+  const BUILTIN_PROPS = new Set(['tree', 'bush', 'log', 'stump', 'mushroom', 'grassTuft', 'rock']);
+
+  function normalizeTerrainType(type) {
+    if (type === 'path' || type === 'water' || type === 'grass') return type;
+    return 'grass';
+  }
+
+  function normalizePropType(type) {
+    if (BUILTIN_PROPS.has(type)) return type;
+    return 'bush';
   }
 
   const PAL = {
@@ -324,7 +345,8 @@
 
   function getTerrainAt(terrainMap, gx, gy) {
     if (!terrainMap) return 'grass';
-    return terrainMap[terrainKey(gx, gy)] || 'grass';
+    const raw = terrainMap[terrainKey(gx, gy)] || 'grass';
+    return normalizeTerrainType(raw);
   }
 
   function seed(x, y) {
@@ -409,41 +431,24 @@
   }
 
   function drawTerrainTile(ctx, type, tx, ty, tileSize, gx, gy, frame) {
-    const CSA = global.CustomSheetAssets;
-    if (CSA && CSA.isCustomType(type) && CSA.isReady() && CSA.drawTerrainTile(ctx, type, tx, ty, tileSize)) {
-      return;
+    type = normalizeTerrainType(type);
+    if (type === 'water') {
+      ctx.fillStyle = ((gx + gy + Math.floor((frame || 0) / 12)) % 2) ? '#0ea5e9' : '#38bdf8';
+    } else if (type === 'path') {
+      ctx.fillStyle = ((gx + gy) % 2) ? '#78716c' : '#a8a29e';
+    } else {
+      ctx.fillStyle = ((gx + gy) % 2) ? '#22c55e' : '#4ade80';
     }
-    const PB = global.PictureBookAssets;
-    if (PB && PB.isPbType(type) && PB.isReady() && PB.drawTerrainTile(ctx, type, tx, ty, tileSize)) {
-      return;
-    }
-    const SA = global.SproutAssets;
-    if (SA && SA.isReady() && SA.drawTerrainTile(ctx, type, tx, ty, tileSize, gx, gy, frame)) {
-      return;
-    }
-    const scale = tileSize / TILE_COLS;
-    let rows = SPR.tileGrass;
-    let pal = { ...PAL };
-    if (type === 'path') {
-      rows = SPR.tilePath;
-    } else if (type === 'water') {
-      rows = SPR.tileWater;
-      if (((gx + gy + Math.floor(performance.now() / 400)) % 3) === 0) {
-        pal.l = '#22d3ee';
-      }
-    } else if ((gx + gy) % 2 === 0) {
-      pal.G = '#4ade80';
-      pal.g = '#86efac';
-    }
-    blitAt(ctx, rows, tx, ty, scale, pal);
+    ctx.fillRect(tx, ty, tileSize, tileSize);
+    ctx.strokeStyle = 'rgba(15, 23, 42, 0.12)';
+    ctx.lineWidth = Math.max(1, Math.round(tileSize / 160));
+    ctx.strokeRect(tx + 0.5, ty + 0.5, tileSize - 1, tileSize - 1);
   }
 
   function drawGround(ctx, w, h, frame, tileSize, terrainMap) {
-    tileSize = tileSize || 320;
+    tileSize = tileSize || tilePx();
     setupCrisp(ctx);
-    const SA = global.SproutAssets;
-    const paperBg = terrainMap && Object.values(terrainMap).some((v) => typeof v === 'string' && v.startsWith('pb_'));
-    ctx.fillStyle = paperBg ? '#faf6ee' : (SA && SA.isReady() ? '#8ecf6a' : '#4ade80');
+    ctx.fillStyle = '#4ade80';
     ctx.fillRect(0, 0, w, h);
 
     const cols = Math.ceil(w / tileSize);
@@ -455,27 +460,6 @@
         const ty = gy * tileSize;
         const type = getTerrainAt(terrainMap, gx, gy);
         drawTerrainTile(ctx, type, tx, ty, tileSize, gx, gy, frame);
-      }
-    }
-
-    for (let gy = 0; gy < rows; gy++) {
-      for (let gx = 0; gx < cols; gx++) {
-        const type = getTerrainAt(terrainMap, gx, gy);
-        if (type !== 'grass') continue;
-        const tx = gx * tileSize;
-        const ty = gy * tileSize;
-        if (SA && SA.isReady()) {
-          SA.drawGrassDeco(ctx, tx, ty, tileSize, gx, gy);
-          continue;
-        }
-        const s = seed(gx, gy);
-        if (s % 19 === 0) {
-          blitAt(ctx, SPR.grassTuft, tx + tileSize / 2 - 6, ty + tileSize / 2 - 6, 2, PAL);
-        }
-        if (s % 23 === 0) {
-          ctx.fillStyle = s % 2 ? '#f9a8d4' : '#fde68a';
-          ctx.fillRect(tx + 6 + (s % 8), ty + 6 + (s % 6), 2, 2);
-        }
       }
     }
   }
@@ -491,40 +475,17 @@
 
   function drawMapProp(ctx, type, block, frame) {
     if (!block.active) return;
+    type = normalizePropType(type);
     const cx = block.x + block.width / 2;
     const cy = block.y + block.height - 2;
-    const SA = global.SproutAssets;
 
     if (isSolidPropType(type)) {
       drawShadow(ctx, cx, cy + 4, block.width * 0.35, block.height * 0.12);
     }
 
-    const CSA = global.CustomSheetAssets;
-    if (CSA && CSA.isCustomType(type) && CSA.isReady()) {
-      if (CSA.isSetType(type) && CSA.drawPropBlock(ctx, type, block)) {
-        drawBurnOverlay(ctx, block);
-        return;
-      }
-      if (CSA.isSheetType(type) && CSA.drawProp(ctx, type, cx, cy, block.width)) {
-        drawBurnOverlay(ctx, block);
-        return;
-      }
-    }
-
-    const PB = global.PictureBookAssets;
-    if (PB && PB.isPbType(type) && PB.isReady() && PB.drawProp(ctx, type, cx, cy, block.width)) {
-      drawBurnOverlay(ctx, block);
-      return;
-    }
-
-    if (SA && SA.isReady() && SA.drawProp(ctx, type, cx, cy, block.width)) {
-      drawBurnOverlay(ctx, block);
-      return;
-    }
-
     const rows = PROP_SPRITES[type] || SPR.bush;
-    const scale = Math.max(2, Math.floor(block.width / rows[0].length));
-    blit(ctx, rows, cx, cy - block.height / 2, scale, false, PAL);
+    const scale = Math.max(entityBlitScale(), Math.floor(block.width / (rows[0].length * 5)));
+    blit(ctx, rows, cx, cy - block.height * 0.15, scale, false, PAL);
     drawBurnOverlay(ctx, block);
   }
 
@@ -533,12 +494,12 @@
     const cy = player.y;
     const SPS = global.SproutPlayerSprites;
 
-    drawShadow(ctx, cx, cy + 4, Math.max(18, player.radius * 0.9), 6 * worldTileScale());
+    drawShadow(ctx, cx, cy + 4, Math.max(12, player.radius * 0.85), Math.max(4, player.radius * 0.22));
 
     if (SPS && SPS.draw(ctx, player, frame, cx, cy)) {
       if (player.effectType === 'stop') {
-        const s = blitScale();
-        blitAt(ctx, ['O..', '.O.'], cx - 14 * worldTileScale(), cy - 28 * worldTileScale(), s, false, { ...PAL, O: '#fff', '.': null });
+        const s = entityBlitScale();
+        blitAt(ctx, ['O..', '.O.'], cx - player.radius * 0.5, cy - player.radius * 1.4, s, false, { ...PAL, O: '#fff', '.': null });
       }
       if (player.burnTimer > 0) {
         drawBurnOverlay(ctx, {
@@ -574,15 +535,15 @@
     const cy = enemy.y + bob;
     const burning = enemy.burnTimer > 0;
 
-    drawShadow(ctx, cx, cy + enemy.radius * 0.35, enemy.radius * 0.6, 4 * worldTileScale());
-    blit(ctx, SPR.enemyWalk, cx, cy, blitScale(), false, getPal(enemy.effectType, burning));
+    drawShadow(ctx, cx, cy + enemy.radius * 0.35, enemy.radius * 0.6, Math.max(3, enemy.radius * 0.18));
+    blit(ctx, SPR.enemyWalk, cx, cy, entityBlitScale(), false, getPal(enemy.effectType, burning));
 
     if (enemy.effectType === 'stop') {
-      blit(ctx, ['O..', '.O.'], cx - 10 * worldTileScale(), cy - 12 * worldTileScale(), blitScale(), false, { ...PAL, O: '#fff', '.': null });
+      blit(ctx, ['O..', '.O.'], cx - enemy.radius * 0.5, cy - enemy.radius, entityBlitScale(), false, { ...PAL, O: '#fff', '.': null });
     }
 
     if (enemy.hp < enemy.maxHp && enemy.hp > 0) {
-      const barW = 28 * worldTileScale();
+      const barW = Math.max(28, enemy.radius * 2.2);
       const bx = Math.round(cx - barW / 2);
       const by = Math.round(cy - enemy.radius - 12);
       ctx.fillStyle = OUTLINE;
@@ -599,17 +560,10 @@
     const bounce = Math.round(Math.sin(frame * 0.1) * 1);
     const cx = chest.x + chest.width / 2;
     const cy = chest.y + chest.height / 2 + bounce;
-    const SA = global.SproutAssets;
-    drawShadow(ctx, cx, chest.y + chest.height, chest.width * 0.4, 3);
-    if (SA && SA.isReady() && SA.drawChestSprite(ctx, cx, cy, frame)) {
-      if (Math.sin(frame * 0.18) > 0.4) {
-        blit(ctx, ['.Y.', 'Y.Y', '.Y.'], cx + 10, cy - 10, 2, false, PAL);
-      }
-      return;
-    }
-    blit(ctx, SPR.chest, cx, cy, PX, false, PAL);
+    drawShadow(ctx, cx, chest.y + chest.height, chest.width * 0.4, Math.max(3, chest.height * 0.08));
+    blit(ctx, SPR.chest, cx, cy, entityBlitScale(), false, PAL);
     if (Math.sin(frame * 0.18) > 0.4) {
-      blit(ctx, ['.Y.', 'Y.Y', '.Y.'], cx + 10, cy - 10, 2, false, PAL);
+      blit(ctx, ['.Y.', 'Y.Y', '.Y.'], cx + chest.width * 0.12, cy - chest.height * 0.2, entityBlitScale(), false, PAL);
     }
   }
 
@@ -680,19 +634,12 @@
   }
 
   function isSolidPropType(type) {
-    const CSA = global.CustomSheetAssets;
-    if (CSA && CSA.isCustomType(type) && CSA.SOLID_IDS.has(type)) return true;
-    const CO = global.CutoutAssets;
-    if (CO && CO.isCutoutType(type) && CO.SOLID_IDS.has(type)) return true;
-    const PB = global.PictureBookAssets;
-    if (PB && PB.isPbType(type) && PB.SOLID_IDS.has(type)) return true;
-    return SOLID_PROP_TYPES.has(type);
+    type = normalizePropType(type);
+    return type === 'tree' || type === 'rock' || type === 'log' || type === 'stump';
   }
 
   function isWaterTerrain(type) {
-    const PB = global.PictureBookAssets;
-    if (PB && PB.isPbType(type) && PB.WATER_IDS.has(type)) return true;
-    return type === 'water';
+    return normalizeTerrainType(type) === 'water';
   }
 
   function drawCreateToolThumb(ctx, kind, size, frame) {
@@ -700,18 +647,7 @@
     ctx.fillStyle = '#1e293b';
     ctx.fillRect(0, 0, size, size);
 
-    const SA = global.SproutAssets;
     const f = frame || 0;
-
-    const CSA = global.CustomSheetAssets;
-    if (CSA && CSA.isCustomType(kind) && CSA.isReady() && CSA.drawThumb(ctx, kind, size)) {
-      return;
-    }
-
-    const PB = global.PictureBookAssets;
-    if (PB && PB.isPbType(kind) && PB.isReady() && PB.drawThumb(ctx, kind, size)) {
-      return;
-    }
 
     if (kind === 'grass' || kind === 'path' || kind === 'water') {
       drawTerrainTile(ctx, kind, 0, 0, size, 0, 0, f);
@@ -777,6 +713,9 @@
     TERRAIN_TYPES,
     SOLID_PROP_TYPES,
     terrainKey,
+    normalizeTerrainType,
+    normalizePropType,
+    BUILTIN_PROPS,
     getTerrainAt,
     isSolidPropType,
     isWaterTerrain,
