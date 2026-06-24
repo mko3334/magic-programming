@@ -5235,8 +5235,30 @@
     return { x: player.x + dx * distance, y: player.y + dy * distance };
   }
 
+  function playerBlockedAt(x, y, radius) {
+    if (x < radius || x > width - radius || y < radius || y > height - radius) return true;
+    for (const block of getSolidBlocks()) {
+      if (collideCircleRect(x, y, radius, block)) return true;
+    }
+    if (mapTerrain) {
+      const samples = [
+        [x, y],
+        [x + radius * 0.6, y],
+        [x - radius * 0.6, y],
+        [x, y + radius * 0.6],
+        [x, y - radius * 0.6],
+      ];
+      for (const [sx, sy] of samples) {
+        const gx = Math.floor(sx / TILE_W);
+        const gy = Math.floor(sy / TILE_H);
+        if (PopArt.isWaterTerrain(PopArt.getTerrainAt(mapTerrain, gx, gy))) return true;
+      }
+    }
+    return false;
+  }
+
   const player = { 
-    x: 0, y: 0, radius: 22 * MAP_TILE_UNIT, speed: 4 * MAP_TILE_UNIT, facing: 'down',
+    x: 0, y: 0, radius: 22 * MAP_TILE_UNIT, speed: MAP_TILE_PX * 1.35, facing: 'down',
     hp: 100, maxHp: 100,
     mp: 100, maxMp: 100,
     level: 1, exp: 0, maxExp: 40,
@@ -5251,7 +5273,7 @@
       this.effectType = type;
       this.effectTimer = 180;
     },
-    update: function() {
+    update: function(dt = 1 / 60) {
       if (this.effectTimer > 0) {
         this.effectTimer--;
         if (this.effectTimer <= 0) this.effectType = null;
@@ -5262,83 +5284,53 @@
         this.invincibleTimer--;
       }
 
-      // 移動処理
-      let currentSpeed = this.speed;
-      if (this.effectType === 'slow') currentSpeed *= 0.5;
-      if (this.effectType === 'speedup') currentSpeed *= 1.5;
-      if (this.effectType === 'stop') currentSpeed = 0;
+      // 移動処理（px/秒 × deltaTime でスムーズ移動）
+      let moveSpeed = this.speed;
+      if (this.effectType === 'slow') moveSpeed *= 0.5;
+      if (this.effectType === 'speedup') moveSpeed *= 1.5;
+      if (this.effectType === 'stop') moveSpeed = 0;
 
-      let dx = 0;
-      let dy = 0;
-      let faceDx = 0;
-      let faceDy = 0;
+      let dirX = 0;
+      let dirY = 0;
 
       const mobileVec = (MobileControls && MobileControls.isEnabled() && MobileControls.isVisible())
         ? MobileControls.getMoveVector()
         : null;
       if (mobileVec && mobileVec.active) {
         const mag = Math.hypot(mobileVec.x, mobileVec.y);
-        if (mag > 0) {
-          dx = mobileVec.x * currentSpeed;
-          dy = mobileVec.y * currentSpeed;
-          faceDx = mobileVec.x;
-          faceDy = mobileVec.y;
+        if (mag > 0.08) {
+          dirX = mobileVec.x / mag;
+          dirY = mobileVec.y / mag;
         }
       } else {
-        if (keys['w'] || keys['arrowup']) dy -= currentSpeed;
-        if (keys['s'] || keys['arrowdown']) dy += currentSpeed;
-        if (keys['a'] || keys['arrowleft']) dx -= currentSpeed;
-        if (keys['d'] || keys['arrowright']) dx += currentSpeed;
-        if (keys['w'] || keys['arrowup']) faceDy -= 1;
-        if (keys['s'] || keys['arrowdown']) faceDy += 1;
-        if (keys['a'] || keys['arrowleft']) faceDx -= 1;
-        if (keys['d'] || keys['arrowright']) faceDx += 1;
+        if (keys['w'] || keys['arrowup']) dirY -= 1;
+        if (keys['s'] || keys['arrowdown']) dirY += 1;
+        if (keys['a'] || keys['arrowleft']) dirX -= 1;
+        if (keys['d'] || keys['arrowright']) dirX += 1;
       }
 
-      // 入力方向に向きを更新（移動できなくても方向転換できる）
-      if (faceDx !== 0 || faceDy !== 0) {
-        if (Math.abs(faceDx) > Math.abs(faceDy)) {
-          this.facing = faceDx > 0 ? 'right' : 'left';
+      if (dirX !== 0 || dirY !== 0) {
+        const len = Math.hypot(dirX, dirY) || 1;
+        dirX /= len;
+        dirY /= len;
+        if (Math.abs(dirX) > Math.abs(dirY)) {
+          this.facing = dirX > 0 ? 'right' : 'left';
         } else {
-          this.facing = faceDy > 0 ? 'down' : 'up';
+          this.facing = dirY > 0 ? 'down' : 'up';
         }
       }
 
-      // 斜め移動の速度調整
-      if (dx !== 0 && dy !== 0) {
-        dx *= 0.7071;
-        dy *= 0.7071;
+      const step = moveSpeed * dt;
+      const dx = dirX * step;
+      const dy = dirY * step;
+
+      if (dx !== 0) {
+        const tryX = this.x + dx;
+        if (!playerBlockedAt(tryX, this.y, this.radius)) this.x = tryX;
       }
-
-      let nextX = this.x + dx;
-      let nextY = this.y + dy;
-
-      // 画面境界チェック
-      if (nextX < this.radius) nextX = this.radius;
-      if (nextX > width - this.radius) nextX = width - this.radius;
-      if (nextY < this.radius) nextY = this.radius;
-      if (nextY > height - this.radius) nextY = height - this.radius;
-
-      // 障害物ブロックとの衝突判定
-      let collide = false;
-      for (let block of getSolidBlocks()) {
-        if (collideCircleRect(nextX, nextY, this.radius, block)) {
-          collide = true;
-          break;
-        }
-      }
-
-      if (!collide && mapTerrain) {
-        const gx = Math.floor(nextX / TILE_W);
-        const gy = Math.floor(nextY / TILE_H);
-        if (PopArt.isWaterTerrain(PopArt.getTerrainAt(mapTerrain, gx, gy))) {
-          collide = true;
-        }
-      }
-
-      if (!collide) {
-        this.x = nextX;
-        this.y = nextY;
+      if (dy !== 0) {
+        const tryY = this.y + dy;
+        if (!playerBlockedAt(this.x, tryY, this.radius)) this.y = tryY;
       }
 
       this.isMoving = dx !== 0 || dy !== 0;
@@ -6613,8 +6605,13 @@
     }
   }
 
-  function gameLoop() {
+  let lastGameTime = 0;
+
+  function gameLoop(timestamp) {
     try {
+      const dt = Math.min(0.05, lastGameTime ? (timestamp - lastGameTime) / 1000 : 1 / 60);
+      lastGameTime = timestamp;
+
       const inEditor = !viewEditor.classList.contains('hidden-view');
       if (inEditor) {
         window.currentTapFlag = sandboxTapFlag;
@@ -6626,7 +6623,7 @@
 
       if (!isPaused) {
         frameCount++;
-        player.update();
+        player.update(dt);
         enemies.forEach(e => e.update());
         ibaraBlocks.forEach(b => b.update());
         propBlocks.forEach(b => b.update());
