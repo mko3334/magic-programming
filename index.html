@@ -1005,14 +1005,6 @@
       border-color: #22d3ee;
       box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.35);
     }
-    #sgi-object-preview {
-      width: 100%;
-      max-height: 180px;
-      aspect-ratio: 16/9;
-      background: #0f172a;
-      border-radius: 1rem;
-      border: 2px solid #334155;
-    }
     .sgi-grid-fields {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1558,12 +1550,8 @@
   <!-- 右パネル：シート取込モード -->
   <div id="create-sheet-import-panel" class="hidden-view flex-1 bg-white rounded-3xl shadow-sm p-4 flex flex-col overflow-hidden border border-cyan-100 relative">
     <button id="btn-go-place-mode" type="button">🗺️ 配置モードへ — 採用したタイルをマップに置く</button>
-    <div class="text-[11px] font-bold text-cyan-700 mb-0 shrink-0 mt-2">📋 画像取込 — シート分割 or 1枚オブジェクト</div>
-    <div class="text-[10px] text-slate-400 shrink-0">※ 取込素材はシールのように自由配置。320px PNG推奨・白縁付き</div>
-    <div class="flex gap-1 shrink-0 mt-1">
-      <button id="sgi-mode-grid" type="button" class="flex-1 py-1.5 text-[10px] font-bold rounded-lg bg-cyan-100 border-2 border-cyan-400 text-cyan-800">📋 シート分割</button>
-      <button id="sgi-mode-object" type="button" class="flex-1 py-1.5 text-[10px] font-bold rounded-lg bg-slate-100 border border-slate-200 text-slate-600">🖼️ 1枚オブジェクト</button>
-    </div>
+    <div class="text-[11px] font-bold text-cyan-700 mb-0 shrink-0 mt-2">📋 シート取込 — 等間隔グリッド分割</div>
+    <div class="text-[10px] text-slate-400 shrink-0">※ PNGシートをマスごとに切り出して配置</div>
     <div class="sgi-scroll custom-scrollbar">
       <div class="flex flex-col gap-2">
         <label class="text-[10px] font-bold text-slate-500">グループ名（新規追加時）</label>
@@ -1593,33 +1581,6 @@
           <button id="sgi-regenerate-grid" type="button" class="flex-1 py-1.5 text-[10px] font-bold rounded-lg bg-cyan-50 border border-cyan-200 text-cyan-700">グリッド更新</button>
         </div>
         <canvas id="sgi-preview"></canvas>
-      </div>
-
-      <div id="sgi-object-panel" class="hidden flex flex-col gap-2">
-        <label class="text-[10px] font-bold text-slate-500">シールPNGを追加（クリックで自由配置）</label>
-        <input id="sgi-object-file" type="file" accept="image/png,image/jpeg,image/webp" class="text-xs">
-        <label class="flex items-center gap-2 text-[10px] font-bold text-slate-600">
-          <input id="sgi-object-key-black" type="checkbox" checked> 黒背景を透過
-        </label>
-        <label class="flex items-center gap-2 text-[10px] font-bold text-slate-600">
-          <input id="sgi-object-white-outline" type="checkbox" checked> 白縁を付ける
-        </label>
-        <div class="flex items-center gap-2">
-          <label class="text-[10px] font-bold text-slate-500 shrink-0">白縁の太さ</label>
-          <input id="sgi-object-outline-width" type="range" min="2" max="20" step="1" value="8" class="flex-1">
-          <span id="sgi-object-outline-width-val" class="text-[10px] font-bold text-slate-600 w-8 text-right">8</span>
-        </div>
-        <label class="flex items-center gap-2 text-[10px] font-bold text-slate-600">
-          <input id="sgi-object-solid" type="checkbox"> 壁（当たり判定）
-        </label>
-        <p class="text-[10px] text-slate-500 leading-snug">320×320px 前後の PNG 推奨。マス目に沿わず、クリックした位置にシールのように貼れます。</p>
-        <div class="flex items-center gap-2">
-          <label class="text-[10px] font-bold text-slate-500 shrink-0">サイズ</label>
-          <input id="sgi-object-scale" type="range" min="25" max="400" step="5" value="100" class="flex-1">
-          <span id="sgi-object-scale-val" class="text-[10px] font-bold text-slate-600 w-10 text-right">100%</span>
-        </div>
-        <canvas id="sgi-object-preview"></canvas>
-        <button id="sgi-object-save" type="button" class="sgi-set-create-btn w-full">💾 保存して採用</button>
       </div>
 
       <div id="sgi-cell-section" class="sgi-cell-section">
@@ -2155,17 +2116,17 @@
 
   function stripSheetToolsFromCreateLists() {
     for (let i = CREATE_TERRAIN_TOOLS.length - 1; i >= 0; i--) {
-      if (CREATE_TERRAIN_TOOLS[i].startsWith('gs_') || CREATE_TERRAIN_TOOLS[i].startsWith('gset_') || CREATE_TERRAIN_TOOLS[i].startsWith('gobj_')) {
+      if (CREATE_TERRAIN_TOOLS[i].startsWith('gs_') || CREATE_TERRAIN_TOOLS[i].startsWith('gset_')) {
         CREATE_TERRAIN_TOOLS.splice(i, 1);
       }
     }
     for (let i = CREATE_PROP_TYPES.length - 1; i >= 0; i--) {
-      if (CREATE_PROP_TYPES[i].startsWith('gs_') || CREATE_PROP_TYPES[i].startsWith('gset_') || CREATE_PROP_TYPES[i].startsWith('gobj_')) {
+      if (CREATE_PROP_TYPES[i].startsWith('gs_') || CREATE_PROP_TYPES[i].startsWith('gset_')) {
         CREATE_PROP_TYPES.splice(i, 1);
       }
     }
     Object.keys(tools).forEach((key) => {
-      if (key.startsWith('gs_') || key.startsWith('gset_') || key.startsWith('gobj_')) delete tools[key];
+      if (key.startsWith('gs_') || key.startsWith('gset_')) delete tools[key];
     });
   }
 
@@ -2199,13 +2160,10 @@
 
     if (CSA.isSetType(tileId)) {
       CSA.updateSet(tileId, { enabled: false });
-      removeCustomSheetFromCreateMap([], [tileId], []);
-    } else if (CSA.isObjectType(tileId)) {
-      CSA.updateObject(tileId, { enabled: false });
-      removeCustomSheetFromCreateMap([], [], [tileId]);
+      removeCustomSheetFromCreateMap([], [tileId]);
     } else if (CSA.isSheetType(tileId)) {
       CSA.updateCell(tileId, { enabled: false });
-      removeCustomSheetFromCreateMap([tileId], [], []);
+      removeCustomSheetFromCreateMap([tileId], []);
     }
 
     registerCustomSheetCreateTools(true);
@@ -2222,7 +2180,7 @@
     if (!confirm(`グループ「${name}」を一覧から削除しますか？\n採用済みタイルとマップ上の該当タイルも除去されます。`)) return;
     const removed = CSA.deleteGroup(groupId);
     if (!removed) return;
-    removeCustomSheetFromCreateMap(removed.cellIds, removed.setIds, removed.objectIds);
+    removeCustomSheetFromCreateMap(removed.cellIds, removed.setIds);
     registerCustomSheetCreateTools(true);
     if (activeTool && CSA.isCustomType(activeTool) && !CSA.CATALOG.some((e) => e.id === activeTool)) {
       selectTool('grass');
@@ -2433,8 +2391,6 @@
       CustomSheetAssets.updateCell(id, { label: createTileNames[id] });
     } else if (id.startsWith('gset_') && window.CustomSheetAssets) {
       CustomSheetAssets.updateSet(id, { label: createTileNames[id] });
-    } else if (id.startsWith('gobj_') && window.CustomSheetAssets) {
-      CustomSheetAssets.updateObject(id, { label: createTileNames[id] });
     }
     const input = document.querySelector(`.create-tool-name[data-tool="${id}"]`);
     if (input) {
@@ -2507,8 +2463,8 @@
     }
   }
 
-  function removeCustomSheetFromCreateMap(cellIds, setIds, objectIds) {
-    const typeSet = new Set([...(cellIds || []), ...(setIds || []), ...(objectIds || [])]);
+  function removeCustomSheetFromCreateMap(cellIds, setIds) {
+    const typeSet = new Set([...(cellIds || []), ...(setIds || [])]);
     if (!typeSet.size) return;
     Object.keys(createMapData.terrain).forEach((key) => {
       if (typeSet.has(createMapData.terrain[key])) delete createMapData.terrain[key];
@@ -2520,18 +2476,10 @@
   window.removeCustomSheetFromCreateMap = removeCustomSheetFromCreateMap;
 
   function migrateCreateMapProps(props) {
-    return (props || []).map((p) => {
-      if (p.sticker) return p;
-      if (p.x != null && p.y != null && p.gridX == null) return { ...p, sticker: true };
-      if (typeof p.type === 'string' && p.type.startsWith('gobj_') && p.gridX != null) {
-        return {
-          type: p.type,
-          x: p.gridX * MAP_TILE_PX + MAP_TILE_PX / 2,
-          y: p.gridY * MAP_TILE_PX + MAP_TILE_PX * 0.92,
-          sticker: true,
-        };
-      }
-      return p;
+    return (props || []).filter((p) => {
+      if (p.sticker) return false;
+      if (typeof p.type === 'string' && p.type.startsWith('gobj_')) return false;
+      return p.gridX != null && p.gridY != null;
     });
   }
 
@@ -2556,7 +2504,7 @@
         return { ...p, x: p.x * factor, y: p.y * factor };
       }
       return p;
-    });
+    }).filter((p) => !p.sticker && !(typeof p.type === 'string' && p.type.startsWith('gobj_')));
     data.mapTilePx = MAP_TILE_PX;
     return data;
   }
@@ -2569,11 +2517,16 @@
       if (!data || typeof data !== 'object') return;
       data = migrateCreateMapCoords(data);
       createMapData.terrain = data.terrain && typeof data.terrain === 'object' ? data.terrain : {};
+      Object.keys(createMapData.terrain).forEach((key) => {
+        const val = createMapData.terrain[key];
+        if (typeof val === 'string' && val.startsWith('gobj_')) delete createMapData.terrain[key];
+      });
       createMapData.props = migrateCreateMapProps(Array.isArray(data.props) ? data.props : []);
       createMapData.player = data.player ?? null;
       createMapData.chest = data.chest ?? null;
       createMapData.enemies = Array.isArray(data.enemies) ? data.enemies : [];
       createMapData.mapTilePx = MAP_TILE_PX;
+      persistCreateMap();
       const rewardSelectEl = document.getElementById('chest-reward-select');
       if (rewardSelectEl && createMapData.chest?.reward) {
         rewardSelectEl.value = createMapData.chest.reward;
@@ -2607,18 +2560,6 @@
     PopArt.drawGround(createCtx, createW, createH, anim, gridW, createMapData.terrain);
 
     createMapData.props.forEach((pos) => {
-      if (pos.sticker) {
-        PopArt.drawMapProp(createCtx, pos.type, {
-          sticker: true,
-          x: pos.x,
-          y: pos.y,
-          width: 0,
-          height: 0,
-          active: true,
-          isBurning: false,
-        }, anim);
-        return;
-      }
       PopArt.drawMapProp(createCtx, pos.type, {
         x: pos.gridX * gridW,
         y: pos.gridY * gridH,
@@ -3022,28 +2963,9 @@
     return clickX >= 0 && clickX <= createW && clickY >= 0 && clickY <= createH;
   }
 
-  function findCreateStickerAt(clickX, clickY) {
-    const CSA = window.CustomSheetAssets;
-    if (!CSA?.getObjectStickerBounds) return -1;
-    for (let i = createMapData.props.length - 1; i >= 0; i--) {
-      const p = createMapData.props[i];
-      if (!p.sticker) continue;
-      const b = CSA.getObjectStickerBounds(p.type, p.x, p.y);
-      if (b && clickX >= b.left && clickX <= b.right && clickY >= b.top && clickY <= b.bottom) {
-        return i;
-      }
-    }
-    return -1;
-  }
-
   function findCreateProp(gridX, gridY) {
     const CSA = window.CustomSheetAssets;
     return createMapData.props.findIndex((pos) => {
-      if (pos.sticker) return false;
-      if (CSA?.isObjectType?.(pos.type)) {
-        const fp = CSA.getObjectFootprint(pos.type);
-        return fp.some((m) => pos.gridX + m.dx === gridX && pos.gridY + m.dy === gridY);
-      }
       if (CSA?.isSetType?.(pos.type)) {
         const set = CSA.getSet(pos.type);
         if (!set) return false;
@@ -3075,14 +2997,7 @@
     removeCreateEnemyAtGrid(gridX, gridY);
   }
 
-  function eraseCreateCell(gridX, gridY, clickX, clickY) {
-    if (clickX != null && clickY != null) {
-      const stickerIdx = findCreateStickerAt(clickX, clickY);
-      if (stickerIdx !== -1) {
-        createMapData.props.splice(stickerIdx, 1);
-        return true;
-      }
-    }
+  function eraseCreateCell(gridX, gridY) {
     const cellKey = PopArt.terrainKey(gridX, gridY);
     let changed = false;
 
@@ -3123,11 +3038,9 @@
   }
 
   function normalizeCreateMapOccupancy() {
-    const stickers = createMapData.props.filter((p) => p.sticker);
-    const gridProps = createMapData.props.filter((p) => !p.sticker);
     const propByCell = new Map();
-    gridProps.forEach(p => propByCell.set(`${p.gridX},${p.gridY}`, p));
-    createMapData.props = [...stickers, ...propByCell.values()];
+    createMapData.props.filter((p) => p.gridX != null).forEach((p) => propByCell.set(`${p.gridX},${p.gridY}`, p));
+    createMapData.props = [...propByCell.values()];
 
     const enemyByCell = new Map();
     createMapData.enemies.forEach(e => {
@@ -3156,40 +3069,7 @@
 
     if (activeTool === 'eraser') {
       if (paintMode) lastPaintCell = cellKey;
-      return eraseCreateCell(gridX, gridY, clickX, clickY);
-    }
-
-    if (CSA?.isObjectType?.(activeTool)) {
-      const obj = CSA.getObject(activeTool);
-      if (!obj) return false;
-
-      if (obj.kind === 'terrain') {
-        if (!isInsideCreateGrid(gridX, gridY)) return false;
-        for (const m of CSA.getObjectFootprint(activeTool)) {
-          const gx = gridX + m.dx;
-          const gy = gridY + m.dy;
-          if (!isInsideCreateGrid(gx, gy)) return false;
-        }
-        if (paintMode) lastPaintCell = cellKey;
-        const firstKey = PopArt.terrainKey(gridX, gridY);
-        const removing = createMapData.terrain[firstKey] === activeTool;
-        CSA.getObjectFootprint(activeTool).forEach((m) => {
-          const key = PopArt.terrainKey(gridX + m.dx, gridY + m.dy);
-          if (removing) delete createMapData.terrain[key];
-          else createMapData.terrain[key] = activeTool;
-        });
-        return true;
-      }
-
-      if (!isInsideCreateCanvas(clickX, clickY)) return false;
-      if (paintMode) return false;
-      const hitIdx = findCreateStickerAt(clickX, clickY);
-      if (hitIdx !== -1 && createMapData.props[hitIdx].type === activeTool) {
-        createMapData.props.splice(hitIdx, 1);
-        return true;
-      }
-      createMapData.props.push({ type: activeTool, x: clickX, y: clickY, sticker: true });
-      return true;
+      return eraseCreateCell(gridX, gridY);
     }
 
     if (!isInsideCreateGrid(gridX, gridY)) return false;
@@ -3545,40 +3425,6 @@
     draw(ctx) {
       if (!this.active) return;
       PopArt.drawRock(ctx, this, frameCount);
-    }
-  }
-
-  class StickerProp {
-    constructor(type, x, y) {
-      this.sticker = true;
-      this.type = type;
-      this.x = x;
-      this.y = y;
-      this.active = true;
-      this.burnKind = type;
-      const CSA = window.CustomSheetAssets;
-      const b = CSA?.getObjectStickerBounds?.(type, x, y);
-      if (b) {
-        this.width = b.width;
-        this.height = b.height;
-        this._bx = b.left;
-        this._by = b.top;
-      } else {
-        this.width = MAP_TILE_PX;
-        this.height = MAP_TILE_PX;
-        this._bx = x - MAP_TILE_PX / 2;
-        this._by = y - MAP_TILE_PX;
-      }
-      resetBurnState(this);
-    }
-    update() {
-      if (!this.active) return;
-      if (!isNaturalBurnProp(this.type)) return;
-      updateBurningBlock(this);
-    }
-    draw(ctx) {
-      if (!this.active) return;
-      PopArt.drawMapProp(ctx, this.type, this, frameCount);
     }
   }
 
@@ -4455,25 +4301,7 @@
     const CSA = window.CustomSheetAssets;
     const solidProps = [];
     propBlocks.filter(b => b.active && PopArt.isSolidPropType(b.type)).forEach((b) => {
-      if (b.sticker && CSA?.isObjectType?.(b.type)) {
-        solidProps.push({
-          x: b._bx ?? b.x,
-          y: b._by ?? b.y,
-          width: b.width,
-          height: b.height,
-          active: true,
-        });
-      } else if (CSA?.isObjectType?.(b.type)) {
-        CSA.getObjectFootprint(b.type).forEach((m) => {
-          solidProps.push({
-            x: b.x + m.dx * b.width,
-            y: b.y + m.dy * b.height,
-            width: b.width,
-            height: b.height,
-            active: true,
-          });
-        });
-      } else if (CSA?.isSetType?.(b.type)) {
+      if (CSA?.isSetType?.(b.type)) {
         const set = CSA.getSet(b.type);
         set?.members.forEach((m) => {
           solidProps.push({
@@ -6497,11 +6325,7 @@
         enemies.push(new Enemy(pos.x, pos.y));
       });
       createMapData.props.forEach(pos => {
-        if (pos.sticker) {
-          propBlocks.push(new StickerProp(pos.type, pos.x, pos.y));
-        } else {
-          propBlocks.push(new MapProp(pos.gridX, pos.gridY, pos.type));
-        }
+        propBlocks.push(new MapProp(pos.gridX, pos.gridY, pos.type));
       });
     }
     else if (level === 'procedural') {

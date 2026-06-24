@@ -21,7 +21,7 @@
 
   function isCustomSheetTile(id) {
     const CSA = global.CustomSheetAssets;
-    return CSA?.isSheetType?.(id) || CSA?.isObjectType?.(id);
+    return CSA?.isSheetType?.(id);
   }
 
   function getCropForTile(id) {
@@ -198,33 +198,6 @@
     const CSA = global.CustomSheetAssets;
     if (CSA?.getGroups?.()?.length) {
       CSA.getGroups().forEach((groupMeta) => {
-        if (groupMeta.importMode === 'object' && groupMeta.objectId && groupMeta.adoptedCount) {
-          const body = appendCollapsibleSection(
-            `🖼️ ${groupMeta.name}`,
-            groupMeta.id,
-            !!groupMeta.collapsed
-          );
-          const obj = CSA.getObject(groupMeta.objectId);
-          const entry = { id: groupMeta.objectId, label: obj?.label || groupMeta.name };
-          const btn = document.createElement('button');
-          btn.type = 'button';
-          btn.className = 'pb-crop-list-item';
-          btn.dataset.tileId = entry.id;
-          btn.title = entry.label;
-          const canvas = document.createElement('canvas');
-          canvas.className = 'pb-crop-thumb';
-          canvas.width = 36;
-          canvas.height = 36;
-          const label = document.createElement('span');
-          label.className = 'pb-crop-grid-label';
-          label.textContent = entry.label;
-          btn.appendChild(canvas);
-          btn.appendChild(label);
-          btn.addEventListener('click', () => selectTile(entry.id));
-          body.appendChild(btn);
-          tileIds.push(entry.id);
-          return;
-        }
         const cells = CSA.getCellsForGroup(groupMeta.id);
         if (!cells.length && !groupMeta.hasImage) return;
         const body = appendCollapsibleSection(

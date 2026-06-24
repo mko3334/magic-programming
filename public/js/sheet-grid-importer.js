@@ -3,7 +3,6 @@
  */
 (function (global) {
   let active = false;
-  let importMode = 'grid';
   let selectedCol = 0;
   let selectedRow = 0;
   const setPickIds = new Set();
@@ -35,14 +34,14 @@
     groups.forEach((g) => {
       const opt = document.createElement('option');
       opt.value = g.id;
-      opt.textContent = `${g.importMode === 'object' ? '🖼️ ' : '📋 '}${g.name}${g.adoptedCount ? ` (${g.adoptedCount})` : ''}`;
+      opt.textContent = `📋 ${g.name}${g.adoptedCount ? ` (${g.adoptedCount})` : ''}`;
       if (g.id === activeId) opt.selected = true;
       select.appendChild(opt);
     });
 
-    const active = groups.find((g) => g.id === activeId) || groups[0];
-    if (nameInput && active) {
-      nameInput.value = active.name;
+    const activeGroup = groups.find((g) => g.id === activeId) || groups[0];
+    if (nameInput && activeGroup) {
+      nameInput.value = activeGroup.name;
       nameInput.placeholder = 'グループ名';
     }
   }
@@ -55,154 +54,6 @@
     const trimmed = nameInput.value.trim();
     if (trimmed) CSA.updateGroup(activeId, { name: trimmed });
     renderGroupSelector();
-  }
-
-  function updateImportPanelsVisibility() {
-    const gridPanel = $('sgi-grid-panel');
-    const objectPanel = $('sgi-object-panel');
-    const cellSection = $('sgi-cell-section');
-    const modeGridBtn = $('sgi-mode-grid');
-    const modeObjectBtn = $('sgi-mode-object');
-    const isObject = importMode === 'object';
-    if (gridPanel) gridPanel.classList.toggle('hidden', isObject);
-    if (objectPanel) objectPanel.classList.toggle('hidden', !isObject);
-    if (cellSection) cellSection.classList.toggle('hidden', isObject);
-    if (modeGridBtn) {
-      modeGridBtn.className = isObject
-        ? 'flex-1 py-1.5 text-[10px] font-bold rounded-lg bg-slate-100 border border-slate-200 text-slate-600'
-        : 'flex-1 py-1.5 text-[10px] font-bold rounded-lg bg-cyan-100 border-2 border-cyan-400 text-cyan-800';
-    }
-    if (modeObjectBtn) {
-      modeObjectBtn.className = isObject
-        ? 'flex-1 py-1.5 text-[10px] font-bold rounded-lg bg-violet-100 border-2 border-violet-400 text-violet-800'
-        : 'flex-1 py-1.5 text-[10px] font-bold rounded-lg bg-slate-100 border border-slate-200 text-slate-600';
-    }
-  }
-
-  function setImportMode(mode) {
-    importMode = mode === 'object' ? 'object' : 'grid';
-    updateImportPanelsVisibility();
-    if (importMode === 'object') {
-      syncObjectInputsFromActiveGroup();
-      refreshObjectPreview();
-    } else {
-      syncGridInputs();
-      refreshPreview();
-    }
-  }
-
-  function objectScaleBoundsPct() {
-    const CSA = global.CustomSheetAssets;
-    const min = CSA?.VISUAL_SCALE_MIN ?? 0.25;
-    const max = CSA?.VISUAL_SCALE_MAX ?? 4;
-    return { min: Math.round(min * 100), max: Math.round(max * 100), minScale: min, maxScale: max };
-  }
-
-  function syncObjectInputsFromActiveGroup() {
-    const CSA = global.CustomSheetAssets;
-    if (!CSA) return;
-    const obj = CSA.getActiveObject();
-    const group = CSA.getGroups().find((g) => g.id === CSA.getActiveGroupId());
-    if ($('sgi-object-solid')) $('sgi-object-solid').checked = !!obj?.solid;
-    if ($('sgi-object-key-black')) $('sgi-object-key-black').checked = group?.hasImage ? (CSA.getGrid().keyBlack ?? true) : true;
-    if ($('sgi-object-white-outline')) $('sgi-object-white-outline').checked = obj?.whiteOutline !== false;
-    const outlineW = obj?.outlineWidth ?? 8;
-    if ($('sgi-object-outline-width')) $('sgi-object-outline-width').value = String(outlineW);
-    if ($('sgi-object-outline-width-val')) $('sgi-object-outline-width-val').textContent = String(outlineW);
-    const bounds = objectScaleBoundsPct();
-    const scalePct = Math.round((obj?.visualScale ?? CSA.DEFAULT_OBJECT_SCALE ?? 1) * 100);
-    if ($('sgi-object-scale')) $('sgi-object-scale').value = String(Math.max(bounds.min, Math.min(bounds.max, scalePct)));
-    if ($('sgi-object-scale-val')) $('sgi-object-scale-val').textContent = `${scalePct}%`;
-    if (group?.importMode === 'object') setImportMode('object');
-  }
-
-  function readObjectInputs() {
-    const bounds = objectScaleBoundsPct();
-    const scaleRaw = Number($('sgi-object-scale')?.value) || Math.round((global.CustomSheetAssets?.DEFAULT_OBJECT_SCALE ?? 1) * 100);
-    return {
-      kind: 'prop',
-      solid: !!$('sgi-object-solid')?.checked,
-      keyBlack: !!$('sgi-object-key-black')?.checked,
-      whiteOutline: !!$('sgi-object-white-outline')?.checked,
-      outlineWidth: Number($('sgi-object-outline-width')?.value) || 8,
-      visualScale: Math.max(bounds.minScale, Math.min(bounds.maxScale, scaleRaw / 100)),
-    };
-  }
-
-  function updateObjectOutlineLabel() {
-    const w = Number($('sgi-object-outline-width')?.value) || 8;
-    if ($('sgi-object-outline-width-val')) $('sgi-object-outline-width-val').textContent = String(w);
-  }
-
-  function updateObjectScaleLabel() {
-    const pct = Number($('sgi-object-scale')?.value) || 100;
-    if ($('sgi-object-scale-val')) $('sgi-object-scale-val').textContent = `${pct}%`;
-  }
-
-  function refreshObjectPreview() {
-    const canvas = $('sgi-object-preview');
-    const CSA = global.CustomSheetAssets;
-    if (!canvas || !CSA) return;
-    const ctx = canvas.getContext('2d');
-    const cssW = canvas.clientWidth || 480;
-    const cssH = Math.round(cssW * 0.55);
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const backingW = Math.round(cssW * dpr);
-    const backingH = Math.round(cssH * dpr);
-    if (canvas.width !== backingW || canvas.height !== backingH) {
-      canvas.width = backingW;
-      canvas.height = backingH;
-    }
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    CSA.drawObjectPreview(ctx, cssW, cssH, CSA.getActiveGroupId());
-  }
-
-  function applyObjectInputsToActiveGroup(options = {}) {
-    const CSA = global.CustomSheetAssets;
-    const groupId = CSA?.getActiveGroupId();
-    if (!CSA || !groupId) return false;
-    const groupMeta = CSA.getGroups().find((g) => g.id === groupId);
-    if (groupMeta?.importMode !== 'object') return false;
-    const inputs = readObjectInputs();
-    const name = ($('sgi-group-name')?.value || '').trim();
-    CSA.updateObject(groupId, {
-      name,
-      label: name || groupMeta.name,
-      kind: 'prop',
-      solid: inputs.solid,
-      keyBlack: inputs.keyBlack,
-      whiteOutline: inputs.whiteOutline,
-      outlineWidth: inputs.outlineWidth,
-      visualScale: inputs.visualScale,
-      enabled: options.adopt !== false,
-    });
-    if (name) CSA.updateGroup(groupId, { name });
-    return true;
-  }
-
-  function saveObjectSettings() {
-    const CSA = global.CustomSheetAssets;
-    if (!CSA?.getActiveGroupId()) {
-      showStatus('先にPNGを追加してください', 'warn');
-      return;
-    }
-    const groupMeta = CSA.getGroups().find((g) => g.id === CSA.getActiveGroupId());
-    if (groupMeta?.importMode !== 'object') {
-      showStatus('オブジェクトグループを選択してください', 'warn');
-      return;
-    }
-    if (!CSA.hasSheetImage?.()) {
-      showStatus('先にPNGを追加してください', 'warn');
-      return;
-    }
-    applyObjectInputsToActiveGroup({ adopt: true });
-    renderGroupSelector();
-    refreshObjectPreview();
-    if (typeof global.registerCustomSheetCreateTools === 'function') {
-      global.registerCustomSheetCreateTools(true);
-    }
-    const obj = CSA.getActiveObject();
-    showStatus(`「${obj?.label || groupMeta.name}」をシールとして採用（${Math.round((obj?.visualScale ?? 1) * 100)}%${obj?.whiteOutline !== false ? '・白縁' : ''}）`, 'ok');
   }
 
   function pickCellKeys() {
@@ -507,9 +358,7 @@
         const tctx = thumb.getContext('2d');
         tctx.fillStyle = '#faf6ee';
         tctx.fillRect(0, 0, 40, 40);
-        const tmpEnabled = { ...cell, enabled: true };
-        const saved = CSA.getCells().find((c) => c.id === cell.id);
-        if (saved && CSA.drawThumb) {
+        if (CSA.drawThumb) {
           CSA.drawThumb(tctx, cell.id, 40);
         }
       }
@@ -613,7 +462,7 @@
       return;
     }
     if (typeof global.removeCustomSheetFromCreateMap === 'function') {
-      global.removeCustomSheetFromCreateMap(removed.cellIds, removed.setIds, removed.objectIds);
+      global.removeCustomSheetFromCreateMap(removed.cellIds, removed.setIds);
     }
     setPickIds.clear();
     renderGroupSelector();
@@ -690,26 +539,16 @@
     active = true;
     renderGroupSelector();
     const CSA = global.CustomSheetAssets;
-    const activeMeta = CSA?.getGroups().find((g) => g.id === CSA.getActiveGroupId());
-    if (activeMeta?.importMode === 'object') {
-      setImportMode('object');
-      syncObjectInputsFromActiveGroup();
-      refreshObjectPreview();
-    } else {
-      setImportMode('grid');
-      syncGridInputs();
-      ensureCellsFromGrid();
-      renderCellList();
-      updateCellListHeading();
-      refreshPreview();
-      refreshThumbs();
-    }
+    syncGridInputs();
+    ensureCellsFromGrid();
+    renderCellList();
+    updateCellListHeading();
+    refreshPreview();
+    refreshThumbs();
     if (CSA && !CSA.getGroups().length) {
       showStatus('グループ名を付けてPNGを追加すると取込を始められます', 'info');
-    } else if (importMode === 'grid' && CSA && !CSA.getCells().length) {
+    } else if (CSA && !CSA.getCells().length) {
       showStatus('列・行を設定して「グリッド更新」を押すとマス一覧が表示されます', 'info');
-    } else if (importMode === 'object' && CSA && !CSA.hasSheetImage?.()) {
-      showStatus('オブジェクトPNGを追加し、占有マス（1×1〜4×4）を設定して保存してください', 'info');
     }
   }
 
@@ -766,20 +605,12 @@
       if (!groupId || !CSA.setActiveGroup(groupId)) return;
       setPickIds.clear();
       renderGroupSelector();
+      syncGridInputs();
+      renderCellList();
+      refreshPreview();
+      refreshThumbs();
       const meta = CSA.getGroups().find((g) => g.id === groupId);
-      if (meta?.importMode === 'object') {
-        setImportMode('object');
-        syncObjectInputsFromActiveGroup();
-        refreshObjectPreview();
-        showStatus(`編集中: ${meta.name}（オブジェクト ${meta.adoptedCount ? '採用済' : '未採用'}）`, 'info');
-      } else {
-        setImportMode('grid');
-        syncGridInputs();
-        renderCellList();
-        refreshPreview();
-        refreshThumbs();
-        showStatus(`編集中: ${meta?.name || groupId}`, 'info');
-      }
+      showStatus(`編集中: ${meta?.name || groupId}`, 'info');
     });
 
     $('sgi-group-name')?.addEventListener('change', () => {
@@ -797,64 +628,6 @@
       updateSetPickCount();
       renderCellList();
       refreshPreview();
-    });
-
-    $('sgi-mode-grid')?.addEventListener('click', () => setImportMode('grid'));
-    $('sgi-mode-object')?.addEventListener('click', () => setImportMode('object'));
-
-    ['sgi-object-solid', 'sgi-object-key-black', 'sgi-object-white-outline'].forEach((id) => {
-      $(id)?.addEventListener('change', () => {
-        if (importMode !== 'object') return;
-        applyObjectInputsToActiveGroup({ adopt: CSA.getActiveObject()?.enabled ?? false });
-        refreshObjectPreview();
-      });
-    });
-
-    $('sgi-object-outline-width')?.addEventListener('input', () => {
-      if (importMode !== 'object') return;
-      updateObjectOutlineLabel();
-      applyObjectInputsToActiveGroup({ adopt: CSA.getActiveObject()?.enabled ?? false });
-      refreshObjectPreview();
-    });
-
-    $('sgi-object-scale')?.addEventListener('input', () => {
-      if (importMode !== 'object') return;
-      updateObjectScaleLabel();
-      applyObjectInputsToActiveGroup({ adopt: CSA.getActiveObject()?.enabled ?? false });
-      refreshObjectPreview();
-    });
-
-    $('sgi-object-save')?.addEventListener('click', saveObjectSettings);
-
-    $('sgi-object-file')?.addEventListener('change', (e) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      const inputs = readObjectInputs();
-      const groupName = ($('sgi-group-name')?.value || '').trim() || `オブジェクト ${CSA.getGroups().length + 1}`;
-      CSA.appendObjectFile(file, {
-        name: groupName,
-        kind: 'prop',
-        solid: inputs.solid,
-        whiteOutline: inputs.whiteOutline,
-        outlineWidth: inputs.outlineWidth,
-        visualScale: inputs.visualScale,
-        enabled: false,
-      }).then(() => {
-        CSA.updateObject(CSA.getActiveGroupId(), {
-          keyBlack: inputs.keyBlack,
-          whiteOutline: inputs.whiteOutline,
-          outlineWidth: inputs.outlineWidth,
-        });
-        renderGroupSelector();
-        setImportMode('object');
-        syncObjectInputsFromActiveGroup();
-        refreshObjectPreview();
-        e.target.value = '';
-        const img = CSA.getSheetImage();
-        const px = img ? `${img.naturalWidth}×${img.naturalHeight}px` : '';
-        const pct = Math.round((CSA.getActiveObject()?.visualScale ?? 1) * 100);
-        showStatus(`「${groupName}」${px ? `（${px}）` : ''} — 白縁・サイズを確認して「保存して採用」`, 'ok');
-      }).catch(() => alert('画像の読み込みに失敗しました'));
     });
 
     $('sgi-file')?.addEventListener('change', (e) => {
