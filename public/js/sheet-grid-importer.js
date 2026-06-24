@@ -101,17 +101,27 @@
     if ($('sgi-object-kind')) $('sgi-object-kind').value = obj?.kind || 'prop';
     if ($('sgi-object-solid')) $('sgi-object-solid').checked = !!obj?.solid;
     if ($('sgi-object-key-black')) $('sgi-object-key-black').checked = group?.hasImage ? (CSA.getGrid().keyBlack ?? true) : true;
+    const scalePct = Math.round((obj?.visualScale ?? 1) * 100);
+    if ($('sgi-object-scale')) $('sgi-object-scale').value = String(Math.max(10, Math.min(500, scalePct)));
+    if ($('sgi-object-scale-val')) $('sgi-object-scale-val').textContent = `${scalePct}%`;
     if (group?.importMode === 'object') setImportMode('object');
   }
 
   function readObjectInputs() {
+    const scaleRaw = Number($('sgi-object-scale')?.value) || 100;
     return {
       footprintW: Number($('sgi-footprint-w')?.value) || 1,
       footprintH: Number($('sgi-footprint-h')?.value) || 1,
       kind: $('sgi-object-kind')?.value || 'prop',
       solid: !!$('sgi-object-solid')?.checked,
       keyBlack: !!$('sgi-object-key-black')?.checked,
+      visualScale: Math.max(0.1, Math.min(5, scaleRaw / 100)),
     };
+  }
+
+  function updateObjectScaleLabel() {
+    const pct = Number($('sgi-object-scale')?.value) || 100;
+    if ($('sgi-object-scale-val')) $('sgi-object-scale-val').textContent = `${pct}%`;
   }
 
   function refreshObjectPreview() {
@@ -148,6 +158,7 @@
       kind: inputs.kind,
       solid: inputs.solid,
       keyBlack: inputs.keyBlack,
+      visualScale: inputs.visualScale,
       enabled: options.adopt !== false,
     });
     if (name) CSA.updateGroup(groupId, { name });
@@ -176,7 +187,7 @@
       global.registerCustomSheetCreateTools(true);
     }
     const obj = CSA.getActiveObject();
-    showStatus(`「${obj?.label || groupMeta.name}」を ${obj?.footprintW}×${obj?.footprintH} マスで採用しました`, 'ok');
+    showStatus(`「${obj?.label || groupMeta.name}」を ${obj?.footprintW}×${obj?.footprintH} マス / 表示${Math.round((obj?.visualScale ?? 1) * 100)}% で採用しました`, 'ok');
   }
 
   function pickCellKeys() {
@@ -784,6 +795,13 @@
       });
     });
 
+    $('sgi-object-scale')?.addEventListener('input', () => {
+      if (importMode !== 'object') return;
+      updateObjectScaleLabel();
+      applyObjectInputsToActiveGroup({ adopt: CSA.getActiveObject()?.enabled ?? false });
+      refreshObjectPreview();
+    });
+
     $('sgi-object-save')?.addEventListener('click', saveObjectSettings);
 
     $('sgi-object-file')?.addEventListener('change', (e) => {
@@ -797,6 +815,7 @@
         footprintH: inputs.footprintH,
         kind: inputs.kind,
         solid: inputs.solid,
+        visualScale: inputs.visualScale,
         enabled: false,
       }).then(() => {
         if ($('sgi-object-key-black')) {

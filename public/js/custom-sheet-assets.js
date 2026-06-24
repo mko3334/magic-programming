@@ -144,6 +144,7 @@
       solid: !!options.solid,
       footprintW: Math.max(1, Math.min(4, Number(options.footprintW) || 1)),
       footprintH: Math.max(1, Math.min(4, Number(options.footprintH) || 1)),
+      visualScale: clampVisualScale(options.visualScale ?? 1),
       crop: { ...EMPTY_CROP },
     };
     return group;
@@ -607,7 +608,11 @@
           grid: { ...EMPTY_GRID, ...(g.grid || {}) },
           cells: g.cells || [],
           sets: g.sets || [],
-          object: g.object ? { ...g.object, crop: { ...(g.object.crop || EMPTY_CROP) } } : null,
+          object: g.object ? {
+            ...g.object,
+            crop: { ...(g.object.crop || EMPTY_CROP) },
+            visualScale: clampVisualScale(g.object.visualScale ?? 1),
+          } : null,
           collapsed: !!g.collapsed,
         }));
         activeGroupId = data.activeGroupId || groups[0]?.id || null;
@@ -764,12 +769,39 @@
     if (partial.footprintH !== undefined) {
       group.object.footprintH = Math.max(1, Math.min(4, Number(partial.footprintH) || 1));
     }
+    if (partial.visualScale !== undefined) {
+      group.object.visualScale = clampVisualScale(partial.visualScale);
+    }
     if (partial.keyBlack !== undefined) group.grid.keyBlack = !!partial.keyBlack;
     if (partial.crop) group.object.crop = clampCrop(partial.crop);
     invalidateCellCache();
     prewarmObjectCacheForGroup(group);
     rebuildCatalog();
     saveToStorage();
+  }
+
+  function clampVisualScale(value) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return 1;
+    return Math.max(0.1, Math.min(5, n));
+  }
+
+  function objectDrawSize(spec, cellSize, visualScale) {
+    const maxDim = Math.max(spec.w, spec.h, 1);
+    const base = cellSize * clampVisualScale(visualScale);
+    return {
+      w: Math.max(1, base * (spec.w / maxDim)),
+      h: Math.max(1, base * (spec.h / maxDim)),
+    };
+  }
+
+  function drawObjectImage(ctx, spec, cx, cy, cellSize, visualScale, anchor) {
+    const { w, h } = objectDrawSize(spec, cellSize, visualScale);
+    const ax = anchor?.[0] ?? 0.5;
+    const ay = anchor?.[1] ?? 1;
+    const dx = Math.round(cx - w * ax);
+    const dy = Math.round(cy - h * ay);
+    return blitCell(ctx, spec, dx, dy, w, h);
   }
 
   function objectSourceRect(group, object) {
@@ -802,6 +834,7 @@
       anchor: ctx.object.kind === 'terrain' ? [0, 0] : [0.5, 0.92],
       footprintW: ctx.object.footprintW,
       footprintH: ctx.object.footprintH,
+      visualScale: clampVisualScale(ctx.object.visualScale ?? 1),
       kind: ctx.object.kind,
     };
   }
@@ -832,14 +865,15 @@
     const totalH = block.height * spec.footprintH;
     const cx = block.x + totalW / 2;
     const cy = block.y + totalH - 2;
-    const scale = totalW / spec.w;
-    return drawAnchored(ctx, spec, cx, cy, scale);
+    return drawObjectImage(ctx, spec, cx, cy, block.width, spec.visualScale, spec.anchor);
   }
 
   function drawObjectTerrainTile(ctx, type, tx, ty, tileSize) {
     const spec = objectSpecOf(type);
     if (!spec) return false;
-    return blitCell(ctx, spec, tx, ty, tileSize, tileSize);
+    const cx = tx + tileSize / 2;
+    const cy = ty + tileSize;
+    return drawObjectImage(ctx, spec, cx, cy, tileSize, spec.visualScale, [0.5, 1]);
   }
 
   function drawObjectPreview(ctx, canvasW, canvasH, groupId) {
@@ -860,7 +894,10 @@
     const ox = (canvasW - gridW) / 2;
     const oy = (canvasH - gridH) / 2;
 
-    ctx.drawImage(sheet, spec.x, spec.y, spec.w, spec.h, ox, oy, gridW, gridH);
+    const visualScale = clampVisualScale(group.object.visualScale ?? 1);
+    const cx = ox + gridW / 2;
+    const cy = oy + gridH - 4;
+    drawObjectImage(ctx, spec, cx, cy, cellSize, visualScale, [0.5, 1]);
 
     ctx.strokeStyle = '#22c55e';
     ctx.lineWidth = 2;
@@ -874,7 +911,11 @@
     ctx.fillStyle = '#cbd5e1';
     ctx.font = 'bold 10px Nunito, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(`${group.object.footprintW}×${group.object.footprintH} マス`, canvasW / 2, Math.min(canvasH - 8, oy + gridH + 14));
+    ctx.fillText(
+      `${group.object.footprintW}×${group.object.footprintH} マス / 表示 ${Math.round(visualScale * 100)}%`,
+      canvasW / 2,
+      Math.min(canvasH - 8, oy + gridH + 14),
+    );
     return true;
   }
 
@@ -1218,11 +1259,10 @@
     if (isObjectType(type)) {
       const spec = objectSpecOf(type);
       if (!spec) return false;
-      const scale = size / Math.max(spec.w, spec.h);
-      const side = Math.max(spec.w, spec.h) * scale;
-      const dx = (size - spec.w * scale) / 2;
-      const dy = (size - spec.h * scale) / 2;
-      return blitCell(ctx, spec, dx, dy, spec.w * scale, spec.h * scale);
+      const { w, h } = objectDrawSize(spec, size, spec.visualScale);
+      const dx = (size - w) / 2;
+      const dy = (size - h) / 2;
+      return blitCell(ctx, spec, dx, dy, w, h);
     }
     if (isSetType(type)) {
       const spec = setSpecOf(type);
