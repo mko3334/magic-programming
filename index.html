@@ -455,6 +455,56 @@
     .create-tool-item .create-tool-thumb {
       pointer-events: none;
     }
+    .create-tool-row {
+      display: flex;
+      align-items: stretch;
+      gap: 0.25rem;
+    }
+    .create-tool-row .create-tool-item {
+      flex: 1;
+      min-width: 0;
+    }
+    .create-tool-delete-btn {
+      flex-shrink: 0;
+      width: 1.75rem;
+      align-self: center;
+      padding: 0;
+      border: 1px solid #fecaca;
+      border-radius: 0.5rem;
+      background: #fff1f2;
+      color: #be123c;
+      font-size: 14px;
+      font-weight: 800;
+      line-height: 1;
+      cursor: pointer;
+    }
+    .create-tool-delete-btn:hover {
+      background: #ffe4e6;
+      border-color: #fda4af;
+    }
+    .create-tile-group-header {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    .create-tile-group-header .create-tile-group-title {
+      flex: 1;
+      text-align: left;
+    }
+    .create-group-delete-btn {
+      flex-shrink: 0;
+      padding: 0.1rem 0.35rem;
+      border: 1px solid #fecaca;
+      border-radius: 0.35rem;
+      background: #fff1f2;
+      color: #be123c;
+      font-size: 10px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .create-group-delete-btn:hover {
+      background: #ffe4e6;
+    }
 
     .stat-card { border: 2px solid #e2e8f0; border-radius: 1rem; background: #f8fafc; }
     .stat-card:focus-within { border-color: #a78bfa; box-shadow: 0 0 0 3px rgba(167,139,250,0.2); }
@@ -740,7 +790,6 @@
       border: none;
       background: transparent;
       text-align: left;
-      cursor: pointer;
       font-size: 10px;
       font-weight: 800;
       text-transform: uppercase;
@@ -750,6 +799,13 @@
     .create-tile-group-header.text-amber { color: #d97706; }
     .create-tile-group-header.text-cyan { color: #0891b2; }
     .create-tile-group-header.text-violet { color: #7c3aed; }
+    .create-tile-group-header-toggle {
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: inherit;
+    }
     .create-tile-group-chevron {
       width: 0.75rem;
       flex-shrink: 0;
@@ -1349,7 +1405,7 @@
   <!-- 左パネル：ツール選択 / タイル調整一覧 -->
   <div id="create-left-panel" class="w-1/3 max-w-[280px] min-w-[150px] bg-white rounded-3xl shadow-sm p-4 flex flex-col shrink-0 border border-gray-100 overflow-hidden">
     <div id="create-left-title" class="text-sm font-bold text-emerald-500 mb-1 text-center md:text-left">🛠️ 配置ツール</div>
-    <div id="create-left-hint" class="text-[10px] text-slate-400 mb-3 text-center md:text-left">タイル名をクリックして編集（自動保存）</div>
+    <div id="create-left-hint" class="text-[10px] text-slate-400 mb-3 text-center md:text-left">タイル名を編集 / 取込タイルは × で一覧から削除</div>
 
     <div id="create-adjust-left-panel" class="hidden-view flex flex-col flex-1 min-h-0 overflow-hidden">
       <div id="create-adjust-tile-list" class="flex-1 min-h-0 custom-scrollbar"></div>
@@ -2121,6 +2177,46 @@
   }
   window.registerCustomSheetCreateTools = registerCustomSheetCreateTools;
 
+  function removeAdoptedTileFromPalette(tileId) {
+    const CSA = window.CustomSheetAssets;
+    if (!CSA || !CSA.isCustomType(tileId)) return;
+    const label = getCreateTileName(tileId);
+    if (!confirm(`「${label}」を一覧から削除しますか？\nマップ上に置いた同タイルも除去されます。`)) return;
+
+    if (CSA.isSetType(tileId)) {
+      CSA.updateSet(tileId, { enabled: false });
+      removeCustomSheetFromCreateMap([], [tileId], []);
+    } else if (CSA.isObjectType(tileId)) {
+      CSA.updateObject(tileId, { enabled: false });
+      removeCustomSheetFromCreateMap([], [], [tileId]);
+    } else if (CSA.isSheetType(tileId)) {
+      CSA.updateCell(tileId, { enabled: false });
+      removeCustomSheetFromCreateMap([tileId], [], []);
+    }
+
+    registerCustomSheetCreateTools(true);
+    if (activeTool === tileId) selectTool('grass');
+    drawCreateCanvas();
+    showMessage(`「${label}」を一覧から削除しました。`);
+  }
+
+  function removeSheetGroupFromPalette(groupId) {
+    const CSA = window.CustomSheetAssets;
+    if (!CSA) return;
+    const meta = CSA.getGroups().find((g) => g.id === groupId);
+    const name = meta?.name || 'このグループ';
+    if (!confirm(`グループ「${name}」を一覧から削除しますか？\n採用済みタイルとマップ上の該当タイルも除去されます。`)) return;
+    const removed = CSA.deleteGroup(groupId);
+    if (!removed) return;
+    removeCustomSheetFromCreateMap(removed.cellIds, removed.setIds, removed.objectIds);
+    registerCustomSheetCreateTools(true);
+    if (activeTool && CSA.isCustomType(activeTool) && !CSA.CATALOG.some((e) => e.id === activeTool)) {
+      selectTool('grass');
+    }
+    drawCreateCanvas();
+    showMessage(`グループ「${name}」を一覧から削除しました。`);
+  }
+
   const CREATE_BUILTIN_GROUP_KEY = 'pop-magic-create-builtin-groups';
 
   function getCreateBuiltinGroupCollapsed(id) {
@@ -2168,14 +2264,26 @@
     const collapsed = groupMeta.collapsed;
     if (collapsed) section.classList.add('is-collapsed');
 
+    const headerRow = document.createElement('div');
+    headerRow.className = 'create-tile-group-header text-cyan';
+
     const header = document.createElement('button');
     header.type = 'button';
-    header.className = 'create-tile-group-header text-cyan';
+    header.className = 'create-tile-group-header-toggle flex-1 min-w-0 flex items-center gap-1 border-0 bg-transparent p-0 text-left cursor-pointer';
+    header.style.font = 'inherit';
+    header.style.color = 'inherit';
     header.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
-    header.innerHTML = `<span class="create-tile-group-chevron">${collapsed ? '▶' : '▼'}</span><span>📋 ${groupMeta.name}</span>`;
+    header.innerHTML = `<span class="create-tile-group-chevron">${collapsed ? '▶' : '▼'}</span><span class="create-tile-group-title">📋 ${groupMeta.name}</span>`;
 
-    const body = document.createElement('div');
-    body.className = 'create-tile-group-body flex flex-col gap-2';
+    const groupDeleteBtn = document.createElement('button');
+    groupDeleteBtn.type = 'button';
+    groupDeleteBtn.className = 'create-group-delete-btn';
+    groupDeleteBtn.title = 'グループを一覧から削除';
+    groupDeleteBtn.textContent = '🗑';
+    groupDeleteBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      removeSheetGroupFromPalette(groupMeta.id);
+    });
 
     header.addEventListener('click', () => {
       const next = !section.classList.contains('is-collapsed');
@@ -2187,7 +2295,16 @@
       }
     });
 
+    headerRow.appendChild(header);
+    headerRow.appendChild(groupDeleteBtn);
+
+    const body = document.createElement('div');
+    body.className = 'create-tile-group-body flex flex-col gap-2';
+
     entries.forEach((entry) => {
+      const row = document.createElement('div');
+      row.className = 'create-tool-row';
+
       const el = document.createElement('div');
       el.id = `tool-${entry.id}`;
       el.dataset.tool = entry.id;
@@ -2201,11 +2318,25 @@
         if (e.target.closest('.create-tool-name')) return;
         selectTool(entry.id);
       });
-      body.appendChild(el);
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.type = 'button';
+      deleteBtn.className = 'create-tool-delete-btn';
+      deleteBtn.title = '一覧から削除';
+      deleteBtn.setAttribute('aria-label', `${name}を一覧から削除`);
+      deleteBtn.textContent = '×';
+      deleteBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        removeAdoptedTileFromPalette(entry.id);
+      });
+
+      row.appendChild(el);
+      row.appendChild(deleteBtn);
+      body.appendChild(row);
       tools[entry.id] = el;
     });
 
-    section.appendChild(header);
+    section.appendChild(headerRow);
     section.appendChild(body);
     container.appendChild(section);
   }
