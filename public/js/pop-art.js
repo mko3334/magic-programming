@@ -431,7 +431,7 @@
   }
 
   function drawGround(ctx, w, h, frame, tileSize, terrainMap) {
-    tileSize = tileSize || 32;
+    tileSize = tileSize || 320;
     setupCrisp(ctx);
     const SA = global.SproutAssets;
     const paperBg = terrainMap && Object.values(terrainMap).some((v) => typeof v === 'string' && v.startsWith('pb_'));

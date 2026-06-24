@@ -13,11 +13,10 @@
   const ID_PREFIX = 'gs_';
   const SET_PREFIX = 'gset_';
   const OBJECT_PREFIX = 'gobj_';
-  const DISPLAY_TILE_SIZE = 32;
-  /** 1マス分の素材を描くときの推奨ピクセル数（表示は TILE_SIZE に縮小） */
+  const TILE_SIZE = 320;
   const ART_TILE_SIZE = 320;
-  const DEFAULT_OBJECT_SCALE = DISPLAY_TILE_SIZE / ART_TILE_SIZE;
-  const VISUAL_SCALE_MIN = 0.05;
+  const DEFAULT_OBJECT_SCALE = 1;
+  const VISUAL_SCALE_MIN = 0.25;
   const VISUAL_SCALE_MAX = 4;
 
   const EMPTY_GRID = {
@@ -318,7 +317,7 @@
     group.cells.filter((c) => c.enabled).forEach((cell) => {
       const spec = specOfCell(group, cell);
       if (!spec) return;
-      getCachedDisplayCanvas(group.id, spec, DISPLAY_TILE_SIZE, DISPLAY_TILE_SIZE);
+      getCachedDisplayCanvas(group.id, spec, TILE_SIZE, TILE_SIZE);
     });
   }
 
@@ -616,7 +615,7 @@
           object: g.object ? {
             ...g.object,
             crop: { ...(g.object.crop || EMPTY_CROP) },
-            visualScale: clampVisualScale(g.object.visualScale ?? DEFAULT_OBJECT_SCALE),
+            visualScale: migrateObjectVisualScale(g.object.visualScale),
           } : null,
           collapsed: !!g.collapsed,
         }));
@@ -790,6 +789,13 @@
     saveToStorage();
   }
 
+  function migrateObjectVisualScale(scale) {
+    const s = Number(scale);
+    if (!Number.isFinite(s)) return DEFAULT_OBJECT_SCALE;
+    if (s > 0 && s <= 0.15) return clampVisualScale(s * 10);
+    return clampVisualScale(s);
+  }
+
   function clampVisualScale(value) {
     const n = Number(value);
     if (!Number.isFinite(n)) return DEFAULT_OBJECT_SCALE;
@@ -817,7 +823,7 @@
     const group = getGroup(groupId);
     const spec = objectSourceRect(group, group?.object);
     if (!spec) return 1;
-    return clampVisualScale(DISPLAY_TILE_SIZE / Math.max(spec.w, spec.h, 1));
+    return clampVisualScale(TILE_SIZE / Math.max(spec.w, spec.h, 1));
   }
 
   function drawObjectImage(ctx, spec, cx, cy, visualScale, anchor) {
@@ -914,7 +920,7 @@
     ctx.fillStyle = '#1e293b';
     ctx.fillRect(0, 0, canvasW, canvasH);
 
-    const tilePx = DISPLAY_TILE_SIZE;
+    const tilePx = TILE_SIZE;
     const fpW = group.object.footprintW;
     const fpH = group.object.footprintH;
     const logicalW = tilePx * fpW;
@@ -1720,7 +1726,7 @@
     drawGridPreview,
     drawObjectPreview,
     suggestObjectFitOneTileScale,
-    TILE_SIZE: DISPLAY_TILE_SIZE,
+    TILE_SIZE,
     ART_TILE_SIZE,
     DEFAULT_OBJECT_SCALE,
     VISUAL_SCALE_MIN,
