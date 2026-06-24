@@ -914,34 +914,48 @@
     ctx.fillStyle = '#1e293b';
     ctx.fillRect(0, 0, canvasW, canvasH);
 
-    const cellSize = Math.min(canvasW / (group.object.footprintW + 0.5), canvasH / (group.object.footprintH + 1));
-    const gridW = cellSize * group.object.footprintW;
-    const gridH = cellSize * group.object.footprintH;
-    const ox = (canvasW - gridW) / 2;
-    const oy = (canvasH - gridH) / 2;
+    const tilePx = DISPLAY_TILE_SIZE;
+    const fpW = group.object.footprintW;
+    const fpH = group.object.footprintH;
+    const logicalW = tilePx * fpW;
+    const logicalH = tilePx * fpH;
+    const margin = 20;
+    const zoom = Math.min(
+      (canvasW - margin * 2) / logicalW,
+      (canvasH - margin * 2) / logicalH,
+      8,
+    );
+    const ox = (canvasW - logicalW * zoom) / 2;
+    const oy = (canvasH - logicalH * zoom) / 2;
+
+    ctx.save();
+    ctx.translate(ox, oy);
+    ctx.scale(zoom, zoom);
 
     const visualScale = clampVisualScale(group.object.visualScale ?? DEFAULT_OBJECT_SCALE);
     const { w: drawW, h: drawH } = objectDrawSize(spec, visualScale);
-    const cx = ox + gridW / 2;
-    const cy = oy + gridH - 4;
+    const cx = logicalW / 2;
+    const cy = logicalH - 4;
     drawObjectImage(ctx, spec, cx, cy, visualScale, [0.5, 1]);
 
     ctx.strokeStyle = '#22c55e';
-    ctx.lineWidth = 2;
-    ctx.setLineDash([4, 3]);
-    for (let row = 0; row < group.object.footprintH; row++) {
-      for (let col = 0; col < group.object.footprintW; col++) {
-        ctx.strokeRect(ox + col * cellSize + 0.5, oy + row * cellSize + 0.5, cellSize - 1, cellSize - 1);
+    ctx.lineWidth = 2 / zoom;
+    ctx.setLineDash([4 / zoom, 3 / zoom]);
+    for (let row = 0; row < fpH; row++) {
+      for (let col = 0; col < fpW; col++) {
+        ctx.strokeRect(col * tilePx + 0.5, row * tilePx + 0.5, tilePx - 1, tilePx - 1);
       }
     }
     ctx.setLineDash([]);
+    ctx.restore();
+
     ctx.fillStyle = '#cbd5e1';
     ctx.font = 'bold 10px Nunito, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText(
-      `${group.object.footprintW}×${group.object.footprintH} マス / ${drawW}×${drawH}px（${Math.round(visualScale * 100)}%）`,
+      `${fpW}×${fpH} マス（${tilePx}px/マス）/ 表示 ${drawW}×${drawH}px（${Math.round(visualScale * 100)}%）`,
       canvasW / 2,
-      Math.min(canvasH - 8, oy + gridH + 14),
+      canvasH - 8,
     );
     return true;
   }
