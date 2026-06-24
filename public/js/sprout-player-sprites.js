@@ -7,7 +7,13 @@
   const FRAME = 48;
   const COLS = 4;
   const SCALE = 2;
+  const BASE_TILE_PX = 32;
   const FOOT = [23, 31];
+
+  function pixelScale() {
+    const tilePx = global.MAP_TILE_PX || BASE_TILE_PX;
+    return (tilePx * 0.42) / FRAME;
+  }
 
   // Rows: down, up, left, right
   const ROW = { down: 0, up: 1, left: 2, right: 3 };
@@ -38,10 +44,11 @@
     const col = pickCol(player, gameFrame);
     const sx = col * FRAME;
     const sy = row * FRAME;
-    const dw = FRAME * SCALE;
-    const dh = FRAME * SCALE;
-    const anchorX = Math.round(cx - FOOT[0] * SCALE);
-    const anchorY = Math.round(cy - FOOT[1] * SCALE);
+    const ps = pixelScale();
+    const dw = FRAME * ps;
+    const dh = FRAME * ps;
+    const anchorX = Math.round(cx - FOOT[0] * ps);
+    const anchorY = Math.round(cy - FOOT[1] * ps);
 
     if (player.invincibleTimer > 0 && Math.floor(gameFrame / 4) % 2 === 0) {
       ctx.globalAlpha = 0.55;

@@ -1,0 +1,222 @@
+{
+  "version": 1,
+  "cellAspect": 0.6641,
+  "tiles": {
+    "pb_grass": {
+      "left": 0.0118,
+      "top": 0.3438,
+      "right": 0.0,
+      "bottom": 0.0
+    },
+    "pb_grass2": {
+      "left": 0.0,
+      "top": 0.3359,
+      "right": 0.0,
+      "bottom": 0.0
+    },
+    "pb_dirt": {
+      "left": 0.0,
+      "top": 0.3359,
+      "right": 0.0,
+      "bottom": 0.0
+    },
+    "pb_path": {
+      "left": 0.0,
+      "top": 0.3359,
+      "right": 0.0,
+      "bottom": 0.0
+    },
+    "pb_water": {
+      "left": 0.0,
+      "top": 0.3398,
+      "right": 0.0059,
+      "bottom": 0.0
+    },
+    "pb_water2": {
+      "left": 0.0118,
+      "top": 0.3438,
+      "right": 0.0,
+      "bottom": 0.0
+    },
+    "pb_water3": {
+      "left": 0.0118,
+      "top": 0.3438,
+      "right": 0.0,
+      "bottom": 0.0
+    },
+    "pb_river": {
+      "left": 0.0,
+      "top": 0.3359,
+      "right": 0.0,
+      "bottom": 0.0
+    },
+    "pb_grass_flower": {
+      "left": 0.0,
+      "top": 0.3438,
+      "right": 0.0118,
+      "bottom": 0.0
+    },
+    "pb_thorn": {
+      "left": 0.0,
+      "top": 0.0,
+      "right": -0.5059,
+      "bottom": 0.0
+    },
+    "pb_thorn2": {
+      "left": 0.0,
+      "top": 0.0,
+      "right": -0.5059,
+      "bottom": 0.0
+    },
+    "pb_thorn3": {
+      "left": 0.0,
+      "top": 0.0,
+      "right": -0.5059,
+      "bottom": 0.0
+    },
+    "pb_thorn_river": {
+      "left": 0.0,
+      "top": 0.0,
+      "right": -0.5059,
+      "bottom": 0.0
+    },
+    "pb_riverbank": {
+      "left": 0.0,
+      "top": 0.0,
+      "right": -0.5059,
+      "bottom": 0.0
+    },
+    "pb_paper": {
+      "left": 0.0,
+      "top": 0.0,
+      "right": -0.5059,
+      "bottom": 0.0
+    },
+    "pb_grass_bundle": {
+      "left": 0.0,
+      "top": 0.0,
+      "right": -0.5059,
+      "bottom": 0.0
+    },
+    "pb_flower": {
+      "left": 0.0,
+      "top": 0.0,
+      "right": -0.5059,
+      "bottom": 0.0
+    },
+    "pb_pebble": {
+      "left": 0.0,
+      "top": 0.0,
+      "right": -0.5059,
+      "bottom": 0.0
+    },
+    "pb_brick": {
+      "left": 0.0,
+      "top": 0.0,
+      "right": -0.5059,
+      "bottom": 0.0
+    },
+    "pb_brick_corner": {
+      "left": 0.0,
+      "top": 0.0,
+      "right": -0.5059,
+      "bottom": 0.0
+    },
+    "pb_moss_brick": {
+      "left": 0.0,
+      "top": 0.0,
+      "right": -0.5059,
+      "bottom": 0.0
+    },
+    "pb_stone": {
+      "left": 0.0,
+      "top": 0.0,
+      "right": -0.5059,
+      "bottom": 0.0
+    },
+    "pb_stone_corner": {
+      "left": 0.0,
+      "top": 0.0,
+      "right": -0.5059,
+      "bottom": 0.0
+    },
+    "pb_stone_corner2": {
+      "left": 0.0,
+      "top": 0.0,
+      "right": -0.5059,
+      "bottom": 0.0
+    },
+    "pb_moss_stone": {
+      "left": 0.0,
+      "top": 0.0,
+      "right": -0.5059,
+      "bottom": 0.0
+    },
+    "pb_fence": {
+      "left": 0.0,
+      "top": 0.0,
+      "right": -0.5059,
+      "bottom": 0.0
+    },
+    "pb_plank": {
+      "left": 0.0,
+      "top": 0.0,
+      "right": -0.5059,
+      "bottom": 0.0
+    },
+    "pb_house_thatch": {
+      "left": 0.1176,
+      "top": 0.0,
+      "right": 0.0059,
+      "bottom": 0.418
+    },
+    "pb_house_tile": {
+      "left": 0.0,
+      "top": 0.0,
+      "right": 0.0,
+      "bottom": 0.3359
+    },
+    "pb_house_wood": {
+      "left": 0.0,
+      "top": 0.0,
+      "right": 0.0,
+      "bottom": 0.3359
+    },
+    "pb_well": {
+      "left": 0.0,
+      "top": 0.0,
+      "right": 0.0,
+      "bottom": 0.3359
+    },
+    "pb_stairs": {
+      "left": 0.0588,
+      "top": 0.0,
+      "right": 0.0059,
+      "bottom": 0.3789
+    },
+    "pb_bridge": {
+      "left": 0.0353,
+      "top": 0.0,
+      "right": 0.0353,
+      "bottom": 0.3828
+    },
+    "pb_bridge2": {
+      "left": 0.0235,
+      "top": 0.0,
+      "right": 0.0,
+      "bottom": 0.3516
+    },
+    "pb_plaster": {
+      "left": 0.0,
+      "top": 0.0,
+      "right": 0.0,
+      "bottom": 0.3359
+    },
+    "pb_plaster_win": {
+      "left": 0.0,
+      "top": 0.0,
+      "right": 0.0824,
+      "bottom": 0.3906
+    }
+  }
+}
