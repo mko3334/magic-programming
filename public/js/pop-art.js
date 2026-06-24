@@ -493,6 +493,10 @@
 
     const CSA = global.CustomSheetAssets;
     if (CSA && CSA.isCustomType(type) && CSA.isReady()) {
+      if (CSA.isObjectType(type) && CSA.drawPropBlock(ctx, type, block)) {
+        drawBurnOverlay(ctx, block);
+        return;
+      }
       if (CSA.isSetType(type) && CSA.drawPropBlock(ctx, type, block)) {
         drawBurnOverlay(ctx, block);
         return;

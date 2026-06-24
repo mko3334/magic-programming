@@ -949,6 +949,14 @@
       border-color: #22d3ee;
       box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.35);
     }
+    #sgi-object-preview {
+      width: 100%;
+      max-height: 180px;
+      aspect-ratio: 16/9;
+      background: #0f172a;
+      border-radius: 1rem;
+      border: 2px solid #334155;
+    }
     .sgi-grid-fields {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1494,16 +1502,24 @@
   <!-- 右パネル：シート取込モード -->
   <div id="create-sheet-import-panel" class="hidden-view flex-1 bg-white rounded-3xl shadow-sm p-4 flex flex-col overflow-hidden border border-cyan-100 relative">
     <button id="btn-go-place-mode" type="button">🗺️ 配置モードへ — 採用したタイルをマップに置く</button>
-    <div class="text-[11px] font-bold text-cyan-700 mb-0 shrink-0 mt-2">📋 PNGシートを等間隔スクエアで切り抜き → 採用したタイルだけクリエイトに追加</div>
-    <div class="text-[10px] text-slate-400 shrink-0">※ 取込は追加方式（既存グループは残ります）。PNG推奨（原寸保存）。マップ上の表示は32px</div>
+    <div class="text-[11px] font-bold text-cyan-700 mb-0 shrink-0 mt-2">📋 画像取込 — シート分割 or 1枚オブジェクト</div>
+    <div class="text-[10px] text-slate-400 shrink-0">※ 取込は追加方式。PNG推奨（原寸保存）。マップ上の表示は32px</div>
+    <div class="flex gap-1 shrink-0 mt-1">
+      <button id="sgi-mode-grid" type="button" class="flex-1 py-1.5 text-[10px] font-bold rounded-lg bg-cyan-100 border-2 border-cyan-400 text-cyan-800">📋 シート分割</button>
+      <button id="sgi-mode-object" type="button" class="flex-1 py-1.5 text-[10px] font-bold rounded-lg bg-slate-100 border border-slate-200 text-slate-600">🖼️ 1枚オブジェクト</button>
+    </div>
     <div class="sgi-scroll custom-scrollbar">
       <div class="flex flex-col gap-2">
-        <label class="text-[10px] font-bold text-slate-500">グループ名（新規PNG追加時）</label>
+        <label class="text-[10px] font-bold text-slate-500">グループ名（新規追加時）</label>
         <input id="sgi-group-name" type="text" placeholder="グループ名（例: 森のタイル）" spellcheck="false" class="text-xs p-2 rounded-lg border border-slate-200 bg-white font-bold text-slate-700">
         <label class="text-[10px] font-bold text-slate-500">編集するグループ</label>
         <select id="sgi-group-select" class="text-xs p-2 rounded-lg border border-slate-200 bg-white font-bold text-slate-700"></select>
         <button id="sgi-delete-group" type="button" class="sgi-delete-group-btn w-full">🗑️ 選択中のグループを削除</button>
-        <label class="text-[10px] font-bold text-slate-500">PNG画像を追加（上書きではなく新グループとして追加）</label>
+        <div id="sgi-status" class="text-[10px] font-bold text-slate-500 min-h-[1.25rem]" aria-live="polite"></div>
+      </div>
+
+      <div id="sgi-grid-panel" class="flex flex-col gap-2">
+        <label class="text-[10px] font-bold text-slate-500">PNGシートを追加</label>
         <input id="sgi-file" type="file" accept="image/png,image/jpeg,image/webp" class="text-xs">
         <div class="sgi-grid-fields">
           <label>開始X<input id="sgi-offset-x" type="number" min="0" value="0"></label>
@@ -1520,10 +1536,28 @@
           <button id="sgi-auto-fit" type="button" class="flex-1 py-1.5 text-[10px] font-bold rounded-lg bg-slate-100 border border-slate-200">自動フィット</button>
           <button id="sgi-regenerate-grid" type="button" class="flex-1 py-1.5 text-[10px] font-bold rounded-lg bg-cyan-50 border border-cyan-200 text-cyan-700">グリッド更新</button>
         </div>
-        <div id="sgi-status" class="text-[10px] font-bold text-slate-500 min-h-[1.25rem]" aria-live="polite"></div>
         <canvas id="sgi-preview"></canvas>
       </div>
-      <div class="sgi-cell-section">
+
+      <div id="sgi-object-panel" class="hidden flex flex-col gap-2">
+        <label class="text-[10px] font-bold text-slate-500">オブジェクトPNGを追加（1枚＝1オブジェクト）</label>
+        <input id="sgi-object-file" type="file" accept="image/png,image/jpeg,image/webp" class="text-xs">
+        <div class="sgi-grid-fields">
+          <label>横幅（マス）<select id="sgi-footprint-w" class="text-xs"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></label>
+          <label>縦幅（マス）<select id="sgi-footprint-h" class="text-xs"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></label>
+          <label>種類<select id="sgi-object-kind" class="text-xs"><option value="prop">オブジェクト</option><option value="terrain">地形</option></select></label>
+        </div>
+        <label class="flex items-center gap-2 text-[10px] font-bold text-slate-600">
+          <input id="sgi-object-solid" type="checkbox"> 壁（当たり判定）
+        </label>
+        <label class="flex items-center gap-2 text-[10px] font-bold text-slate-600">
+          <input id="sgi-object-key-black" type="checkbox" checked> 黒背景を透過
+        </label>
+        <canvas id="sgi-object-preview"></canvas>
+        <button id="sgi-object-save" type="button" class="sgi-set-create-btn w-full">💾 設定を保存して採用</button>
+      </div>
+
+      <div id="sgi-cell-section" class="sgi-cell-section">
         <div id="sgi-set-builder" class="sgi-set-builder">
           <div class="text-[10px] font-bold text-violet-700">📦 マスを組み合わせて1セットに</div>
           <div id="sgi-set-pick-count" class="text-[10px] text-slate-500">マス一覧の☑で2マス以上選んで「セット作成」</div>
@@ -1736,6 +1770,7 @@
   });
 
   tabTest.addEventListener('click', () => {
+    flushAutoSaveBeforePlay();
     resetTabStyles();
     viewTest.classList.remove('hidden-view');
     tabTest.className = 'flex-1 py-3 bg-pink-400 text-white rounded-2xl font-bold shadow-md transform scale-105 transition-all text-lg border-2 border-pink-500';
@@ -2050,17 +2085,17 @@
 
   function stripSheetToolsFromCreateLists() {
     for (let i = CREATE_TERRAIN_TOOLS.length - 1; i >= 0; i--) {
-      if (CREATE_TERRAIN_TOOLS[i].startsWith('gs_') || CREATE_TERRAIN_TOOLS[i].startsWith('gset_')) {
+      if (CREATE_TERRAIN_TOOLS[i].startsWith('gs_') || CREATE_TERRAIN_TOOLS[i].startsWith('gset_') || CREATE_TERRAIN_TOOLS[i].startsWith('gobj_')) {
         CREATE_TERRAIN_TOOLS.splice(i, 1);
       }
     }
     for (let i = CREATE_PROP_TYPES.length - 1; i >= 0; i--) {
-      if (CREATE_PROP_TYPES[i].startsWith('gs_') || CREATE_PROP_TYPES[i].startsWith('gset_')) {
+      if (CREATE_PROP_TYPES[i].startsWith('gs_') || CREATE_PROP_TYPES[i].startsWith('gset_') || CREATE_PROP_TYPES[i].startsWith('gobj_')) {
         CREATE_PROP_TYPES.splice(i, 1);
       }
     }
     Object.keys(tools).forEach((key) => {
-      if (key.startsWith('gs_') || key.startsWith('gset_')) delete tools[key];
+      if (key.startsWith('gs_') || key.startsWith('gset_') || key.startsWith('gobj_')) delete tools[key];
     });
   }
 
@@ -2253,6 +2288,8 @@
       CustomSheetAssets.updateCell(id, { label: createTileNames[id] });
     } else if (id.startsWith('gset_') && window.CustomSheetAssets) {
       CustomSheetAssets.updateSet(id, { label: createTileNames[id] });
+    } else if (id.startsWith('gobj_') && window.CustomSheetAssets) {
+      CustomSheetAssets.updateObject(id, { label: createTileNames[id] });
     }
     const input = document.querySelector(`.create-tool-name[data-tool="${id}"]`);
     if (input) {
@@ -2323,8 +2360,8 @@
     }
   }
 
-  function removeCustomSheetFromCreateMap(cellIds, setIds) {
-    const typeSet = new Set([...(cellIds || []), ...(setIds || [])]);
+  function removeCustomSheetFromCreateMap(cellIds, setIds, objectIds) {
+    const typeSet = new Set([...(cellIds || []), ...(setIds || []), ...(objectIds || [])]);
     if (!typeSet.size) return;
     Object.keys(createMapData.terrain).forEach((key) => {
       if (typeSet.has(createMapData.terrain[key])) delete createMapData.terrain[key];
@@ -2734,6 +2771,7 @@
     
     normalizeCreateMapOccupancy();
     isCustomPlay = true;
+    flushAutoSaveBeforePlay();
     
     resetTabStyles();
     viewTest.classList.remove('hidden-view');
@@ -2775,6 +2813,10 @@
   function findCreateProp(gridX, gridY) {
     const CSA = window.CustomSheetAssets;
     return createMapData.props.findIndex((pos) => {
+      if (CSA?.isObjectType?.(pos.type)) {
+        const fp = CSA.getObjectFootprint(pos.type);
+        return fp.some((m) => pos.gridX + m.dx === gridX && pos.gridY + m.dy === gridY);
+      }
       if (CSA?.isSetType?.(pos.type)) {
         const set = CSA.getSet(pos.type);
         if (!set) return false;
@@ -2873,6 +2915,48 @@
     if (activeTool === 'eraser') {
       if (paintMode) lastPaintCell = cellKey;
       return eraseCreateCell(gridX, gridY);
+    }
+
+    if (CSA?.isObjectType?.(activeTool)) {
+      const obj = CSA.getObject(activeTool);
+      if (!obj) return false;
+      const fp = CSA.getObjectFootprint(activeTool);
+
+      if (obj.kind === 'terrain') {
+        for (const m of fp) {
+          const gx = gridX + m.dx;
+          const gy = gridY + m.dy;
+          if (!isInsideCreateGrid(gx, gy)) return false;
+        }
+        if (paintMode) lastPaintCell = cellKey;
+        const firstKey = PopArt.terrainKey(gridX, gridY);
+        const removing = createMapData.terrain[firstKey] === activeTool;
+        fp.forEach((m) => {
+          const key = PopArt.terrainKey(gridX + m.dx, gridY + m.dy);
+          if (removing) delete createMapData.terrain[key];
+          else createMapData.terrain[key] = activeTool;
+        });
+        return true;
+      }
+
+      for (const m of fp) {
+        const gx = gridX + m.dx;
+        const gy = gridY + m.dy;
+        if (!isInsideCreateGrid(gx, gy)) return false;
+        if (findCreateProp(gx, gy) !== -1 && !paintMode) { /* allow replace on click */ }
+      }
+      const existing = findCreateProp(gridX, gridY);
+      if (existing !== -1 && createMapData.props[existing].type === activeTool) {
+        if (paintMode) return false;
+        fp.forEach((m) => clearCreateCellObjects(gridX + m.dx, gridY + m.dy));
+        createMapData.props.splice(existing, 1);
+        return true;
+      }
+      if (paintMode && existing !== -1) return false;
+      fp.forEach((m) => clearCreateCellObjects(gridX + m.dx, gridY + m.dy));
+      createMapData.props.push({ gridX, gridY, type: activeTool });
+      if (paintMode) lastPaintCell = cellKey;
+      return true;
     }
 
     if (CSA?.isSetType?.(activeTool)) {
@@ -4098,7 +4182,17 @@
     const CSA = window.CustomSheetAssets;
     const solidProps = [];
     propBlocks.filter(b => b.active && PopArt.isSolidPropType(b.type)).forEach((b) => {
-      if (CSA?.isSetType?.(b.type)) {
+      if (CSA?.isObjectType?.(b.type)) {
+        CSA.getObjectFootprint(b.type).forEach((m) => {
+          solidProps.push({
+            x: b.x + m.dx * b.width,
+            y: b.y + m.dy * b.height,
+            width: b.width,
+            height: b.height,
+            active: true,
+          });
+        });
+      } else if (CSA?.isSetType?.(b.type)) {
         const set = CSA.getSet(b.type);
         set?.members.forEach((m) => {
           solidProps.push({
@@ -4832,6 +4926,22 @@
   function scheduleAutoSave() {
     clearTimeout(autoSaveTimer);
     autoSaveTimer = setTimeout(autoSaveActiveSlot, 120);
+  }
+
+  function flushAutoSaveBeforePlay() {
+    clearTimeout(autoSaveTimer);
+    autoSaveTimer = null;
+    autoSaveActiveSlot();
+  }
+
+  function normalizeMagicBlocks(blocks) {
+    if (!blocks || !blocks.length) return [];
+    const genBlocks = blocks.filter((b) => b.type === 'gen');
+    if (genBlocks.length <= 1) return blocks;
+    const effectiveGen = genBlocks[genBlocks.length - 1].val;
+    const rest = blocks.filter((b) => b.type !== 'gen');
+    rest.unshift({ type: 'gen', val: effectiveGen, target: 'none' });
+    return rest;
   }
 
   function selectMagicSlot(key) {
@@ -6021,20 +6131,19 @@
   let proceduralSeed = Date.now();
 
   function ensureProceduralStarterMagic() {
-    savedMagics.z = [
-      { type: 'gen', val: 'fire', target: 'none' },
-      { type: 'vec', val: 'forward', target: 'none' },
-    ];
+    const hasUserMagic = savedMagics.z
+      && savedMagics.z.length > 0
+      && savedMagics.z.some((b) => b.type === 'gen');
+    if (!hasUserMagic) {
+      savedMagics.z = [
+        { type: 'gen', val: 'fire', target: 'none' },
+        { type: 'vec', val: 'forward', target: 'none' },
+      ];
+      persistSavedMagics();
+      if (activeMagicSlot === 'z') loadWorkspaceForSlot('z');
+    }
     inventory.available.fire = Math.max(inventory.available.fire || 0, BASIC_MAGIC_STOCK);
     inventory.available.forward = Math.max(inventory.available.forward || 0, BASIC_MAGIC_STOCK);
-    activeMagicSlot = 'z';
-    try {
-      localStorage.setItem(MAGIC_SLOTS_STORAGE_KEY, JSON.stringify({
-        z: savedMagics.z,
-        x: savedMagics.x,
-        c: savedMagics.c,
-      }));
-    } catch (_) { /* ignore */ }
     updateSavedMagicsHUD();
   }
 
@@ -6343,50 +6452,29 @@
   // 魔法発射の共通ロジック
   function castMagicToward(targetX, targetY) {
     if (isPaused) return;
-    const blocks = parseWorkspaceBlocksRaw();
-    let isError = workspaceHasTargetErrors();
-    
-    // 複数ジェネレートがある場合は最後の属性のみ有効
-    const genBlocks = blocks.filter(b => b.type === 'gen');
-    let normalizedBlocks = blocks;
-    if (genBlocks.length > 1) {
-      const effectiveGen = genBlocks[genBlocks.length - 1].val;
-      normalizedBlocks = blocks.filter(b => b.type !== 'gen');
-      normalizedBlocks.unshift({ type: 'gen', val: effectiveGen, target: 'none' });
-    }
-
-    if (normalizedBlocks.length === 0) { showMessage("エラー：魔法がセットされていません！"); return; }
-    if (!normalizedBlocks.some(b => b.type === 'gen')) {
-      showMessage("エラー：「ジェネレート(属性)」がないと魔法が出ません！");
-      for(let i=0; i<8; i++) particles.push(new Particle(player.x+20, player.y, '#9ca3af'));
+    const blocks = savedMagics[activeMagicSlot];
+    if (!blocks || blocks.length === 0 || !blocks.some((b) => b.type === 'gen')) {
+      showMessage('エラー：魔法がセットされていません！');
       return;
     }
-    if (isError) {
-      showMessage("エラー：対象がセットされていないスロットがあります！");
-      return;
-    }
+    const normalizedBlocks = normalizeMagicBlocks(JSON.parse(JSON.stringify(blocks)));
 
-    // MPのチェックと消費
     if (player.mp < 20) {
-      showMessage("MPが足りません！");
-      // MP不足時のグレーの煙エフェクト
-      for(let i=0; i<5; i++) particles.push(new Particle(player.x+20, player.y, '#64748b'));
+      showMessage('MPが足りません！');
+      for (let i = 0; i < 5; i++) particles.push(new Particle(player.x + 20, player.y, '#64748b'));
       return;
     }
     player.mp = Math.max(0, player.mp - 20);
     updatePlayerHUD();
 
-    let angle = 0;
-    if (targetX !== undefined && targetY !== undefined) {
-      angle = Math.atan2(targetY - player.y, targetX - player.x);
-    }
+    const angle = Math.atan2(targetY - player.y, targetX - player.x);
 
     if (!registerMagicSpawn(1)) return;
     player.animState = 'attack';
     player.animTimer = 18;
     MagicAudio.playSe('cast');
     magics.push(new Magic(player.x, player.y, normalizedBlocks, { angle: angle }));
-    for(let i=0; i<5; i++) particles.push(new Particle(player.x+20, player.y, '#fcd34d'));
+    for (let i = 0; i < 5; i++) particles.push(new Particle(player.x + 20, player.y, '#fcd34d'));
   }
 
   // 魔法ブロック構成を要約した日本語テキストを返す
