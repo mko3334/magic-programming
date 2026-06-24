@@ -533,6 +533,35 @@
     }
   }
 
+  function clearAllSheetBlobs() {
+    return openSheetDb().then((db) => new Promise((resolve) => {
+      const tx = db.transaction(SHEET_DB_STORE, 'readwrite');
+      tx.objectStore(SHEET_DB_STORE).clear();
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = () => resolve(false);
+    })).catch(() => false);
+  }
+
+  function clearAllGroups() {
+    groups.forEach((group) => {
+      revokeGroupObjectUrl(group.id);
+      sheetImages.delete(group.id);
+    });
+    groups = [];
+    activeGroupId = null;
+    nextGroupId = 1;
+    globalNextSetId = 1;
+    invalidateCellCache();
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(LEGACY_STORAGE_KEY);
+      localStorage.removeItem(SHEET_DATA_KEY);
+    } catch (_) { /* ignore */ }
+    rebuildCatalog();
+    global.dispatchEvent(new Event('customsheet:updated'));
+    return clearAllSheetBlobs();
+  }
+
   function purgeStoredObjectGroupBlobs() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -1410,6 +1439,7 @@
     getNativeTileSize,
     saveToStorage,
     loadFromStorage,
+    clearAllGroups,
     drawTerrainTile,
     drawProp,
     drawPropBlock,

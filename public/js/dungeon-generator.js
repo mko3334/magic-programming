@@ -1,6 +1,6 @@
 /**
  * プロシージャルダンジョン生成（A* 経路 + 茨ゲート + ノイズ地形）
- * 切り絵風タイル（PictureBookAssets）と組み合わせて使用
+ * Sprout 標準タイル（grass / path / water）を使用
  */
 (function (global) {
   const DIRS = [
@@ -136,14 +136,12 @@
       for (let gx = 0; gx < cols; gx++) {
         const k = cellKey(gx, gy);
         if (pathSet.has(k)) {
-          terrain[k] = 'pb_path';
+          terrain[k] = 'path';
           continue;
         }
         const roll = rand();
-        if (roll < 0.12) terrain[k] = 'pb_water';
-        else if (roll < 0.22) terrain[k] = 'pb_grass2';
-        else if (roll < 0.30) terrain[k] = 'pb_grass_flower';
-        else terrain[k] = 'pb_grass';
+        if (roll < 0.12) terrain[k] = 'water';
+        else terrain[k] = 'grass';
       }
     }
 
@@ -181,9 +179,9 @@
         const gy = p.gy + dy;
         const k = cellKey(gx, gy);
         if (!inBounds(gx, gy, cols, rows) || pathSet.has(k)) continue;
-        if (terrain[k] === 'pb_water') continue;
-        if (rand() < 0.18) {
-          props.push({ gridX: gx, gridY: gy, type: rand() < 0.6 ? 'pb_flower' : 'pb_grass_bundle' });
+        if (terrain[k] === 'water') continue;
+        if (rand() < 0.12) {
+          props.push({ gridX: gx, gridY: gy, type: rand() < 0.5 ? 'grassTuft' : 'bush' });
         }
       }
     });

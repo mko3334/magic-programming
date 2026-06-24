@@ -1460,7 +1460,7 @@
         </div>
       </div>
 
-      <div class="create-tile-group" data-create-group="picturebook">
+      <div class="create-tile-group hidden-view" data-create-group="picturebook">
         <button type="button" class="create-tile-group-header text-amber" aria-expanded="true">
           <span class="create-tile-group-chevron">▼</span><span>📖 不思議な絵本のタイル</span>
         </button>
@@ -2104,13 +2104,7 @@
   };
 
   function registerPicturebookCreateTools() {
-    const PB = window.PictureBookAssets;
-    if (!PB) return;
-    PB.CATALOG.forEach((entry) => {
-      DEFAULT_CREATE_TILE_NAMES[entry.id] = entry.label;
-      if (entry.kind === 'terrain') CREATE_TERRAIN_TOOLS.push(entry.id);
-      else CREATE_PROP_TYPES.push(entry.id);
-    });
+    /* 切り絵タイル（pb_*）は一旦オフ */
   }
   registerPicturebookCreateTools();
 
@@ -2423,26 +2417,7 @@
   }
 
   function initPicturebookCreateTools() {
-    const container = document.getElementById('picturebook-tools');
-    const PB = window.PictureBookAssets;
-    if (!container || !PB) return;
-
-    PB.CATALOG.forEach((entry) => {
-      const el = document.createElement('div');
-      el.id = `tool-${entry.id}`;
-      el.dataset.tool = entry.id;
-      el.className = CREATE_TOOL_CLASS.sm.idle;
-      el.innerHTML = `
-        <canvas class="create-tool-thumb" data-thumb="${entry.id}" width="32" height="32" aria-hidden="true"></canvas>
-        <input type="text" class="create-tool-name" data-tool="${entry.id}" value="${entry.label}" spellcheck="false" aria-label="${entry.label}の名前">
-      `;
-      el.addEventListener('click', (e) => {
-        if (e.target.closest('.create-tool-name')) return;
-        selectTool(entry.id);
-      });
-      container.appendChild(el);
-      tools[entry.id] = el;
-    });
+    /* 切り絵タイル UI は一旦非表示 */
   }
 
   const createMapData = {
@@ -2475,10 +2450,37 @@
   }
   window.removeCustomSheetFromCreateMap = removeCustomSheetFromCreateMap;
 
+  function isImportedTileId(id) {
+    return typeof id === 'string' && (id.startsWith('gs_') || id.startsWith('gset_') || id.startsWith('gobj_') || id.startsWith('pb_'));
+  }
+
+  function stripImportedTileRefsFromCreateMap() {
+    Object.keys(createMapData.terrain).forEach((key) => {
+      if (isImportedTileId(createMapData.terrain[key])) delete createMapData.terrain[key];
+    });
+    createMapData.props = createMapData.props.filter((p) => !isImportedTileId(p.type));
+  }
+
+  const RESET_IMPORTED_TILES_KEY = 'pop-magic-reset-imported-tiles-v2';
+
+  function runImportedTilesResetOnce() {
+    try {
+      if (localStorage.getItem(RESET_IMPORTED_TILES_KEY)) return;
+      localStorage.setItem(RESET_IMPORTED_TILES_KEY, '1');
+    } catch (_) {
+      return;
+    }
+    stripImportedTileRefsFromCreateMap();
+    persistCreateMap();
+    if (window.CustomSheetAssets?.clearAllGroups) {
+      window.CustomSheetAssets.clearAllGroups();
+    }
+  }
+
   function migrateCreateMapProps(props) {
     return (props || []).filter((p) => {
       if (p.sticker) return false;
-      if (typeof p.type === 'string' && p.type.startsWith('gobj_')) return false;
+      if (isImportedTileId(p.type)) return false;
       return p.gridX != null && p.gridY != null;
     });
   }
@@ -2504,7 +2506,7 @@
         return { ...p, x: p.x * factor, y: p.y * factor };
       }
       return p;
-    }).filter((p) => !p.sticker && !(typeof p.type === 'string' && p.type.startsWith('gobj_')));
+    }).filter((p) => !p.sticker && !isImportedTileId(p.type));
     data.mapTilePx = MAP_TILE_PX;
     return data;
   }
@@ -2519,8 +2521,9 @@
       createMapData.terrain = data.terrain && typeof data.terrain === 'object' ? data.terrain : {};
       Object.keys(createMapData.terrain).forEach((key) => {
         const val = createMapData.terrain[key];
-        if (typeof val === 'string' && val.startsWith('gobj_')) delete createMapData.terrain[key];
+        if (isImportedTileId(val)) delete createMapData.terrain[key];
       });
+      stripImportedTileRefsFromCreateMap();
       createMapData.props = migrateCreateMapProps(Array.isArray(data.props) ? data.props : []);
       createMapData.player = data.player ?? null;
       createMapData.chest = data.chest ?? null;
@@ -2721,6 +2724,7 @@
   initPicturebookCreateTools();
   initCreateTileGroupToggles();
   initCreateTileNameEditors();
+  runImportedTilesResetOnce();
   if (window.SheetGridImporter) SheetGridImporter.init();
   if (window.PictureBookCropAdjust) PictureBookCropAdjust.init();
   if (window.CreateModeTabs) CreateModeTabs.init();
@@ -6271,7 +6275,7 @@
     chest.y = dungeon.chest.y - chest.height / 2;
 
     dungeon.gateCells.forEach((cell) => {
-      propBlocks.push(new MapProp(cell.gx, cell.gy, 'pb_thorn'));
+      ibaraBlocks.push(new IbaraBlock(cell.gx * TILE_W, cell.gy * TILE_H, TILE_W, TILE_H));
     });
 
     dungeon.props.forEach((p) => {
