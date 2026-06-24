@@ -102,7 +102,7 @@
     if ($('sgi-object-solid')) $('sgi-object-solid').checked = !!obj?.solid;
     if ($('sgi-object-key-black')) $('sgi-object-key-black').checked = group?.hasImage ? (CSA.getGrid().keyBlack ?? true) : true;
     const scalePct = Math.round((obj?.visualScale ?? 1) * 100);
-    if ($('sgi-object-scale')) $('sgi-object-scale').value = String(Math.max(10, Math.min(500, scalePct)));
+    if ($('sgi-object-scale')) $('sgi-object-scale').value = String(Math.max(25, Math.min(400, scalePct)));
     if ($('sgi-object-scale-val')) $('sgi-object-scale-val').textContent = `${scalePct}%`;
     if (group?.importMode === 'object') setImportMode('object');
   }
@@ -115,8 +115,20 @@
       kind: $('sgi-object-kind')?.value || 'prop',
       solid: !!$('sgi-object-solid')?.checked,
       keyBlack: !!$('sgi-object-key-black')?.checked,
-      visualScale: Math.max(0.1, Math.min(5, scaleRaw / 100)),
+      visualScale: Math.max(0.25, Math.min(4, scaleRaw / 100)),
     };
+  }
+
+  function fitObjectToOneTile() {
+    const CSA = global.CustomSheetAssets;
+    const groupId = CSA?.getActiveGroupId();
+    if (!CSA || !groupId || importMode !== 'object') return;
+    const scale = CSA.suggestObjectFitOneTileScale(groupId);
+    const pct = Math.round(scale * 100);
+    if ($('sgi-object-scale')) $('sgi-object-scale').value = String(Math.max(25, Math.min(400, pct)));
+    updateObjectScaleLabel();
+    applyObjectInputsToActiveGroup({ adopt: CSA.getActiveObject()?.enabled ?? false });
+    refreshObjectPreview();
   }
 
   function updateObjectScaleLabel() {
@@ -802,6 +814,8 @@
       refreshObjectPreview();
     });
 
+    $('sgi-object-fit-tile')?.addEventListener('click', fitObjectToOneTile);
+
     $('sgi-object-save')?.addEventListener('click', saveObjectSettings);
 
     $('sgi-object-file')?.addEventListener('change', (e) => {
@@ -826,7 +840,9 @@
         syncObjectInputsFromActiveGroup();
         refreshObjectPreview();
         e.target.value = '';
-        showStatus(`「${groupName}」を読み込みました。占有マスを調整して「保存して採用」`, 'ok');
+        const img = CSA.getSheetImage();
+        const px = img ? `${img.naturalWidth}×${img.naturalHeight}px` : '';
+        showStatus(`「${groupName}」${px ? `（${px}・原寸表示）` : ''} — 倍率を調整して「保存して採用」`, 'ok');
       }).catch(() => alert('画像の読み込みに失敗しました'));
     });
 

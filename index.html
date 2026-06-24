@@ -1609,11 +1609,13 @@
         <label class="flex items-center gap-2 text-[10px] font-bold text-slate-600">
           <input id="sgi-object-key-black" type="checkbox" checked> 黒背景を透過
         </label>
-        <label class="text-[10px] font-bold text-slate-500">表示サイズ（マス目に合わせて自動拡縮しません）</label>
+        <p class="text-[10px] text-slate-500 leading-snug">1マス＝32px。PNGのピクセルがそのまま表示されます（100%＝原寸）。大きすぎる場合は下のボタンか倍率で調整。</p>
         <div class="flex items-center gap-2">
-          <input id="sgi-object-scale" type="range" min="10" max="500" step="5" value="100" class="flex-1">
+          <label class="text-[10px] font-bold text-slate-500 shrink-0">表示倍率</label>
+          <input id="sgi-object-scale" type="range" min="25" max="400" step="5" value="100" class="flex-1">
           <span id="sgi-object-scale-val" class="text-[10px] font-bold text-slate-600 w-10 text-right">100%</span>
         </div>
+        <button id="sgi-object-fit-tile" type="button" class="py-1.5 text-[10px] font-bold rounded-lg bg-slate-100 border border-slate-200">1マスに収める</button>
         <canvas id="sgi-object-preview"></canvas>
         <button id="sgi-object-save" type="button" class="sgi-set-create-btn w-full">💾 設定を保存して採用</button>
       </div>

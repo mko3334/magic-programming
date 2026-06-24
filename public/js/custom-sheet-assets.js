@@ -783,20 +783,35 @@
   function clampVisualScale(value) {
     const n = Number(value);
     if (!Number.isFinite(n)) return 1;
-    return Math.max(0.1, Math.min(5, n));
+    return Math.max(0.25, Math.min(4, n));
   }
 
-  function objectDrawSize(spec, cellSize, visualScale) {
-    const maxDim = Math.max(spec.w, spec.h, 1);
-    const base = cellSize * clampVisualScale(visualScale);
+  function objectDrawSize(spec, visualScale) {
+    const s = clampVisualScale(visualScale);
     return {
-      w: Math.max(1, base * (spec.w / maxDim)),
-      h: Math.max(1, base * (spec.h / maxDim)),
+      w: Math.max(1, Math.round(spec.w * s)),
+      h: Math.max(1, Math.round(spec.h * s)),
     };
   }
 
-  function drawObjectImage(ctx, spec, cx, cy, cellSize, visualScale, anchor) {
-    const { w, h } = objectDrawSize(spec, cellSize, visualScale);
+  function objectDrawSizeForThumb(spec, thumbSize, visualScale) {
+    const { w, h } = objectDrawSize(spec, visualScale);
+    const fit = Math.min(thumbSize / w, thumbSize / h, 1);
+    return {
+      w: Math.max(1, Math.round(w * fit)),
+      h: Math.max(1, Math.round(h * fit)),
+    };
+  }
+
+  function suggestObjectFitOneTileScale(groupId) {
+    const group = getGroup(groupId);
+    const spec = objectSourceRect(group, group?.object);
+    if (!spec) return 1;
+    return clampVisualScale(DISPLAY_TILE_SIZE / Math.max(spec.w, spec.h, 1));
+  }
+
+  function drawObjectImage(ctx, spec, cx, cy, visualScale, anchor) {
+    const { w, h } = objectDrawSize(spec, visualScale);
     const ax = anchor?.[0] ?? 0.5;
     const ay = anchor?.[1] ?? 1;
     const dx = Math.round(cx - w * ax);
@@ -855,7 +870,8 @@
     if (group.importMode !== 'object' || !group.object) return;
     const spec = objectSourceRect(group, group.object);
     if (!spec) return;
-    getCachedDisplayCanvas(group.id, spec, DISPLAY_TILE_SIZE, DISPLAY_TILE_SIZE);
+    const { w, h } = objectDrawSize(spec, group.object.visualScale ?? 1);
+    getCachedDisplayCanvas(group.id, spec, w, h);
   }
 
   function drawObjectPropBlock(ctx, type, block) {
@@ -865,7 +881,7 @@
     const totalH = block.height * spec.footprintH;
     const cx = block.x + totalW / 2;
     const cy = block.y + totalH - 2;
-    return drawObjectImage(ctx, spec, cx, cy, block.width, spec.visualScale, spec.anchor);
+    return drawObjectImage(ctx, spec, cx, cy, spec.visualScale, spec.anchor);
   }
 
   function drawObjectTerrainTile(ctx, type, tx, ty, tileSize) {
@@ -873,7 +889,7 @@
     if (!spec) return false;
     const cx = tx + tileSize / 2;
     const cy = ty + tileSize;
-    return drawObjectImage(ctx, spec, cx, cy, tileSize, spec.visualScale, [0.5, 1]);
+    return drawObjectImage(ctx, spec, cx, cy, spec.visualScale, [0.5, 1]);
   }
 
   function drawObjectPreview(ctx, canvasW, canvasH, groupId) {
@@ -895,9 +911,10 @@
     const oy = (canvasH - gridH) / 2;
 
     const visualScale = clampVisualScale(group.object.visualScale ?? 1);
+    const { w: drawW, h: drawH } = objectDrawSize(spec, visualScale);
     const cx = ox + gridW / 2;
     const cy = oy + gridH - 4;
-    drawObjectImage(ctx, spec, cx, cy, cellSize, visualScale, [0.5, 1]);
+    drawObjectImage(ctx, spec, cx, cy, visualScale, [0.5, 1]);
 
     ctx.strokeStyle = '#22c55e';
     ctx.lineWidth = 2;
@@ -912,7 +929,7 @@
     ctx.font = 'bold 10px Nunito, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText(
-      `${group.object.footprintW}×${group.object.footprintH} マス / 表示 ${Math.round(visualScale * 100)}%`,
+      `${group.object.footprintW}×${group.object.footprintH} マス / ${drawW}×${drawH}px（${Math.round(visualScale * 100)}%）`,
       canvasW / 2,
       Math.min(canvasH - 8, oy + gridH + 14),
     );
@@ -1259,7 +1276,7 @@
     if (isObjectType(type)) {
       const spec = objectSpecOf(type);
       if (!spec) return false;
-      const { w, h } = objectDrawSize(spec, size, spec.visualScale);
+      const { w, h } = objectDrawSizeForThumb(spec, size, spec.visualScale);
       const dx = (size - w) / 2;
       const dy = (size - h) / 2;
       return blitCell(ctx, spec, dx, dy, w, h);
@@ -1678,6 +1695,8 @@
     drawAdjustPreview,
     drawGridPreview,
     drawObjectPreview,
+    suggestObjectFitOneTileScale,
+    TILE_SIZE: DISPLAY_TILE_SIZE,
     getDefaultLabel,
     cellRect,
   };
