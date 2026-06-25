@@ -832,6 +832,18 @@
 
     <!-- 操作ボタン -->
     <div class="mt-4 flex flex-col gap-2 shrink-0">
+      <div class="border-t border-gray-100 mt-2 pt-2 mb-1">
+        <label class="block text-[10px] font-bold text-slate-400">🖼️ オリジナルオブジェクト</label>
+      </div>
+      <div id="custom-images-container" class="flex flex-col gap-1 mb-2 empty:hidden"></div>
+      <button id="btn-import-map-img" class="py-2 px-3 bg-indigo-50 border border-indigo-200 text-indigo-600 rounded-xl font-bold text-xs hover:bg-indigo-100 transition-all flex items-center justify-center gap-1">➕ 画像を追加して配置</button>
+      <input type="file" id="input-map-img" accept="image/*" class="hidden">
+      
+      <button id="btn-import-tile-sheet" class="py-2 px-3 bg-violet-50 border border-violet-200 text-violet-600 rounded-xl font-bold text-xs hover:bg-violet-100 transition-all flex items-center justify-center gap-1 mt-1">🗺️ タイルシートをインポート</button>
+      <input type="file" id="input-tile-sheet" accept="image/*" class="hidden">
+      
+      <button id="btn-copy-area" class="py-2 px-3 bg-fuchsia-50 border border-fuchsia-200 text-fuchsia-600 rounded-xl font-bold text-xs hover:bg-fuchsia-100 transition-all flex items-center justify-center gap-1 mt-1">📋 マップからコピーして登録</button>
+
       <button id="btn-clear-map" class="py-2 px-3 bg-rose-50 border border-rose-200 text-rose-600 rounded-xl font-bold text-xs hover:bg-rose-100 transition-all">🗑️ 全て消去</button>
       <button id="btn-start-custom-play" class="py-3 px-3 bg-gradient-to-r from-emerald-400 to-teal-500 hover:from-emerald-500 hover:to-teal-600 text-white rounded-2xl font-bold text-sm shadow-md transition-all active:scale-95">🎮 テストプレイ！</button>
     </div>
@@ -842,6 +854,55 @@
     <div class="text-[11px] font-bold text-slate-400 mb-2">🖱️ クリックで配置 / ドラッグで連続配置 / 再度クリックで消去</div>
     <div id="create-canvas-container" class="flex-1 bg-slate-900 rounded-2xl overflow-hidden relative cursor-crosshair">
       <canvas id="createCanvas" class="w-full h-full block"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- タイルシートインポート用設定モーダル -->
+<div id="tile-sheet-modal" class="fixed inset-0 bg-black/60 z-[1000] flex items-center justify-center hidden" style="backdrop-filter: blur(4px);">
+  <div class="bg-white rounded-3xl p-6 max-w-6xl w-[95vw] max-h-[90vh] flex flex-col shadow-2xl border border-gray-100 overflow-hidden">
+    <div class="flex justify-between items-center mb-2 pb-2 border-b border-gray-100">
+      <div>
+        <h3 class="text-base font-bold text-slate-800 flex items-center gap-1">🗺️ タイルシートのインポート設定 (512x512)</h3>
+        <p class="text-[11px] text-slate-500 mt-0.5">64x64ピクセル単位で64個に分割されます。黒色（#000000）の背景部分は自動的に透明化されます。</p>
+      </div>
+      <button id="btn-tile-sheet-close" class="text-slate-400 hover:text-slate-600 text-xl font-bold p-1">&times;</button>
+    </div>
+
+    <!-- 透過調整スライダーUI -->
+    <div class="bg-violet-50/50 border border-violet-100 rounded-2xl p-3 mb-3 flex flex-wrap items-center gap-6 text-xs font-bold text-slate-700 shrink-0">
+      <div class="flex items-center gap-2">
+        <span>🖤 黒透過のしきい値:</span>
+        <input type="range" id="input-tile-threshold" min="0" max="255" value="30" class="w-32 h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-violet-600">
+        <span id="label-tile-threshold" class="w-6 text-right font-mono text-[11px] text-slate-500">30</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <span>✨ 境界ぼかし幅（エッジ）:</span>
+        <input type="range" id="input-tile-feather" min="0" max="100" value="20" class="w-32 h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-violet-600">
+        <span id="label-tile-feather" class="w-6 text-right font-mono text-[11px] text-slate-500">20</span>
+      </div>
+      <div class="text-[11px] text-slate-400 font-normal">
+        ※ スライダーを動かすと、透過の強さや滑らかさがリアルタイムにプレビューへ反映されます。
+      </div>
+    </div>
+    
+    <!-- 設定項目グリッド -->
+    <div class="flex-1 overflow-y-auto pr-1 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3 my-3" id="tile-sheet-grid">
+      <!-- JavaScriptで動的に生成 -->
+    </div>
+    
+    <div class="mt-4 pt-3 border-t border-gray-100 flex justify-between items-center gap-3 shrink-0">
+      <div class="flex flex-wrap items-center gap-3">
+        <button id="btn-tile-sheet-select-all" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-bold text-xs transition-all">全選択</button>
+        <button id="btn-tile-sheet-deselect-all" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-bold text-xs transition-all">全解除</button>
+        <span class="text-slate-300">|</span>
+        <button id="btn-tile-sheet-all-terrain" class="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-lg font-bold text-xs transition-all">全て地面にする</button>
+        <button id="btn-tile-sheet-all-prop" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 rounded-lg font-bold text-xs transition-all">全てオブジェクトにする</button>
+      </div>
+      <div class="flex gap-2">
+        <button id="btn-tile-sheet-cancel" class="px-5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-sm transition-all">キャンセル</button>
+        <button id="btn-tile-sheet-confirm" class="px-6 py-2.5 bg-gradient-to-r from-violet-500 to-indigo-600 hover:from-violet-600 hover:to-indigo-700 text-white rounded-xl font-bold text-sm shadow-md active:scale-95 transition-all">インポート実行</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1257,6 +1318,9 @@
   // --- ダンジョンクリエイト（マップエディタ）システム ---
   let isCustomPlay = false; // カスタムマップでプレイ中かのフラグ
   let activeTool = 'player';
+  let isCopyDragging = false;
+  let copyStartGrid = null;
+  let copyEndGrid = null;
   const CREATE_PROP_TYPES = ['tree', 'bush', 'log', 'stump', 'mushroom', 'grassTuft', 'rock'];
   const CREATE_TILE_NAMES_KEY = 'pop-magic-create-tile-names-v1';
   const DEFAULT_CREATE_TILE_NAMES = {
@@ -1351,6 +1415,7 @@
     chest: { x: 480, y: 240, reward: 'lightning' },
     enemies: [],
   };
+  window.createMapData = createMapData;
 
   const createCanvas = document.getElementById('createCanvas');
   const createCtx = createCanvas.getContext('2d');
@@ -1376,11 +1441,13 @@
     PopArt.drawGround(createCtx, createW, createH, anim, gridW, createMapData.terrain);
 
     createMapData.props.forEach((pos) => {
+      const w = (pos.wCells || 1) * gridW;
+      const h = (pos.hCells || 1) * gridH;
       PopArt.drawMapProp(createCtx, pos.type, {
         x: pos.gridX * gridW,
         y: pos.gridY * gridH,
-        width: gridW,
-        height: gridH,
+        width: w,
+        height: h,
         active: true,
         isBurning: false,
       }, anim);
@@ -1426,6 +1493,29 @@
       else if (rName === 'hard') rName = '🛡強固';
       createCtx.strokeText(rName, createMapData.chest.x - 18, createMapData.chest.y - 28);
       createCtx.fillText(rName, createMapData.chest.x - 18, createMapData.chest.y - 28);
+    }
+
+    // マップ範囲コピー選択枠の描画
+    if (activeTool === 'copy_area' && isCopyDragging && copyStartGrid && copyEndGrid) {
+      const minX = Math.min(copyStartGrid.x, copyEndGrid.x);
+      const minY = Math.min(copyStartGrid.y, copyEndGrid.y);
+      const maxX = Math.max(copyStartGrid.x, copyEndGrid.x);
+      const maxY = Math.max(copyStartGrid.y, copyEndGrid.y);
+      
+      const x = minX * gridW;
+      const y = minY * gridH;
+      const w = (maxX - minX + 1) * gridW;
+      const h = (maxY - minY + 1) * gridH;
+      
+      createCtx.save();
+      createCtx.strokeStyle = '#8b5cf6'; // 鮮やかな紫色
+      createCtx.lineWidth = 2;
+      createCtx.setLineDash([4, 4]); // 破線
+      createCtx.strokeRect(x, y, w, h);
+      
+      createCtx.fillStyle = 'rgba(139, 92, 246, 0.15)';
+      createCtx.fillRect(x, y, w, h);
+      createCtx.restore();
     }
   }
 
@@ -1501,6 +1591,8 @@
     },
   };
 
+  const btnCopyArea = document.getElementById('btn-copy-area');
+
   function selectTool(toolKey) {
     activeTool = toolKey;
     for (let key in tools) {
@@ -1509,6 +1601,24 @@
       const size = el.className.includes('rounded-2xl') ? 'lg' : 'sm';
       el.className = key === toolKey ? CREATE_TOOL_CLASS[size].active : CREATE_TOOL_CLASS[size].idle;
     }
+    
+    // コピーボタンのアクティブスタイルの切り替え
+    if (btnCopyArea) {
+      if (toolKey === 'copy_area') {
+        btnCopyArea.className = 'py-2 px-3 bg-fuchsia-100 border border-fuchsia-400 text-fuchsia-800 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1 mt-1 outline-none';
+      } else {
+        btnCopyArea.className = 'py-2 px-3 bg-fuchsia-50 border border-fuchsia-200 text-fuchsia-600 rounded-xl font-bold text-xs hover:bg-fuchsia-100 transition-all flex items-center justify-center gap-1 mt-1 outline-none';
+      }
+    }
+
+    // カスタムツールの非アクティブ化
+    document.querySelectorAll('.create-tool-item').forEach(el => {
+      const isDefault = Object.values(tools).includes(el);
+      if (!isDefault) {
+        el.classList.remove('bg-emerald-50', 'border-emerald-400', 'text-emerald-700');
+        el.classList.add('bg-slate-50', 'border-transparent', 'text-slate-600');
+      }
+    });
   }
 
   Object.keys(tools).forEach((key) => {
@@ -1517,6 +1627,12 @@
       selectTool(key);
     });
   });
+
+  if (btnCopyArea) {
+    btnCopyArea.addEventListener('click', () => {
+      selectTool('copy_area');
+    });
+  }
 
   loadCreateTileNames();
   applyCreateTileNamesToUI();
@@ -1670,6 +1786,674 @@
     }
   });
 
+  // --- オリジナルオブジェクトのインポート処理 ---
+  const btnImportMapImg = document.getElementById('btn-import-map-img');
+  const inputMapImg = document.getElementById('input-map-img');
+  
+  if (btnImportMapImg && inputMapImg) {
+    btnImportMapImg.addEventListener('click', () => {
+      inputMapImg.click();
+    });
+    
+    inputMapImg.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const src = event.target.result;
+        const img = new Image();
+        img.onload = () => {
+          const newId = createMapData.customImages.length;
+          createMapData.customImages.push({ id: newId, src, img });
+          
+          const container = document.getElementById('custom-images-container');
+          
+          const toolDiv = document.createElement('div');
+          toolDiv.id = `tool-custom-${newId}`;
+          toolDiv.dataset.tool = `custom_${newId}`;
+          toolDiv.className = 'create-tool-item py-2 px-3 bg-slate-50 border-2 border-transparent text-slate-600 rounded-2xl font-bold text-xs text-left flex items-center gap-2 hover:bg-slate-100 transition-all';
+          
+          const canvas = document.createElement('canvas');
+          canvas.className = 'create-tool-thumb';
+          canvas.dataset.thumb = `custom_${newId}`;
+          canvas.width = 32;
+          canvas.height = 32;
+          const ctx = canvas.getContext('2d');
+          PopArt.setupCrisp(ctx);
+          const scale = Math.min(32 / img.width, 32 / img.height);
+          const drawW = img.width * scale;
+          const drawH = img.height * scale;
+          ctx.drawImage(img, (32 - drawW) / 2, (32 - drawH) / 2, drawW, drawH);
+          
+          const input = document.createElement('input');
+          input.type = 'text';
+          input.className = 'create-tool-name';
+          input.dataset.tool = `custom_${newId}`;
+          input.value = `カスタム${newId + 1}`;
+          
+          toolDiv.appendChild(canvas);
+          toolDiv.appendChild(input);
+          
+          toolDiv.addEventListener('click', (ev) => {
+            if (ev.target.tagName.toLowerCase() === 'input') return;
+            selectTool(toolDiv.dataset.tool);
+            
+            document.querySelectorAll('.create-tool-item').forEach(el => {
+              const isDefault = Object.values(tools).includes(el);
+              if (!isDefault) {
+                el.classList.remove('bg-emerald-50', 'border-emerald-400', 'text-emerald-700');
+                el.classList.add('bg-slate-50', 'border-transparent', 'text-slate-600');
+              }
+            });
+            toolDiv.classList.remove('bg-slate-50', 'border-transparent', 'text-slate-600');
+            toolDiv.classList.add('bg-emerald-50', 'border-emerald-400', 'text-emerald-700');
+          });
+          
+          container.appendChild(toolDiv);
+          toolDiv.click();
+          showMessage("オリジナル画像をパレットに追加しました！");
+        };
+        img.src = src;
+      };
+      reader.readAsDataURL(file);
+      inputMapImg.value = '';
+    });
+  }
+
+  // --- タイルシートインポート (512x512, 1マス64x64, 黒色透過) ---
+  const btnImportTileSheet = document.getElementById('btn-import-tile-sheet');
+  const inputTileSheet = document.getElementById('input-tile-sheet');
+  const tileSheetModal = document.getElementById('tile-sheet-modal');
+  const tileSheetGrid = document.getElementById('tile-sheet-grid');
+  
+  let currentTileSheetImg = null;
+  let tempTilesData = [];
+
+  if (!window.customTilesMap) {
+    window.customTilesMap = {};
+  }
+  if (!createMapData.customTiles) {
+    createMapData.customTiles = [];
+  }
+
+  if (btnImportTileSheet && inputTileSheet) {
+    btnImportTileSheet.addEventListener('click', () => {
+      inputTileSheet.click();
+    });
+
+    inputTileSheet.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const src = event.target.result;
+        const img = new Image();
+        img.onload = () => {
+          currentTileSheetImg = img;
+          openTileSheetModal();
+        };
+        img.src = src;
+      };
+      reader.readAsDataURL(file);
+      inputTileSheet.value = '';
+    });
+  }
+
+  // スライダーUI要素
+  const inputTileThreshold = document.getElementById('input-tile-threshold');
+  const inputTileFeather = document.getElementById('input-tile-feather');
+  const labelTileThreshold = document.getElementById('label-tile-threshold');
+  const labelTileFeather = document.getElementById('label-tile-feather');
+
+  let previewCanvases = []; // プレビューCanvasの参照を保持
+  let typeButtons = [];     // 各タイルの種別ボタンの参照を保持
+
+  function addWhiteOutline(sourceImgOrCanvas) {
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = sourceImgOrCanvas.width;
+    tempCanvas.height = sourceImgOrCanvas.height;
+    const tempCtx = tempCanvas.getContext('2d');
+    tempCtx.drawImage(sourceImgOrCanvas, 0, 0);
+    
+    const srcData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+    const srcPixels = srcData.data;
+    
+    const outCanvas = document.createElement('canvas');
+    outCanvas.width = tempCanvas.width;
+    outCanvas.height = tempCanvas.height;
+    const outCtx = outCanvas.getContext('2d');
+    const outData = outCtx.createImageData(tempCanvas.width, tempCanvas.height);
+    const outPixels = outData.data;
+    
+    for (let i = 0; i < srcPixels.length; i++) {
+      outPixels[i] = srcPixels[i];
+    }
+    
+    const w = tempCanvas.width;
+    const h = tempCanvas.height;
+    
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const idx = (y * w + x) * 4;
+        const alpha = srcPixels[idx + 3];
+        
+        if (alpha <= 50) {
+          let hasSolidNeighbor = false;
+          for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+              if (dx === 0 && dy === 0) continue;
+              const nx = x + dx;
+              const ny = y + dy;
+              if (nx >= 0 && nx < w && ny >= 0 && ny < h) {
+                const nIdx = (ny * w + nx) * 4;
+                if (srcPixels[nIdx + 3] > 50) {
+                  hasSolidNeighbor = true;
+                  break;
+                }
+              }
+            }
+            if (hasSolidNeighbor) break;
+          }
+          
+          if (hasSolidNeighbor) {
+            outPixels[idx] = 255;
+            outPixels[idx + 1] = 255;
+            outPixels[idx + 2] = 255;
+            outPixels[idx + 3] = 255;
+          }
+        }
+      }
+    }
+    
+    outCtx.putImageData(outData, 0, 0);
+    return outCanvas;
+  }
+
+  // 切り出し＆透過処理用の一時Canvas
+  const tempTileCanvas = document.createElement('canvas');
+  tempTileCanvas.width = 64;
+  tempTileCanvas.height = 64;
+  const tempTileCtx = tempTileCanvas.getContext('2d');
+
+  function processTileImage(img, tileX, tileY, threshold, feather) {
+    tempTileCtx.clearRect(0, 0, 64, 64);
+    tempTileCtx.drawImage(img, tileX, tileY, 64, 64, 0, 0, 64, 64);
+    
+    const imgData = tempTileCtx.getImageData(0, 0, 64, 64);
+    const data = imgData.data;
+    
+    const minLimit = threshold;
+    const maxLimit = threshold + feather;
+    let hasColor = false;
+    
+    for (let i = 0; i < data.length; i += 4) {
+      const r = data[i];
+      const g = data[i+1];
+      const b = data[i+2];
+      const v = Math.max(r, g, b);
+      
+      if (v <= minLimit) {
+        data[i+3] = 0;
+      } else if (v >= maxLimit) {
+        hasColor = true;
+      } else {
+        const ratio = (v - minLimit) / (maxLimit - minLimit);
+        data[i+3] = Math.round(255 * ratio);
+        if (data[i+3] > 0) {
+          hasColor = true;
+        }
+      }
+    }
+    
+    tempTileCtx.putImageData(imgData, 0, 0);
+    return {
+      dataUrl: tempTileCanvas.toDataURL('image/png'),
+      hasColor: hasColor,
+      canvas: tempTileCanvas
+    };
+  }
+
+  function updateTileSheetPreviews() {
+    const threshold = parseInt(inputTileThreshold.value, 10);
+    const feather = parseInt(inputTileFeather.value, 10);
+    
+    labelTileThreshold.textContent = threshold;
+    labelTileFeather.textContent = feather;
+    
+    if (currentCopyImgCanvas) {
+      const result = processCopyImage(currentCopyImgCanvas, threshold, feather);
+      let resultCanvas = result.canvas;
+      tempTilesData[0].originalSrc = result.dataUrl;
+      if (tempTilesData[0].outline) {
+        resultCanvas = addWhiteOutline(result.canvas);
+      }
+      tempTilesData[0].src = resultCanvas.toDataURL('image/png');
+      const pCanvas = previewCanvases[0];
+      if (pCanvas) {
+        const pCtx = pCanvas.getContext('2d');
+        pCtx.clearRect(0, 0, pCanvas.width, pCanvas.height);
+        pCtx.drawImage(resultCanvas, 0, 0, resultCanvas.width, resultCanvas.height, 0, 0, pCanvas.width, pCanvas.height);
+      }
+      return;
+    }
+
+    if (!currentTileSheetImg) return;
+    
+    const TILE_SIZE = 64;
+    const cols = 8;
+    
+    tempTilesData.forEach((tileData, index) => {
+      const r = Math.floor(index / cols);
+      const c = index % cols;
+      const tileX = c * TILE_SIZE;
+      const tileY = r * TILE_SIZE;
+      
+      const result = processTileImage(currentTileSheetImg, tileX, tileY, threshold, feather);
+      let resultCanvas = result.canvas;
+      tileData.originalSrc = result.dataUrl;
+      if (tileData.outline) {
+        resultCanvas = addWhiteOutline(result.canvas);
+      }
+      tileData.src = resultCanvas.toDataURL('image/png');
+      
+      const pCanvas = previewCanvases[index];
+      if (pCanvas) {
+        const pCtx = pCanvas.getContext('2d');
+        pCtx.clearRect(0, 0, 32, 32);
+        pCtx.drawImage(resultCanvas, 0, 0, 64, 64, 0, 0, 32, 32);
+      }
+    });
+  }
+  
+  if (inputTileThreshold && inputTileFeather) {
+    inputTileThreshold.addEventListener('input', updateTileSheetPreviews);
+    inputTileFeather.addEventListener('input', updateTileSheetPreviews);
+  }
+
+  function updateAllTypeButtons() {
+    tempTilesData.forEach((tile, index) => {
+      const typeBtn = typeButtons[index];
+      if (typeBtn) {
+        if (tile.type === 'terrain') {
+          typeBtn.className = 'w-full text-[10px] py-1 px-2 rounded-lg font-bold transition-all border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 outline-none';
+          typeBtn.textContent = '🟩 地面 (通行可)';
+        } else {
+          typeBtn.className = 'w-full text-[10px] py-1 px-2 rounded-lg font-bold transition-all border border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200 outline-none';
+          typeBtn.textContent = '🪨 オブジェクト (壁)';
+        }
+      }
+    });
+  }
+
+  // 一括設定ボタンのイベントリスナー
+  const btnTileAllTerrain = document.getElementById('btn-tile-sheet-all-terrain');
+  const btnTileAllProp = document.getElementById('btn-tile-sheet-all-prop');
+  if (btnTileAllTerrain && btnTileAllProp) {
+    btnTileAllTerrain.addEventListener('click', () => {
+      tempTilesData.forEach(tile => {
+        tile.type = 'terrain';
+      });
+      updateAllTypeButtons();
+    });
+    btnTileAllProp.addEventListener('click', () => {
+      tempTilesData.forEach(tile => {
+        tile.type = 'prop';
+      });
+      updateAllTypeButtons();
+    });
+  }
+
+  function openTileSheetModal() {
+    if (!currentTileSheetImg) return;
+    tileSheetGrid.innerHTML = '';
+    tempTilesData = [];
+    previewCanvases = [];
+    
+    // スライダーの初期値
+    inputTileThreshold.value = 30;
+    inputTileFeather.value = 20;
+    labelTileThreshold.textContent = "30";
+    labelTileFeather.textContent = "20";
+
+    const TILE_SIZE = 64;
+    const cols = 8;
+    const rows = 8;
+
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const index = r * cols + c;
+        const tileX = c * TILE_SIZE;
+        const tileY = r * TILE_SIZE;
+
+        // 初期状態でしきい値30、エッジ20で透過画像を作る
+        const result = processTileImage(currentTileSheetImg, tileX, tileY, 30, 20);
+        const defaultName = `タイル_${r+1}_${c+1}`;
+
+        tempTilesData.push({
+          index: index,
+          name: defaultName,
+          type: 'terrain',
+          src: result.dataUrl,
+          originalSrc: result.dataUrl,
+          hasColor: result.hasColor,
+          outline: false // 初期値は白ふち無し
+        });
+
+        const itemDiv = document.createElement('div');
+        itemDiv.className = 'flex flex-col gap-1.5 p-2 bg-slate-50 border border-slate-200 rounded-xl hover:border-violet-300 transition-all items-center text-center';
+        
+        const previewCanvas = document.createElement('canvas');
+        previewCanvas.width = 32;
+        previewCanvas.height = 32;
+        const pCtx = previewCanvas.getContext('2d');
+        PopArt.setupCrisp(pCtx);
+        pCtx.drawImage(result.canvas, 0, 0, 64, 64, 0, 0, 32, 32);
+        
+        previewCanvases.push(previewCanvas); // 参照を保持
+
+        const checkLabel = document.createElement('label');
+        checkLabel.className = 'flex items-center gap-1 cursor-pointer text-[11px] font-bold text-slate-700 w-full justify-start';
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.className = 'rounded text-violet-600 focus:ring-violet-400 w-3.5 h-3.5';
+        checkbox.checked = result.hasColor;
+        
+        const checkSpan = document.createElement('span');
+        checkSpan.textContent = '採用';
+        checkLabel.appendChild(checkbox);
+        checkLabel.appendChild(checkSpan);
+
+        const nameInput = document.createElement('input');
+        nameInput.type = 'text';
+        nameInput.className = 'w-full text-[10px] p-1 bg-white border border-slate-200 rounded-md outline-none text-slate-700 focus:border-violet-400 font-bold';
+        nameInput.value = defaultName;
+        nameInput.ariaLabel = `${defaultName}の名前`;
+
+        const outlineBtn = document.createElement('button');
+        outlineBtn.type = 'button';
+        outlineBtn.className = 'w-full text-[9px] py-1 px-1.5 rounded-lg font-bold transition-all border border-slate-300 bg-slate-100 text-slate-600 hover:bg-slate-200 outline-none';
+        outlineBtn.textContent = '🤍 白ふち (無効)';
+        
+        outlineBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          tempTilesData[index].outline = !tempTilesData[index].outline;
+          if (tempTilesData[index].outline) {
+            outlineBtn.className = 'w-full text-[9px] py-1 px-1.5 rounded-lg font-bold transition-all border border-pink-200 bg-pink-50 text-pink-700 hover:bg-pink-100 outline-none';
+            outlineBtn.textContent = '💖 白ふち (有効)';
+          } else {
+            outlineBtn.className = 'w-full text-[9px] py-1 px-1.5 rounded-lg font-bold transition-all border border-slate-300 bg-slate-100 text-slate-600 hover:bg-slate-200 outline-none';
+            outlineBtn.textContent = '🤍 白ふち (無効)';
+          }
+          updateTileSheetPreviews();
+        });
+
+        const typeBtn = document.createElement('button');
+        typeBtn.type = 'button';
+        typeBtn.className = 'w-full text-[10px] py-1 px-2 rounded-lg font-bold transition-all border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 outline-none';
+        typeBtn.textContent = '🟩 地面 (通行可)';
+        
+        typeButtons.push(typeBtn);
+
+        typeBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          const nextType = tempTilesData[index].type === 'terrain' ? 'prop' : 'terrain';
+          tempTilesData[index].type = nextType;
+          
+          if (nextType === 'terrain') {
+            typeBtn.className = 'w-full text-[10px] py-1 px-2 rounded-lg font-bold transition-all border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 outline-none';
+            typeBtn.textContent = '🟩 地面 (通行可)';
+          } else {
+            typeBtn.className = 'w-full text-[10px] py-1 px-2 rounded-lg font-bold transition-all border border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200 outline-none';
+            typeBtn.textContent = '🪨 オブジェクト (壁)';
+          }
+        });
+        
+        itemDiv.appendChild(previewCanvas);
+        itemDiv.appendChild(checkLabel);
+        itemDiv.appendChild(nameInput);
+        itemDiv.appendChild(outlineBtn);
+        itemDiv.appendChild(typeBtn);
+
+        tileSheetGrid.appendChild(itemDiv);
+
+        checkbox.addEventListener('change', () => {
+          tempTilesData[index].checked = checkbox.checked;
+        });
+        nameInput.addEventListener('input', () => {
+          tempTilesData[index].name = nameInput.value;
+        });
+
+        tempTilesData[index].checked = checkbox.checked;
+      }
+    }
+
+    tileSheetModal.classList.remove('hidden');
+  }
+
+  function closeTileSheetModal() {
+    tileSheetModal.classList.add('hidden');
+    currentTileSheetImg = null;
+    currentCopyImgCanvas = null;
+    
+    const modalTitle = tileSheetModal.querySelector('h3');
+    const modalDesc = tileSheetModal.querySelector('p');
+    if (modalTitle) modalTitle.textContent = "🗺️ タイルシートのインポート設定 (512x512)";
+    if (modalDesc) modalDesc.textContent = "64x64ピクセル単位で64個に分割されます。黒色（#000000）の背景部分は自動的に透明化されます。";
+  }
+
+  document.getElementById('btn-tile-sheet-close').addEventListener('click', closeTileSheetModal);
+  document.getElementById('btn-tile-sheet-cancel').addEventListener('click', closeTileSheetModal);
+
+  document.getElementById('btn-tile-sheet-select-all').addEventListener('click', () => {
+    const checkboxes = tileSheetGrid.querySelectorAll('input[type="checkbox"]');
+    checkboxes.forEach((cb, idx) => {
+      cb.checked = true;
+      tempTilesData[idx].checked = true;
+    });
+  });
+  document.getElementById('btn-tile-sheet-deselect-all').addEventListener('click', () => {
+    const checkboxes = tileSheetGrid.querySelectorAll('input[type="checkbox"]');
+    checkboxes.forEach((cb, idx) => {
+      cb.checked = false;
+      tempTilesData[idx].checked = false;
+    });
+  });
+
+  document.getElementById('btn-tile-sheet-confirm').addEventListener('click', () => {
+    const selectedTiles = tempTilesData.filter(t => t.checked && t.name.trim() !== '');
+    if (selectedTiles.length === 0) {
+      showMessage("採用するタイルにチェックを入れてください。");
+      return;
+    }
+
+    let loadedCount = 0;
+    selectedTiles.forEach(tile => {
+      const tileImg = new Image();
+      const originalImg = new Image();
+      
+      const checkLoaded = () => {
+        if (tileImg.complete && originalImg.complete) {
+          loadedCount++;
+          const newId = `${Date.now()}_${tile.index}`;
+          const newToolKey = `custom_tile_${newId}`;
+          
+          const newTileObj = {
+            id: newId,
+            toolKey: newToolKey,
+            name: tile.name,
+            type: tile.type,
+            outline: tile.outline,
+            src: tile.src,
+            originalSrc: tile.originalSrc,
+            img: tileImg,
+            originalImg: originalImg,
+            width: tile.width || 1,
+            height: tile.height || 1
+          };
+          createMapData.customTiles.push(newTileObj);
+          window.customTilesMap[newId] = newTileObj;
+
+          addTileToPalette(newTileObj);
+
+          if (loadedCount === selectedTiles.length) {
+            closeTileSheetModal();
+            showMessage(`${selectedTiles.length}個のタイルをインポートしました！`);
+          }
+        }
+      };
+      
+      tileImg.onload = checkLoaded;
+      originalImg.onload = checkLoaded;
+      
+      tileImg.src = tile.src;
+      originalImg.src = tile.originalSrc;
+    });
+  });
+
+  function addTileToPalette(tileObj) {
+    const container = document.getElementById('custom-images-container');
+    const terrainContainer = document.getElementById('tool-grass').parentNode;
+    
+    const toolDiv = document.createElement('div');
+    toolDiv.id = `tool-custom-tile-${tileObj.id}`;
+    toolDiv.dataset.tool = tileObj.toolKey;
+    
+    const baseClass = 'create-tool-item py-2 px-3 border-2 border-transparent rounded-2xl font-bold text-xs text-left flex items-center gap-2 transition-all cursor-pointer ';
+
+    const canvas = document.createElement('canvas');
+    canvas.className = 'create-tool-thumb';
+    canvas.dataset.thumb = tileObj.toolKey;
+    canvas.width = 32;
+    canvas.height = 32;
+    const ctx = canvas.getContext('2d');
+    PopArt.setupCrisp(ctx);
+    ctx.drawImage(tileObj.img, 0, 0, 32, 32);
+
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.className = 'create-tool-name';
+    nameInput.style.width = '60px'; // 横幅を制限してボタンの表示スペースを作る
+    nameInput.dataset.tool = tileObj.toolKey;
+    nameInput.value = tileObj.name;
+
+    const typeBtn = document.createElement('button');
+    typeBtn.type = 'button';
+    typeBtn.className = 'create-tool-type-btn text-[9px] py-0.5 px-1.5 rounded font-bold transition-all border outline-none ml-auto shrink-0';
+
+    const outlineBtn = document.createElement('button');
+    outlineBtn.type = 'button';
+    outlineBtn.className = 'create-tool-outline-btn text-[9px] py-0.5 px-1.5 rounded font-bold border outline-none ml-1 shrink-0';
+
+    function updatePaletteItemOutline(outline, skipImageUpdate = false) {
+      tileObj.outline = outline;
+      if (window.customTilesMap[tileObj.id]) {
+        window.customTilesMap[tileObj.id].outline = outline;
+      }
+      
+      if (outline) {
+        outlineBtn.className = 'create-tool-outline-btn text-[9px] py-0.5 px-1.5 rounded font-bold border border-pink-200 bg-pink-50 text-pink-700 hover:bg-pink-100 outline-none ml-1 shrink-0';
+        outlineBtn.textContent = '💖 ふち';
+      } else {
+        outlineBtn.className = 'create-tool-outline-btn text-[9px] py-0.5 px-1.5 rounded font-bold border border-slate-300 bg-slate-100 text-slate-600 hover:bg-slate-200 outline-none ml-1 shrink-0';
+        outlineBtn.textContent = '🤍 ふち';
+      }
+
+      if (!skipImageUpdate) {
+        if (outline) {
+          const outlineCanvas = addWhiteOutline(tileObj.originalImg);
+          tileObj.img.onload = () => {
+            ctx.clearRect(0, 0, 32, 32);
+            ctx.drawImage(tileObj.img, 0, 0, 32, 32);
+            drawCreateCanvas();
+          };
+          tileObj.img.src = outlineCanvas.toDataURL('image/png');
+        } else {
+          tileObj.img.onload = () => {
+            ctx.clearRect(0, 0, 32, 32);
+            ctx.drawImage(tileObj.img, 0, 0, 32, 32);
+            drawCreateCanvas();
+          };
+          tileObj.img.src = tileObj.originalSrc;
+        }
+      }
+    }
+
+    outlineBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      updatePaletteItemOutline(!tileObj.outline);
+    });
+
+    function updatePaletteItemType(type) {
+      tileObj.type = type;
+      if (window.customTilesMap[tileObj.id]) {
+        window.customTilesMap[tileObj.id].type = type;
+      }
+      
+      if (type === 'terrain') {
+        typeBtn.className = 'create-tool-type-btn text-[9px] py-0.5 px-1.5 rounded font-bold border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 outline-none ml-auto shrink-0';
+        typeBtn.textContent = '🟩 地面';
+        toolDiv.className = baseClass + 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100';
+        
+        // 地形コンテナに移動
+        const gameHeader = Array.from(terrainContainer.children).find(el => el.textContent.includes('ゲーム'));
+        if (gameHeader) {
+          terrainContainer.insertBefore(toolDiv, gameHeader);
+        } else {
+          terrainContainer.appendChild(toolDiv);
+        }
+      } else {
+        typeBtn.className = 'create-tool-type-btn text-[9px] py-0.5 px-1.5 rounded font-bold border border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200 outline-none ml-auto shrink-0';
+        typeBtn.textContent = '🪨 壁';
+        toolDiv.className = baseClass + 'bg-slate-50 text-slate-600 hover:bg-slate-100';
+        
+        // オリジナルオブジェクトコンテナに移動
+        container.appendChild(toolDiv);
+      }
+      
+      // 再描画
+      drawCreateCanvas();
+    }
+
+    typeBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const nextType = tileObj.type === 'terrain' ? 'prop' : 'terrain';
+      updatePaletteItemType(nextType);
+    });
+
+    toolDiv.appendChild(canvas);
+    toolDiv.appendChild(nameInput);
+    toolDiv.appendChild(typeBtn);
+    toolDiv.appendChild(outlineBtn);
+
+    nameInput.addEventListener('input', () => {
+      tileObj.name = nameInput.value;
+      saveCreateTileName(nameInput.dataset.tool, nameInput.value);
+    });
+
+    toolDiv.addEventListener('click', (ev) => {
+      if (ev.target.tagName.toLowerCase() === 'input' || ev.target.tagName.toLowerCase() === 'button') return;
+      selectTool(toolDiv.dataset.tool);
+      
+      document.querySelectorAll('.create-tool-item').forEach(el => {
+        const isDefault = Object.values(tools).includes(el);
+        if (!isDefault) {
+          el.classList.remove('bg-emerald-50', 'border-emerald-400', 'text-emerald-700');
+          el.classList.add('bg-slate-50', 'border-transparent', 'text-slate-600');
+        }
+      });
+      toolDiv.classList.remove('bg-slate-50', 'border-transparent', 'text-slate-600');
+      toolDiv.classList.add('bg-emerald-50', 'border-emerald-400', 'text-emerald-700');
+    });
+
+    // 初期状態の設定を実行
+    updatePaletteItemType(tileObj.type);
+    updatePaletteItemOutline(tileObj.outline, true);
+  }
+
   // 全て消去ボタン
   document.getElementById('btn-clear-map').addEventListener('click', () => {
     createMapData.terrain = {};
@@ -1734,7 +2518,12 @@
   }
 
   function findCreateProp(gridX, gridY) {
-    return createMapData.props.findIndex(pos => pos.gridX === gridX && pos.gridY === gridY);
+    return createMapData.props.findIndex(pos => {
+      const w = pos.wCells || 1;
+      const h = pos.hCells || 1;
+      return gridX >= pos.gridX && gridX < pos.gridX + w &&
+             gridY >= pos.gridY && gridY < pos.gridY + h;
+    });
   }
 
   function findCreateEnemyAtGrid(gridX, gridY) {
@@ -1782,7 +2571,27 @@
       return false;
     }
 
-    if (CREATE_TERRAIN_TOOLS.includes(activeTool)) {
+    const isCustomProp = activeTool.startsWith('custom_') && !activeTool.startsWith('custom_tile_');
+    let isCustomTerrain = false;
+    let isCustomTileProp = false;
+
+    let tileWidth = 1;
+    let tileHeight = 1;
+    if (activeTool.startsWith('custom_tile_')) {
+      const tileId = activeTool.replace('custom_tile_', '');
+      const tile = window.customTilesMap && window.customTilesMap[tileId];
+      if (tile) {
+        tileWidth = tile.width || 1;
+        tileHeight = tile.height || 1;
+        if (tile.type === 'terrain') {
+          isCustomTerrain = true;
+        } else {
+          isCustomTileProp = true;
+        }
+      }
+    }
+
+    if (CREATE_TERRAIN_TOOLS.includes(activeTool) || isCustomTerrain) {
       if (paintMode) lastPaintCell = cellKey;
       const current = createMapData.terrain[cellKey] || 'grass';
       if (current === activeTool) {
@@ -1793,7 +2602,7 @@
       return true;
     }
 
-    if (CREATE_PROP_TYPES.includes(activeTool)) {
+    if (CREATE_PROP_TYPES.includes(activeTool) || isCustomProp || isCustomTileProp) {
       if (paintMode) lastPaintCell = cellKey;
       const existing = findCreateProp(gridX, gridY);
       if (existing !== -1 && createMapData.props[existing].type === activeTool) {
@@ -1803,7 +2612,7 @@
       }
       if (paintMode && existing !== -1) return false;
       clearCreateCellObjects(gridX, gridY);
-      createMapData.props.push({ gridX, gridY, type: activeTool });
+      createMapData.props.push({ gridX, gridY, type: activeTool, wCells: tileWidth, hCells: tileHeight });
       return true;
     }
 
@@ -1837,14 +2646,247 @@
     return false;
   }
 
+  let currentCopyImgCanvas = null;
+
+  function captureMapArea(minX, minY, maxX, maxY) {
+    const TILE_RES = 64; // 1マスのキャプチャ解像度は64px
+    const wCells = maxX - minX + 1;
+    const hCells = maxY - minY + 1;
+    
+    const capCanvas = document.createElement('canvas');
+    capCanvas.width = wCells * TILE_RES;
+    capCanvas.height = hCells * TILE_RES;
+    const capCtx = capCanvas.getContext('2d');
+    PopArt.setupCrisp(capCtx);
+    
+    // 背景は透過にするため塗りつぶさない
+    
+    // 1. 地形（terrain）を描画
+    for (let gy = 0; gy < hCells; gy++) {
+      for (let gx = 0; gx < wCells; gx++) {
+        const mapX = minX + gx;
+        const mapY = minY + gy;
+        const cellKey = PopArt.terrainKey(mapX, mapY);
+        const type = createMapData.terrain[cellKey] || 'grass';
+        PopArt.drawTerrainTile(capCtx, type, gx * TILE_RES, gy * TILE_RES, TILE_RES, mapX, mapY, 0);
+      }
+    }
+    
+    // 2. オブジェクト（props）を描画
+    createMapData.props.forEach(p => {
+      if (p.gridX >= minX && p.gridX <= maxX && p.gridY >= minY && p.gridY <= maxY) {
+        const rx = p.gridX - minX;
+        const ry = p.gridY - minY;
+        PopArt.drawMapProp(capCtx, p.type, {
+          x: rx * TILE_RES,
+          y: ry * TILE_RES,
+          width: TILE_RES,
+          height: TILE_RES,
+          active: true,
+          isBurning: false
+        }, 0);
+      }
+    });
+    
+    return capCanvas;
+  }
+
+  const tempCopyCanvas = document.createElement('canvas');
+  function processCopyImage(sourceCanvas, threshold, feather) {
+    tempCopyCanvas.width = sourceCanvas.width;
+    tempCopyCanvas.height = sourceCanvas.height;
+    const tempCopyCtx = tempCopyCanvas.getContext('2d');
+    tempCopyCtx.clearRect(0, 0, tempCopyCanvas.width, tempCopyCanvas.height);
+    tempCopyCtx.drawImage(sourceCanvas, 0, 0);
+    
+    const imgData = tempCopyCtx.getImageData(0, 0, tempCopyCanvas.width, tempCopyCanvas.height);
+    const data = imgData.data;
+    
+    const minLimit = threshold;
+    const maxLimit = threshold + feather;
+    
+    for (let i = 0; i < data.length; i += 4) {
+      const r = data[i];
+      const g = data[i+1];
+      const b = data[i+2];
+      const a = data[i+3];
+      if (a === 0) continue; // すでに透過されているピクセルは無視
+      
+      const v = Math.max(r, g, b);
+      
+      // 暗い色（黒背景由来）を透過
+      if (v <= minLimit) {
+        data[i+3] = 0;
+      } else if (v >= maxLimit) {
+        // そのまま
+      } else {
+        const ratio = (v - minLimit) / (maxLimit - minLimit);
+        data[i+3] = Math.round(a * ratio);
+      }
+    }
+    
+    tempCopyCtx.putImageData(imgData, 0, 0);
+    return {
+      dataUrl: tempCopyCanvas.toDataURL('image/png'),
+      canvas: tempCopyCanvas
+    };
+  }
+
+  function openCopyImportModal(capturedCanvas, wCells = 1, hCells = 1) {
+    currentCopyImgCanvas = capturedCanvas;
+    tileSheetGrid.innerHTML = '';
+    tempTilesData = [];
+    previewCanvases = [];
+    typeButtons = [];
+    
+    // コピーなので透過しきい値は最初は低め（0〜5など）に設定
+    inputTileThreshold.value = 5;
+    inputTileFeather.value = 5;
+    labelTileThreshold.textContent = "5";
+    labelTileFeather.textContent = "5";
+    
+    const defaultName = `コピー_${Date.now().toString().slice(-4)}`;
+    const result = processCopyImage(capturedCanvas, 5, 5);
+    
+    tempTilesData.push({
+      index: 0,
+      name: defaultName,
+      type: 'prop', // デフォルトはオブジェクト（壁）
+      src: result.dataUrl,
+      originalSrc: result.dataUrl,
+      checked: true,
+      outline: false, // 初期値は白ふち無し
+      width: wCells,
+      height: hCells
+    });
+    
+    const itemDiv = document.createElement('div');
+    itemDiv.className = 'flex flex-col gap-1.5 p-2 bg-slate-50 border border-slate-200 rounded-xl hover:border-violet-300 transition-all items-center text-center mx-auto max-w-[160px]';
+    
+    const previewCanvas = document.createElement('canvas');
+    const aspect = capturedCanvas.width / capturedCanvas.height;
+    previewCanvas.width = 32 * Math.min(1, aspect);
+    previewCanvas.height = 32 * Math.min(1, 1 / aspect);
+    const pCtx = previewCanvas.getContext('2d');
+    PopArt.setupCrisp(pCtx);
+    pCtx.drawImage(result.canvas, 0, 0, result.canvas.width, result.canvas.height, 0, 0, previewCanvas.width, previewCanvas.height);
+    
+    previewCanvases.push(previewCanvas);
+    
+    const checkLabel = document.createElement('label');
+    checkLabel.className = 'flex items-center gap-1 cursor-pointer text-[11px] font-bold text-slate-700 w-full justify-start';
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.className = 'rounded text-violet-600 focus:ring-violet-400 w-3.5 h-3.5';
+    checkbox.checked = true;
+    
+    const checkSpan = document.createElement('span');
+    checkSpan.textContent = '採用';
+    checkLabel.appendChild(checkbox);
+    checkLabel.appendChild(checkSpan);
+
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.className = 'w-full text-[10px] p-1 bg-white border border-slate-200 rounded-md outline-none text-slate-700 focus:border-violet-400 font-bold';
+    nameInput.value = defaultName;
+    
+    const outlineBtn = document.createElement('button');
+    outlineBtn.type = 'button';
+    outlineBtn.className = 'w-full text-[9px] py-1 px-1.5 rounded-lg font-bold transition-all border border-slate-300 bg-slate-100 text-slate-600 hover:bg-slate-200 outline-none';
+    outlineBtn.textContent = '🤍 白ふち (無効)';
+    
+    outlineBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      tempTilesData[0].outline = !tempTilesData[0].outline;
+      if (tempTilesData[0].outline) {
+        outlineBtn.className = 'w-full text-[9px] py-1 px-1.5 rounded-lg font-bold transition-all border border-pink-200 bg-pink-50 text-pink-700 hover:bg-pink-100 outline-none';
+        outlineBtn.textContent = '💖 白ふち (有効)';
+      } else {
+        outlineBtn.className = 'w-full text-[9px] py-1 px-1.5 rounded-lg font-bold transition-all border border-slate-300 bg-slate-100 text-slate-600 hover:bg-slate-200 outline-none';
+        outlineBtn.textContent = '🤍 白ふち (無効)';
+      }
+      updateTileSheetPreviews();
+    });
+
+    const typeBtn = document.createElement('button');
+    typeBtn.type = 'button';
+    typeBtn.className = 'w-full text-[10px] py-1 px-2 rounded-lg font-bold transition-all border border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200 outline-none';
+    typeBtn.textContent = '🪨 オブジェクト (壁)';
+    
+    typeButtons.push(typeBtn);
+
+    typeBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const nextType = tempTilesData[0].type === 'terrain' ? 'prop' : 'terrain';
+      tempTilesData[0].type = nextType;
+      
+      if (nextType === 'terrain') {
+        typeBtn.className = 'w-full text-[10px] py-1 px-2 rounded-lg font-bold transition-all border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 outline-none';
+        typeBtn.textContent = '🟩 地面 (通行可)';
+      } else {
+        typeBtn.className = 'w-full text-[10px] py-1 px-2 rounded-lg font-bold transition-all border border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200 outline-none';
+        typeBtn.textContent = '🪨 オブジェクト (壁)';
+      }
+    });
+
+    itemDiv.appendChild(previewCanvas);
+    itemDiv.appendChild(checkLabel);
+    itemDiv.appendChild(nameInput);
+    itemDiv.appendChild(outlineBtn);
+    itemDiv.appendChild(typeBtn);
+    
+    tileSheetGrid.appendChild(itemDiv);
+    
+    checkbox.addEventListener('change', () => {
+      tempTilesData[0].checked = checkbox.checked;
+    });
+    nameInput.addEventListener('input', () => {
+      tempTilesData[0].name = nameInput.value;
+    });
+
+    const modalTitle = tileSheetModal.querySelector('h3');
+    const modalDesc = tileSheetModal.querySelector('p');
+    if (modalTitle) modalTitle.textContent = "📋 コピーしたタイルの確認";
+    if (modalDesc) modalDesc.textContent = "選択した範囲の画像をコピーしました。名前や透過設定を行ってインポートしてください。";
+
+    tileSheetModal.classList.remove('hidden');
+  }
+
   function handleCreateCanvasPointer(e, paintMode) {
     const { clickX, clickY, gridX, gridY } = getCreateCanvasCoords(e);
+    if (activeTool === 'copy_area') {
+      if (isCopyDragging) {
+        copyEndGrid = { x: gridX, y: gridY };
+        drawCreateCanvas();
+      }
+      return;
+    }
     if (applyCreateTool(clickX, clickY, gridX, gridY, paintMode)) {
       drawCreateCanvas();
     }
   }
 
   function stopCreatePainting() {
+    if (activeTool === 'copy_area' && isCopyDragging) {
+      isCopyDragging = false;
+      if (copyStartGrid && copyEndGrid) {
+        const minX = Math.min(copyStartGrid.x, copyEndGrid.x);
+        const minY = Math.min(copyStartGrid.y, copyEndGrid.y);
+        const maxX = Math.max(copyStartGrid.x, copyEndGrid.x);
+        const maxY = Math.max(copyStartGrid.y, copyEndGrid.y);
+        
+        if (minX >= 0 && minY >= 0) {
+          const wCells = maxX - minX + 1;
+          const hCells = maxY - minY + 1;
+          const capCanvas = captureMapArea(minX, minY, maxX, maxY);
+          openCopyImportModal(capCanvas, wCells, hCells);
+        }
+      }
+      copyStartGrid = null;
+      copyEndGrid = null;
+      drawCreateCanvas();
+      return;
+    }
     isCreatePainting = false;
     lastPaintCell = null;
   }
@@ -1852,12 +2894,26 @@
   createCanvas.addEventListener('mousedown', (e) => {
     if (e.button !== 0) return;
     e.preventDefault();
+    const { clickX, clickY, gridX, gridY } = getCreateCanvasCoords(e);
+    
+    if (activeTool === 'copy_area') {
+      isCopyDragging = true;
+      copyStartGrid = { x: gridX, y: gridY };
+      copyEndGrid = { x: gridX, y: gridY };
+      drawCreateCanvas();
+      return;
+    }
+    
     isCreatePainting = true;
     lastPaintCell = null;
     handleCreateCanvasPointer(e, false);
   });
 
   createCanvas.addEventListener('mousemove', (e) => {
+    if (activeTool === 'copy_area') {
+      handleCreateCanvasPointer(e, true);
+      return;
+    }
     if (!isCreatePainting) return;
     handleCreateCanvasPointer(e, true);
   });
@@ -2081,26 +3137,44 @@
   }
 
   class MapProp {
-    constructor(gridX, gridY, type, tileSize = TILE_W) {
+    constructor(gridX, gridY, type, imageId = null, tileSize = TILE_W, wCells = 1, hCells = 1) {
       this.gridX = gridX;
       this.gridY = gridY;
       this.type = type;
+      this.imageId = imageId;
+      this.wCells = wCells;
+      this.hCells = hCells;
       this.x = gridX * tileSize;
       this.y = gridY * tileSize;
-      this.width = tileSize;
-      this.height = tileSize;
+      this.width = tileSize * wCells;
+      this.height = tileSize * hCells;
       this.active = true;
       this.burnKind = this.type;
       resetBurnState(this);
     }
     update() {
       if (!this.active) return;
+      if (this.type === 'custom') return; // カスタム画像は燃えない
       if (!NATURAL_PROP_TYPES.has(this.type)) return;
       updateBurningBlock(this);
     }
     draw(ctx) {
       if (!this.active) return;
-      PopArt.drawMapProp(ctx, this.type, this, frameCount);
+      if (this.type === 'custom') {
+        const customObj = createMapData.customImages.find(c => c.id === this.imageId);
+        if (customObj && customObj.img) {
+          const drawW = this.width;
+          const drawH = this.height;
+          const scale = Math.min(drawW / customObj.img.width, drawH / customObj.img.height);
+          const cw = customObj.img.width * scale;
+          const ch = customObj.img.height * scale;
+          const cx = this.x + (this.width - cw) / 2;
+          const cy = this.y + (this.height - ch);
+          ctx.drawImage(customObj.img, cx, cy, cw, ch);
+        }
+      } else {
+        PopArt.drawMapProp(ctx, this.type, this, frameCount);
+      }
     }
   }
 
@@ -4846,7 +5920,7 @@
         enemies.push(new Enemy(pos.x, pos.y));
       });
       createMapData.props.forEach(pos => {
-        propBlocks.push(new MapProp(pos.gridX, pos.gridY, pos.type));
+        propBlocks.push(new MapProp(pos.gridX, pos.gridY, pos.type, pos.imageId, TILE_W, pos.wCells || 1, pos.hCells || 1));
       });
     }
     else {

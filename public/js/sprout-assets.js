@@ -61,7 +61,7 @@
   function drawRect(ctx, spec, dx, dy, dw, dh) {
     const img = imgOf(spec.sheet);
     if (!img || !img.complete || !img.naturalWidth) return false;
-    ctx.drawImage(img, spec.x, spec.y, spec.w, spec.h, dx, dy, dw, dh);
+    ctx.drawImage(img, spec.x, spec.y, spec.w, spec.h, dx, dy, dw + 1, dh + 1);
     return true;
   }
 

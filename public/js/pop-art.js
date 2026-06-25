@@ -384,7 +384,7 @@
         const col = palette[row[sx]];
         if (!col) continue;
         ctx.fillStyle = col;
-        ctx.fillRect(x + rx * scale, y + ry * scale, scale, scale);
+        ctx.fillRect(Math.floor(x + rx * scale), Math.floor(y + ry * scale), Math.ceil(scale) + 0.5, Math.ceil(scale) + 0.5);
       }
     }
     ctx.restore();
@@ -397,33 +397,66 @@
     ctx.fill();
   }
 
-  function drawTerrainTile(ctx, type, tx, ty, tileSize, gx, gy, frame) {
-    const SA = global.SproutAssets;
-    if (SA && SA.isReady() && SA.drawTerrainTile(ctx, type, tx, ty, tileSize, gx, gy, frame)) {
-      return;
+  const tileCache = {};
+  
+  function getCachedTile(type, gx, gy) {
+    let key = type;
+    if (type === 'grass') {
+      key = ((gx + gy) % 2 === 0) ? 'grass_even' : 'grass_odd';
+    } else if (type === 'water') {
+      const wFrame = Math.floor(performance.now() / 400) % 3;
+      key = `water_${wFrame}_${((gx + gy + wFrame) % 3 === 0) ? 'light' : 'dark'}`;
     }
-    const scale = tileSize / TILE_COLS;
+    
+    if (tileCache[key]) return tileCache[key];
+    
+    const canvas = document.createElement('canvas');
+    canvas.width = 32;
+    canvas.height = 32;
+    const ctx = canvas.getContext('2d');
+    
+    const scale = 32 / TILE_COLS;
     let rows = SPR.tileGrass;
     let pal = { ...PAL };
+    
     if (type === 'path') {
       rows = SPR.tilePath;
     } else if (type === 'water') {
       rows = SPR.tileWater;
-      if (((gx + gy + Math.floor(performance.now() / 400)) % 3) === 0) {
+      if (key.includes('light')) {
         pal.l = '#22d3ee';
       }
-    } else if ((gx + gy) % 2 === 0) {
+    } else if (key === 'grass_even') {
       pal.G = '#4ade80';
       pal.g = '#86efac';
     }
-    blitAt(ctx, rows, tx, ty, scale, pal);
+    
+    blitAt(ctx, rows, 0, 0, scale, pal);
+    tileCache[key] = canvas;
+    return canvas;
+  }
+
+  function drawTerrainTile(ctx, type, tx, ty, tileSize, gx, gy, frame) {
+    if (type && type.startsWith('custom_tile_')) {
+      const tileId = type.replace('custom_tile_', '');
+      const customTile = global.customTilesMap && global.customTilesMap[tileId];
+      if (customTile && customTile.img) {
+        ctx.drawImage(customTile.img, tx, ty, tileSize, tileSize);
+        return;
+      }
+    }
+    const cachedCanvas = getCachedTile(type, gx, gy);
+    ctx.drawImage(cachedCanvas, tx, ty, tileSize, tileSize);
   }
 
   function drawGround(ctx, w, h, frame, tileSize, terrainMap) {
     tileSize = tileSize || 32;
     setupCrisp(ctx);
+    const CA = global.CrayonAssets;
     const SA = global.SproutAssets;
-    ctx.fillStyle = SA && SA.isReady() ? '#8ecf6a' : '#4ade80';
+    
+    // 背景を緑で塗りつぶす（隙間防止）
+    ctx.fillStyle = '#4ade80';
     ctx.fillRect(0, 0, w, h);
 
     const cols = Math.ceil(w / tileSize);
@@ -444,6 +477,7 @@
         if (type !== 'grass') continue;
         const tx = gx * tileSize;
         const ty = gy * tileSize;
+        if (CA && CA.isReady()) continue;
         if (SA && SA.isReady()) {
           SA.drawGrassDeco(ctx, tx, ty, tileSize, gx, gy);
           continue;
@@ -471,10 +505,37 @@
 
   function drawMapProp(ctx, type, block, frame) {
     if (!block.active) return;
+    if (type && type.startsWith('custom_')) {
+      if (type.startsWith('custom_tile_')) {
+        const tileId = type.replace('custom_tile_', '');
+        const customTile = global.customTilesMap && global.customTilesMap[tileId];
+        if (customTile && customTile.img) {
+          ctx.drawImage(customTile.img, block.x, block.y, block.width, block.height);
+          drawBurnOverlay(ctx, block);
+          return;
+        }
+      } else {
+        const imgId = parseInt(type.replace('custom_', ''), 10);
+        const customObj = global.createMapData && global.createMapData.customImages && global.createMapData.customImages.find(c => c.id === imgId);
+        if (customObj && customObj.img) {
+          ctx.drawImage(customObj.img, block.x, block.y, block.width, block.height);
+          drawBurnOverlay(ctx, block);
+          return;
+        }
+      }
+    }
     const cx = block.x + block.width / 2;
     const cy = block.y + block.height - 2;
-    const SA = global.SproutAssets;
+    
+    const CA = global.CrayonAssets;
+    if (CA && CA.isReady()) {
+      if (CA.drawProp(ctx, type, block.x, block.y, block.width, block.height)) {
+        drawBurnOverlay(ctx, block);
+        return;
+      }
+    }
 
+    const SA = global.SproutAssets;
     if (SOLID_PROP_TYPES.has(type)) {
       drawShadow(ctx, cx, cy + 4, block.width * 0.35, block.height * 0.12);
     }
@@ -494,8 +555,20 @@
     const cx = player.x;
     const cy = player.y;
     const SPS = global.SproutPlayerSprites;
+    const CA = global.CrayonAssets;
 
-    drawShadow(ctx, cx, cy + 4, Math.max(18, player.radius * 0.9), 6);
+    if (!CA || !CA.isReady()) {
+      drawShadow(ctx, cx, cy + 4, Math.max(18, player.radius * 0.9), 6);
+    }
+
+    if (CA && CA.isReady()) {
+      if (CA.drawPlayer(ctx, player, cx, cy, player.radius)) {
+        if (player.burnTimer > 0) {
+          drawBurnOverlay(ctx, { x: cx - player.radius, y: cy - player.radius, width: player.radius * 2, height: player.radius * 2, isBurning: true });
+        }
+        return;
+      }
+    }
 
     if (SPS && SPS.draw(ctx, player, frame, cx, cy)) {
       if (player.effectType === 'stop') {
@@ -513,6 +586,7 @@
       return;
     }
 
+    // フォールバック: 青い丸
     ctx.fillStyle = '#3b82f6';
     ctx.beginPath();
     ctx.arc(cx, cy, player.radius, 0, Math.PI * 2);
@@ -535,8 +609,13 @@
     const cy = enemy.y + bob;
     const burning = enemy.burnTimer > 0;
 
-    drawShadow(ctx, cx, cy + enemy.radius * 0.35, enemy.radius * 0.6, 4);
-    blit(ctx, SPR.enemyWalk, cx, cy, PX, false, getPal(enemy.effectType, burning));
+    const CA = global.CrayonAssets;
+    if (CA && CA.isReady() && CA.drawEnemy(ctx, enemy, cx, cy, enemy.radius)) {
+      // drawn crayon enemy
+    } else {
+      drawShadow(ctx, cx, cy + enemy.radius * 0.35, enemy.radius * 0.6, 4);
+      blit(ctx, SPR.enemyWalk, cx, cy, PX, false, getPal(enemy.effectType, burning));
+    }
 
     if (enemy.effectType === 'stop') {
       blit(ctx, ['O..', '.O.'], cx - 10, cy - 12, 2, false, { ...PAL, O: '#fff', '.': null });
@@ -560,6 +639,13 @@
     const bounce = Math.round(Math.sin(frame * 0.1) * 1);
     const cx = chest.x + chest.width / 2;
     const cy = chest.y + chest.height / 2 + bounce;
+    
+    const CA = global.CrayonAssets;
+    if (CA && CA.isReady()) {
+      CA.drawChest(ctx, chest.x, chest.y + bounce, chest.width, chest.height);
+      return;
+    }
+    
     const SA = global.SproutAssets;
     drawShadow(ctx, cx, chest.y + chest.height, chest.width * 0.4, 3);
     if (SA && SA.isReady() && SA.drawChestSprite(ctx, cx, cy, frame)) {
@@ -641,6 +727,18 @@
   }
 
   function isSolidPropType(type) {
+    if (!type) return false;
+    if (type.startsWith('custom_tile_')) {
+      const tileId = type.replace('custom_tile_', '');
+      const customTile = global.customTilesMap && global.customTilesMap[tileId];
+      if (customTile && customTile.type === 'prop') {
+        return true;
+      }
+    }
+    if (type.startsWith('custom_') && !type.startsWith('custom_tile_')) {
+      return true;
+    }
+    if (type === 'custom') return true;
     return SOLID_PROP_TYPES.has(type);
   }
 
@@ -650,8 +748,32 @@
 
   function drawCreateToolThumb(ctx, kind, size, frame) {
     ctx.clearRect(0, 0, size, size);
-    ctx.fillStyle = '#1e293b';
+    
+    const CA = global.CrayonAssets;
+    if (CA && CA.isReady()) {
+      ctx.fillStyle = '#fdfaf6'; // paper background
+    } else {
+      ctx.fillStyle = '#1e293b';
+    }
     ctx.fillRect(0, 0, size, size);
+
+    if (kind && kind.startsWith('custom_')) {
+      if (kind.startsWith('custom_tile_')) {
+        const tileId = kind.replace('custom_tile_', '');
+        const customTile = global.customTilesMap && global.customTilesMap[tileId];
+        if (customTile && customTile.img) {
+          ctx.drawImage(customTile.img, 0, 0, size, size);
+          return;
+        }
+      } else {
+        const imgId = parseInt(kind.replace('custom_', ''), 10);
+        const customObj = global.createMapData && global.createMapData.customImages && global.createMapData.customImages.find(c => c.id === imgId);
+        if (customObj && customObj.img) {
+          ctx.drawImage(customObj.img, 0, 0, size, size);
+          return;
+        }
+      }
+    }
 
     const SA = global.SproutAssets;
     const f = frame || 0;
@@ -670,6 +792,12 @@
         animTimer: 0,
         invincibleTimer: 0,
       };
+      
+      if (CA && CA.isReady()) {
+        CA.drawPlayer(ctx, stub, size / 2, size / 2, size * 0.35);
+        return;
+      }
+      
       if (SPS && SPS.draw(ctx, stub, f, size / 2, size - 1)) return;
       ctx.fillStyle = '#3b82f6';
       ctx.beginPath();
@@ -726,6 +854,7 @@
     drawCreateToolThumb,
     setupCrisp,
     drawGround,
+    drawTerrainTile,
     drawMapProp,
     drawPlayer,
     drawEnemy,
