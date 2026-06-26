@@ -120,6 +120,35 @@ const puppeteer = require('puppeteer');
   await new Promise(r => setTimeout(r, 500));
   console.log("Placed custom tile enemy at (6, 6)");
 
+  // 2.7. パレット上のタイルを長押しして種別を切り替えるテスト
+  console.log("Starting long press type toggle test...");
+  const customTileElementBounds = await page.evaluate(() => {
+    const container = document.getElementById('custom-enemies-container');
+    const tools = container.querySelectorAll('.create-tool-item');
+    for (const t of tools) {
+      if (t.dataset.tool && t.dataset.tool.startsWith('custom_tile_')) {
+        const canvas = t.querySelector('canvas');
+        if (canvas) {
+          const r = canvas.getBoundingClientRect();
+          return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+        }
+      }
+    }
+    return null;
+  });
+
+  if (customTileElementBounds) {
+    await page.mouse.move(customTileElementBounds.x, customTileElementBounds.y);
+    await page.mouse.down();
+    console.log("Mouse down on custom tile, waiting 800ms for long press...");
+    await new Promise(r => setTimeout(r, 800));
+    await page.mouse.up();
+    console.log("Mouse up. Long press complete.");
+    await new Promise(r => setTimeout(r, 500));
+  } else {
+    console.error("FAIL: Custom tile element not found for long press test");
+  }
+
   // 3. マップデータを検証する
   const assertion = await page.evaluate(() => {
     const mapData = window.createMapData;
@@ -152,8 +181,8 @@ const puppeteer = require('puppeteer');
   console.log("Assertion result:", JSON.stringify(assertion, null, 2));
 
   if (assertion.hasEnemy1 && assertion.customEnemyName === 'ボススライム' && assertion.customEnemyHp === 100 &&
-      assertion.hasEnemy2 && assertion.customTileEnemyId && assertion.customTileType === 'enemy') {
-    console.log("SUCCESS: Both custom enemy and custom tile enemy data are correctly saved and linked in map data!");
+      assertion.hasEnemy2 && assertion.customTileEnemyId && assertion.customTileType === 'terrain') {
+    console.log("SUCCESS: Both custom enemy and custom tile enemy (toggled via long press to terrain) data are correctly saved and linked in map data!");
   } else {
     console.error("FAIL: Custom enemy or custom tile enemy assertion failed.", assertion);
   }

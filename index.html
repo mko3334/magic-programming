@@ -2543,8 +2543,62 @@
       saveCreateTileName(nameInput.dataset.tool, nameInput.value);
     });
 
+    let pressTimer = null;
+    let isLongPress = false;
+
+    function startPress(e) {
+      if (e.target.tagName.toLowerCase() === 'input' || e.target.tagName.toLowerCase() === 'button') return;
+      isLongPress = false;
+      
+      toolDiv.style.transition = 'all 0.15s ease';
+      toolDiv.style.transform = 'scale(0.95)';
+      toolDiv.style.opacity = '0.8';
+
+      pressTimer = setTimeout(() => {
+        isLongPress = true;
+        toolDiv.style.transform = '';
+        toolDiv.style.opacity = '';
+
+        let nextType;
+        if (tileObj.type === 'terrain') {
+          nextType = 'prop';
+        } else if (tileObj.type === 'prop') {
+          nextType = 'enemy';
+        } else {
+          nextType = 'terrain';
+        }
+        updatePaletteItemType(nextType);
+
+        if (navigator.vibrate) {
+          navigator.vibrate(50);
+        }
+      }, 600);
+    }
+
+    function cancelPress(e) {
+      if (pressTimer) {
+        clearTimeout(pressTimer);
+        pressTimer = null;
+      }
+      if (!isLongPress) {
+        toolDiv.style.transform = '';
+        toolDiv.style.opacity = '';
+      }
+    }
+
+    toolDiv.addEventListener('mousedown', startPress);
+    toolDiv.addEventListener('touchstart', startPress, { passive: true });
+    toolDiv.addEventListener('mouseup', cancelPress);
+    toolDiv.addEventListener('touchend', cancelPress);
+    toolDiv.addEventListener('mouseleave', cancelPress);
+    toolDiv.addEventListener('touchcancel', cancelPress);
+
     toolDiv.addEventListener('click', (ev) => {
       if (ev.target.tagName.toLowerCase() === 'input' || ev.target.tagName.toLowerCase() === 'button') return;
+      if (isLongPress) {
+        isLongPress = false;
+        return;
+      }
       selectTool(toolDiv.dataset.tool);
       
       document.querySelectorAll('.create-tool-item').forEach(el => {
