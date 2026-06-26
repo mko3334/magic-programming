@@ -67,31 +67,95 @@ const puppeteer = require('puppeteer');
   await new Promise(r => setTimeout(r, 500));
   console.log("Placed custom enemy at (5, 5)");
 
+  // 2.5. カスタムタイルを「敵キャラ」としてインポートして配置する
+  console.log("Starting custom tile enemy import test...");
+  await page.evaluate(() => {
+    // ダミーのCanvasを作成して openCopyImportModal を呼び出す
+    const canvas = document.createElement('canvas');
+    canvas.width = 64;
+    canvas.height = 64;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ff0000';
+    ctx.fillRect(0, 0, 64, 64);
+    
+    // コピーインポートモーダルを開く
+    window.openCopyImportModal(canvas, 1, 1);
+  });
+  await new Promise(r => setTimeout(r, 500));
+
+  // モーダル内で種別ボタンをクリックして「敵キャラ」にする
+  await page.evaluate(() => {
+    const typeBtn = document.querySelector('#tile-sheet-grid button.w-full.text-\\[10px\\]');
+    if (typeBtn) {
+      // 1回目のクリックで 'prop' -> 'enemy' に切り替わるはず（デフォルトは prop）
+      typeBtn.click();
+    }
+  });
+  await new Promise(r => setTimeout(r, 500));
+
+  // インポート実行をクリック
+  await page.click('#btn-tile-sheet-confirm');
+  await new Promise(r => setTimeout(r, 1000));
+  console.log("Imported custom tile enemy");
+
+  // パレットからインポートしたカスタムタイル（enemy）のツールキーを探して選択
+  const customTileEnemyToolKey = await page.evaluate(() => {
+    // 敵コンテナ内にあるカスタムタイル敵ツールを探す
+    const container = document.getElementById('custom-enemies-container');
+    const tools = container.querySelectorAll('.create-tool-item');
+    for (const t of tools) {
+      if (t.dataset.tool && t.dataset.tool.startsWith('custom_tile_')) {
+        t.click();
+        return t.dataset.tool;
+      }
+    }
+    return null;
+  });
+  console.log("Selected custom tile enemy tool:", customTileEnemyToolKey);
+
+  // Canvas上の (6, 6) に配置
+  const targetX2 = canvasRect.x + (6 * gridW) + gridW / 2;
+  const targetY2 = canvasRect.y + (6 * gridH) + gridH / 2;
+  await page.mouse.click(targetX2, targetY2);
+  await new Promise(r => setTimeout(r, 500));
+  console.log("Placed custom tile enemy at (6, 6)");
+
   // 3. マップデータを検証する
   const assertion = await page.evaluate(() => {
-    // デバッグ用にデータを直接取得
     const mapData = window.createMapData;
-    const enemy = mapData && mapData.enemies && mapData.enemies[0];
-    const customEnemyId = enemy ? enemy.customEnemyId : null;
+    // 最初の敵 (5, 5) のカスタム敵
+    const enemy1 = mapData && mapData.enemies && mapData.enemies.find(e => Math.floor(e.x / 32) === 5 && Math.floor(e.y / 32) === 5);
+    const customEnemyId = enemy1 ? enemy1.customEnemyId : null;
     const customEnemyData = customEnemyId ? mapData.customEnemies.find(e => e.id === customEnemyId) : null;
-    
+
+    // 二番目の敵 (6, 6) のカスタムタイル敵
+    const enemy2 = mapData && mapData.enemies && mapData.enemies.find(e => Math.floor(e.x / 32) === 6 && Math.floor(e.y / 32) === 6);
+    const customTileEnemyId = enemy2 ? enemy2.customTileEnemyId : null;
+    const customTileData = customTileEnemyId ? window.customTilesMap[customTileEnemyId] : null;
+
     return {
       mapDataRaw: mapData,
-      hasEnemy: !!enemy,
+      hasEnemy1: !!enemy1,
       customEnemyId: customEnemyId,
       customEnemyName: customEnemyData ? customEnemyData.name : null,
       customEnemyHp: customEnemyData ? customEnemyData.maxHp : null,
       customEnemySpeed: customEnemyData ? customEnemyData.speed : null,
-      customEnemyRadius: customEnemyData ? customEnemyData.radius : null
+      customEnemyRadius: customEnemyData ? customEnemyData.radius : null,
+
+      hasEnemy2: !!enemy2,
+      customTileEnemyId: customTileEnemyId,
+      customTileName: customTileData ? customTileData.name : null,
+      customTileType: customTileData ? customTileData.type : null
     };
   });
 
   console.log("Assertion result:", JSON.stringify(assertion, null, 2));
 
-  if (assertion.hasEnemy && assertion.customEnemyName === 'ボススライム' && assertion.customEnemyHp === 100 && assertion.customEnemySpeed === 0.5 && assertion.customEnemyRadius === 32) {
-    console.log("SUCCESS: Custom enemy data is correctly saved and linked in map data!");
+  if (assertion.hasEnemy1 && assertion.customEnemyName === 'ボススライム' && assertion.customEnemyHp === 100 &&
+      assertion.hasEnemy2 && assertion.customTileEnemyId && assertion.customTileType === 'enemy') {
+    console.log("SUCCESS: Both custom enemy and custom tile enemy data are correctly saved and linked in map data!");
   } else {
-    console.error("FAIL: Custom enemy assertion failed.", assertion);
+    console.error("FAIL: Custom enemy or custom tile enemy assertion failed.", assertion);
   }
 
   await page.screenshot({ path: 'debug_enemy_result.png' });

@@ -943,6 +943,7 @@
         <span class="text-slate-300">|</span>
         <button id="btn-tile-sheet-all-terrain" class="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-lg font-bold text-xs transition-all">全て地面にする</button>
         <button id="btn-tile-sheet-all-prop" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 rounded-lg font-bold text-xs transition-all">全てオブジェクトにする</button>
+        <button id="btn-tile-sheet-all-enemy" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 rounded-lg font-bold text-xs transition-all">全て敵にする</button>
       </div>
       <div class="flex gap-2">
         <button id="btn-tile-sheet-cancel" class="px-5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-sm transition-all">キャンセル</button>
@@ -1500,15 +1501,23 @@
 
     createMapData.enemies.forEach(pos => {
       let customData = null;
+      let tileImgId = null;
+      let radius = 18;
       if (pos.customEnemyId) {
         customData = createMapData.customEnemies && createMapData.customEnemies.find(e => e.id === pos.customEnemyId);
+        if (customData) {
+          radius = customData.radius;
+          tileImgId = customData.imgId;
+        }
+      } else if (pos.customTileEnemyId) {
+        tileImgId = pos.customTileEnemyId;
       }
       PopArt.drawEnemy(createCtx, {
         x: pos.x, y: pos.y, 
-        radius: customData ? customData.radius : 14, 
+        radius: radius, 
         active: true,
         hp: 10, maxHp: 10, effectType: null, offset: pos.x, burnTimer: 0,
-        imgId: customData ? customData.imgId : null
+        imgId: tileImgId
       }, anim);
     });
 
@@ -2137,6 +2146,9 @@
         if (tile.type === 'terrain') {
           typeBtn.className = 'w-full text-[10px] py-1 px-2 rounded-lg font-bold transition-all border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 outline-none';
           typeBtn.textContent = '🟩 地面 (通行可)';
+        } else if (tile.type === 'enemy') {
+          typeBtn.className = 'w-full text-[10px] py-1 px-2 rounded-lg font-bold transition-all border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 outline-none';
+          typeBtn.textContent = '😈 敵キャラ';
         } else {
           typeBtn.className = 'w-full text-[10px] py-1 px-2 rounded-lg font-bold transition-all border border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200 outline-none';
           typeBtn.textContent = '🪨 オブジェクト (壁)';
@@ -2148,6 +2160,7 @@
   // 一括設定ボタンのイベントリスナー
   const btnTileAllTerrain = document.getElementById('btn-tile-sheet-all-terrain');
   const btnTileAllProp = document.getElementById('btn-tile-sheet-all-prop');
+  const btnTileAllEnemy = document.getElementById('btn-tile-sheet-all-enemy');
   if (btnTileAllTerrain && btnTileAllProp) {
     btnTileAllTerrain.addEventListener('click', () => {
       tempTilesData.forEach(tile => {
@@ -2161,6 +2174,14 @@
       });
       updateAllTypeButtons();
     });
+    if (btnTileAllEnemy) {
+      btnTileAllEnemy.addEventListener('click', () => {
+        tempTilesData.forEach(tile => {
+          tile.type = 'enemy';
+        });
+        updateAllTypeButtons();
+      });
+    }
   }
 
   function openTileSheetModal() {
@@ -2168,6 +2189,7 @@
     tileSheetGrid.innerHTML = '';
     tempTilesData = [];
     previewCanvases = [];
+    typeButtons = [];
     
     // スライダーの初期値
     inputTileThreshold.value = 30;
@@ -2256,12 +2278,22 @@
 
         typeBtn.addEventListener('click', (e) => {
           e.preventDefault();
-          const nextType = tempTilesData[index].type === 'terrain' ? 'prop' : 'terrain';
+          let nextType;
+          if (tempTilesData[index].type === 'terrain') {
+            nextType = 'prop';
+          } else if (tempTilesData[index].type === 'prop') {
+            nextType = 'enemy';
+          } else {
+            nextType = 'terrain';
+          }
           tempTilesData[index].type = nextType;
           
           if (nextType === 'terrain') {
             typeBtn.className = 'w-full text-[10px] py-1 px-2 rounded-lg font-bold transition-all border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 outline-none';
             typeBtn.textContent = '🟩 地面 (通行可)';
+          } else if (nextType === 'enemy') {
+            typeBtn.className = 'w-full text-[10px] py-1 px-2 rounded-lg font-bold transition-all border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 outline-none';
+            typeBtn.textContent = '😈 敵キャラ';
           } else {
             typeBtn.className = 'w-full text-[10px] py-1 px-2 rounded-lg font-bold transition-all border border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200 outline-none';
             typeBtn.textContent = '🪨 オブジェクト (壁)';
@@ -2450,6 +2482,8 @@
         window.customTilesMap[tileObj.id].type = type;
       }
       
+      const enemyContainer = document.getElementById('custom-enemies-container');
+      
       if (type === 'terrain') {
         typeBtn.className = 'create-tool-type-btn text-[9px] py-0.5 px-1.5 rounded font-bold border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 outline-none ml-auto shrink-0';
         typeBtn.textContent = '🟩 地面';
@@ -2461,6 +2495,16 @@
           terrainContainer.insertBefore(toolDiv, gameHeader);
         } else {
           terrainContainer.appendChild(toolDiv);
+        }
+      } else if (type === 'enemy') {
+        typeBtn.className = 'create-tool-type-btn text-[9px] py-0.5 px-1.5 rounded font-bold border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 outline-none ml-auto shrink-0';
+        typeBtn.textContent = '😈 敵';
+        toolDiv.className = baseClass + 'bg-rose-50 text-rose-800 hover:bg-rose-100';
+        
+        if (enemyContainer) {
+          enemyContainer.appendChild(toolDiv);
+        } else {
+          container.appendChild(toolDiv);
         }
       } else {
         typeBtn.className = 'create-tool-type-btn text-[9px] py-0.5 px-1.5 rounded font-bold border border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200 outline-none ml-auto shrink-0';
@@ -2478,7 +2522,14 @@
     typeBtn.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
-      const nextType = tileObj.type === 'terrain' ? 'prop' : 'terrain';
+      let nextType;
+      if (tileObj.type === 'terrain') {
+        nextType = 'prop';
+      } else if (tileObj.type === 'prop') {
+        nextType = 'enemy';
+      } else {
+        nextType = 'terrain';
+      }
       updatePaletteItemType(nextType);
     });
 
@@ -2743,7 +2794,12 @@
       const gx = Math.floor(e.x / gridW);
       const gy = Math.floor(e.y / gridH);
       const c = getCreateGridCenter(gx, gy);
-      enemyByCell.set(`${gx},${gy}`, { x: c.x, y: c.y });
+      enemyByCell.set(`${gx},${gy}`, { 
+        x: c.x, 
+        y: c.y, 
+        customEnemyId: e.customEnemyId || null,
+        customTileEnemyId: e.customTileEnemyId || null
+      });
     });
     createMapData.enemies = [...enemyByCell.values()];
   }
@@ -2759,6 +2815,7 @@
     const isCustomProp = activeTool.startsWith('custom_') && !activeTool.startsWith('custom_tile_') && !activeTool.startsWith('custom_enemy_');
     let isCustomTerrain = false;
     let isCustomTileProp = false;
+    let isCustomTileEnemy = false;
 
     let tileWidth = 1;
     let tileHeight = 1;
@@ -2770,6 +2827,8 @@
         tileHeight = tile.height || 1;
         if (tile.type === 'terrain') {
           isCustomTerrain = true;
+        } else if (tile.type === 'enemy') {
+          isCustomTileEnemy = true;
         } else {
           isCustomTileProp = true;
         }
@@ -2816,7 +2875,7 @@
       return true;
     }
     const isCustomEnemy = activeTool.startsWith('custom_enemy_');
-    if (activeTool === 'enemy' || isCustomEnemy) {
+    if (activeTool === 'enemy' || isCustomEnemy || isCustomTileEnemy) {
       if (paintMode) lastPaintCell = cellKey;
       const existingIdx = findCreateEnemyAtGrid(gridX, gridY);
       if (existingIdx !== -1) {
@@ -2827,7 +2886,8 @@
       clearCreateCellObjects(gridX, gridY);
       const center = getCreateGridCenter(gridX, gridY);
       const customEnemyId = isCustomEnemy ? activeTool.replace('custom_enemy_', '') : null;
-      createMapData.enemies.push({ x: center.x, y: center.y, customEnemyId: customEnemyId });
+      const customTileEnemyId = isCustomTileEnemy ? activeTool.replace('custom_tile_', '') : null;
+      createMapData.enemies.push({ x: center.x, y: center.y, customEnemyId: customEnemyId, customTileEnemyId: customTileEnemyId });
       return true;
     }
     return false;
@@ -3004,12 +3064,22 @@
 
     typeBtn.addEventListener('click', (e) => {
       e.preventDefault();
-      const nextType = tempTilesData[0].type === 'terrain' ? 'prop' : 'terrain';
+      let nextType;
+      if (tempTilesData[0].type === 'terrain') {
+        nextType = 'prop';
+      } else if (tempTilesData[0].type === 'prop') {
+        nextType = 'enemy';
+      } else {
+        nextType = 'terrain';
+      }
       tempTilesData[0].type = nextType;
       
       if (nextType === 'terrain') {
         typeBtn.className = 'w-full text-[10px] py-1 px-2 rounded-lg font-bold transition-all border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 outline-none';
         typeBtn.textContent = '🟩 地面 (通行可)';
+      } else if (nextType === 'enemy') {
+        typeBtn.className = 'w-full text-[10px] py-1 px-2 rounded-lg font-bold transition-all border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 outline-none';
+        typeBtn.textContent = '😈 敵キャラ';
       } else {
         typeBtn.className = 'w-full text-[10px] py-1 px-2 rounded-lg font-bold transition-all border border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200 outline-none';
         typeBtn.textContent = '🪨 オブジェクト (壁)';
@@ -6123,6 +6193,18 @@
         let customData = null;
         if (pos.customEnemyId) {
           customData = createMapData.customEnemies && createMapData.customEnemies.find(e => e.id === pos.customEnemyId);
+        } else if (pos.customTileEnemyId) {
+          const tile = window.customTilesMap && window.customTilesMap[pos.customTileEnemyId];
+          if (tile) {
+            customData = {
+              id: `tile_${tile.id}`,
+              name: tile.name || 'カスタム敵',
+              maxHp: 10,
+              speed: 1.0,
+              radius: 18,
+              imgId: tile.id
+            };
+          }
         }
         enemies.push(new Enemy(pos.x, pos.y, customData));
       });
