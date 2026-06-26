@@ -609,12 +609,26 @@
     const cy = enemy.y + bob;
     const burning = enemy.burnTimer > 0;
 
-    const CA = global.CrayonAssets;
-    if (CA && CA.isReady() && CA.drawEnemy(ctx, enemy, cx, cy, enemy.radius)) {
-      // drawn crayon enemy
+    if (enemy.imgId) {
+      const customTile = global.customTilesMap && global.customTilesMap[enemy.imgId];
+      if (customTile && customTile.img) {
+        ctx.save();
+        const size = enemy.radius * 2;
+        drawShadow(ctx, cx, cy + enemy.radius * 0.35, enemy.radius * 0.6, 4);
+        ctx.drawImage(customTile.img, cx - size / 2, cy - size / 2, size, size);
+        ctx.restore();
+      } else {
+        drawShadow(ctx, cx, cy + enemy.radius * 0.35, enemy.radius * 0.6, 4);
+        blit(ctx, SPR.enemyWalk, cx, cy, PX, false, getPal(enemy.effectType, burning));
+      }
     } else {
-      drawShadow(ctx, cx, cy + enemy.radius * 0.35, enemy.radius * 0.6, 4);
-      blit(ctx, SPR.enemyWalk, cx, cy, PX, false, getPal(enemy.effectType, burning));
+      const CA = global.CrayonAssets;
+      if (CA && CA.isReady() && CA.drawEnemy(ctx, enemy, cx, cy, enemy.radius)) {
+        // drawn crayon enemy
+      } else {
+        drawShadow(ctx, cx, cy + enemy.radius * 0.35, enemy.radius * 0.6, 4);
+        blit(ctx, SPR.enemyWalk, cx, cy, PX, false, getPal(enemy.effectType, burning));
+      }
     }
 
     if (enemy.effectType === 'stop') {
